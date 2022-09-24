@@ -10,7 +10,11 @@ import (
 func GenerateAccessToken(claims map[string]interface{}, secret string) (Token, error) {
 	options := DefaultTokenOptions()
 	tokenString, err := generateSignedTokenString(claims, secret, options)
-	return Token{AccessToken: tokenString}, err
+	if err != nil {
+		return Token{}, err
+	}
+	refreshToken, err := generateRefreshTokenString(secret, options)
+	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
 }
 
 func GenerateAccessTokenWithOptions(claims map[string]interface{}, secret string, options *TokenOptions) (Token, error) {
@@ -18,12 +22,24 @@ func GenerateAccessTokenWithOptions(claims map[string]interface{}, secret string
 		options = DefaultTokenOptions()
 	}
 	tokenString, err := generateSignedTokenString(claims, secret, options)
-	return Token{AccessToken: tokenString}, err
+	if err != nil {
+		return Token{}, err
+	}
+	refreshToken, err := generateRefreshTokenString(secret, options)
+	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
 }
 
 func generateSignedTokenString(claims map[string]interface{}, secret string, options *TokenOptions) (string, error) {
 	setIssuedAtClaim(claims)
-	setExpiryDate(claims, options)
+	setExpiryDate(claims, options.AccessTokenExpiry)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
+	return token.SignedString([]byte(secret))
+}
+
+func generateRefreshTokenString(secret string, options *TokenOptions) (string, error) {
+	claims := make(map[string]interface{})
+	setIssuedAtClaim(claims)
+	setExpiryDate(claims, options.RefreshTokenExpiry)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
 	return token.SignedString([]byte(secret))
 }
@@ -33,8 +49,8 @@ func setIssuedAtClaim(claims map[string]interface{}) {
 	claims["iat"] = createdAt
 }
 
-func setExpiryDate(claims map[string]interface{}, options *TokenOptions) {
-	claims["exp"] = &jwt.NumericDate{Time: options.Expiry}
+func setExpiryDate(claims map[string]interface{}, expiry time.Time) {
+	claims["exp"] = &jwt.NumericDate{Time: expiry}
 }
 
 func DecodeAccessToken(tokenString string, secret string) (map[string]interface{}, error) {
