@@ -15,15 +15,15 @@ func WriteErrorResponse(w http.ResponseWriter, err *baseError.BaseError) {
 
 func WriteEmptyCreatedResponse(w http.ResponseWriter, m string) {
 	w.WriteHeader(http.StatusCreated)
-	body := make(map[string]string)
-	body["status"] = "OK"
+	body := make(map[string]interface{})
+	body["status"] = http.StatusCreated
 	body["message"] = m
 	json.NewEncoder(w).Encode(body)
 }
 
 func WriteEmptySuccessResponse(w http.ResponseWriter, m string) {
-	body := make(map[string]string)
-	body["status"] = "OK"
+	body := make(map[string]interface{})
+	body["status"] = http.StatusCreated
 	body["message"] = m
 	json.NewEncoder(w).Encode(body)
 }
