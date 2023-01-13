@@ -7,7 +7,7 @@ import (
 	"github.com/nayefradwi/nayef_go_common/baseError"
 )
 
-func GenerateAccessToken(claims map[string]interface{}, secret string) (Token, error) {
+func GenerateAccessToken(claims map[string]interface{}) (Token, error) {
 	options := DefaultTokenOptions()
 	tokenString, err := generateSignedTokenString(claims, secret, options)
 	if err != nil {
@@ -17,7 +17,7 @@ func GenerateAccessToken(claims map[string]interface{}, secret string) (Token, e
 	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
 }
 
-func GenerateAccessTokenWithOptions(claims map[string]interface{}, secret string, options *TokenOptions) (Token, error) {
+func GenerateAccessTokenWithOptions(claims map[string]interface{}, options *TokenOptions) (Token, error) {
 	if options == nil {
 		options = DefaultTokenOptions()
 	}

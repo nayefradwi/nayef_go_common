@@ -23,7 +23,7 @@ func WriteEmptyCreatedResponse(w http.ResponseWriter, m string) {
 
 func WriteEmptySuccessResponse(w http.ResponseWriter, m string) {
 	body := make(map[string]interface{})
-	body["status"] = http.StatusCreated
+	body["status"] = http.StatusOK
 	body["message"] = m
 	json.NewEncoder(w).Encode(body)
 }
