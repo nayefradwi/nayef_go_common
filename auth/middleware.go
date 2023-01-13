@@ -22,13 +22,13 @@ func AuthorizeHeaderMiddleware(f http.Handler) http.Handler {
 		authHeader := r.Header.Get("Authorization")
 		tokenSplit := strings.Split(authHeader, "Bearer ")
 		if len(tokenSplit) < 2 {
-			response.WriteErrorResponse(w, baseError.NewUnAuthorizedError().(*baseError.BaseError))
+			response.WriteErrorResponse(w, baseError.NewUnAuthorizedError())
 			return
 		}
 		token := tokenSplit[1]
 		claims, err := DecodeAccessToken(token, secret)
 		if err != nil {
-			response.WriteErrorResponse(w, err.(*baseError.BaseError))
+			response.WriteErrorResponse(w, err)
 			return
 		}
 		ctx := context.WithValue(r.Context(), ClaimsKey{}, claims)

@@ -14,35 +14,35 @@ func (e BaseError) GenerateResponse() []byte {
 	return errorResponse
 }
 
-func NewInternalServerError() error {
-	return &BaseError{
+func NewInternalServerError() BaseError {
+	return BaseError{
 		Message: "internal server error",
 		Status:  http.StatusInternalServerError,
 	}
 }
-func NewUnAuthorizedError() error {
-	return &BaseError{
+func NewUnAuthorizedError() BaseError {
+	return BaseError{
 		Message: "Unauthorized",
 		Status:  http.StatusUnauthorized,
 	}
 }
 
-func NewBadRequest(message string) error {
-	return &BaseError{
+func NewBadRequest(message string) BaseError {
+	return BaseError{
 		Message: message,
 		Status:  http.StatusBadRequest,
 	}
 }
 
-func NewForbiddenRequest(message string) error {
-	return &BaseError{
+func NewForbiddenRequest(message string) BaseError {
+	return BaseError{
 		Message: message,
 		Status:  http.StatusForbidden,
 	}
 }
 
-func NewValidationError(validationErrors ...ValidationFieldError) error {
-	return &BaseError{
+func NewValidationError(validationErrors ...ValidationFieldError) BaseError {
+	return BaseError{
 		Fields:  validationErrors,
 		Message: "invalid data",
 		Status:  http.StatusForbidden,
