@@ -40,7 +40,7 @@ func GetLanguageParam(ctx context.Context) string {
 }
 
 func GetTranslatedBody[T any](w http.ResponseWriter, body io.ReadCloser, onSuccess SuccessCallback[Translation[T]]) {
-	ParseBody[Translation[T]](w, body, func(translation Translation[T]) {
+	ParseBody(w, body, func(translation Translation[T]) {
 		if acceptedLang[translation.LanguageCode] {
 			onSuccess(translation)
 		} else {

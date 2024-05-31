@@ -13,15 +13,14 @@ type ClaimsKey struct{}
 
 type UserKey struct{}
 
-var secret string = ""
-var AccessTokenDuration = time.Hour * 24 * 7
-var RefreshTokenDuration = time.Hour * 24 * 30
+type GetIdCallback[T string | int] func(ctx context.Context) T
 
-func SetSecret(envSecret string) {
-	secret = envSecret
+type AuthenticationService[T string | int] struct {
+	Options       TokenOptions
+	GetIdCallback GetIdCallback[T]
 }
 
-func AuthenticationHeaderMiddleware(f http.Handler) http.Handler {
+func (s AuthenticationService[T]) AuthenticationHeaderMiddleware(f http.Handler) http.Handler {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		token := getIfTokenExists(authHeader)
@@ -29,7 +28,7 @@ func AuthenticationHeaderMiddleware(f http.Handler) http.Handler {
 			WriteResponseFromError(w, NewUnAuthorizedError("Invalid token"))
 			return
 		}
-		claims, err := DecodeAccessToken(token)
+		claims, err := s.DecodeAccessToken(token)
 		if err != nil {
 			WriteResponseFromError(w, NewUnAuthorizedError("Invalid token"))
 			return
@@ -47,31 +46,8 @@ func getIfTokenExists(authHeader string) string {
 	}
 	return tokenSplit[1]
 }
-
-func GenerateAccessToken(claims map[string]interface{}) (Token, error) {
-	options := DefaultTokenOptions()
-	tokenString, err := generateSignedTokenString(claims, secret, options)
-	if err != nil {
-		return Token{}, err
-	}
-	refreshToken, err := generateRefreshTokenString(secret, options)
-	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
-}
-
-func GenerateAccessTokenWithOptions(claims map[string]interface{}, options *TokenOptions) (Token, error) {
-	if options == nil {
-		options = DefaultTokenOptions()
-	}
-	tokenString, err := generateSignedTokenString(claims, secret, options)
-	if err != nil {
-		return Token{}, err
-	}
-	refreshToken, err := generateRefreshTokenString(secret, options)
-	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
-}
-
-func DecodeAccessToken(tokenString string) (map[string]interface{}, error) {
-	if isVerified, token := verifyToken(tokenString); isVerified {
+func (s AuthenticationService[T]) DecodeAccessToken(tokenString string) (map[string]interface{}, error) {
+	if isVerified, token := s.verifyToken(tokenString); isVerified {
 		claims := parseToken(token)
 		isValid := claims.Valid()
 		if isValid != nil {
@@ -82,16 +58,16 @@ func DecodeAccessToken(tokenString string) (map[string]interface{}, error) {
 	return nil, NewUnAuthorizedError("Invalid token")
 }
 
-func verifyToken(tokenString string) (bool, *jwt.Token) {
-	token, err := jwt.Parse(tokenString, validateTokenMethod)
+func (s AuthenticationService[T]) verifyToken(tokenString string) (bool, *jwt.Token) {
+	token, err := jwt.Parse(tokenString, s.validateTokenMethod)
 	return err == nil && token.Valid, token
 }
 
-func validateTokenMethod(token *jwt.Token) (interface{}, error) {
+func (s AuthenticationService[T]) validateTokenMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, NewUnAuthorizedError("Invalid token")
 	}
-	return []byte(secret), nil
+	return []byte(s.Options.Secret), nil
 }
 
 func parseToken(token *jwt.Token) jwt.MapClaims {
@@ -102,24 +78,44 @@ func parseToken(token *jwt.Token) jwt.MapClaims {
 	return jwt.MapClaims{}
 }
 
+func (s AuthenticationService[T]) GenerateAccessToken(claims map[string]interface{}) (Token, error) {
+	tokenString, err := s.generateSignedTokenString(claims)
+	if err != nil {
+		return Token{}, err
+	}
+	refreshToken, err := s.generateRefreshTokenString()
+	return Token{AccessToken: tokenString, RefreshToken: refreshToken}, err
+}
+func (s AuthenticationService[T]) generateSignedTokenString(claims map[string]interface{}) (string, error) {
+	options := s.Options
+	setIssuedAtClaim(claims)
+	setExpiryDate(claims, options.AccessTokenExpiry)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
+	return token.SignedString([]byte(options.Secret))
+}
+
+func (s AuthenticationService[T]) generateRefreshTokenString() (string, error) {
+	options := s.Options
+	claims := make(map[string]interface{})
+	setIssuedAtClaim(claims)
+	setExpiryDate(claims, options.RefreshTokenExpiry)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
+	return token.SignedString([]byte(options.Secret))
+}
+
+func setIssuedAtClaim(claims map[string]interface{}) {
+	createdAt := &jwt.NumericDate{Time: time.Now()}
+	claims["iat"] = createdAt
+}
+
+func setExpiryDate(claims map[string]interface{}, expiry time.Time) {
+	claims["exp"] = &jwt.NumericDate{Time: expiry}
+}
+
 func GetClaimsFromContext(ctx context.Context) map[string]interface{} {
 	claims := ctx.Value(ClaimsKey{})
 	if claims != nil {
 		return claims.(map[string]interface{})
 	}
 	return nil
-}
-
-type UserIdExtractor func(ctx context.Context) int
-
-var defaultUserIdExtractor UserIdExtractor = func(ctx context.Context) int {
-	return 0
-}
-
-func SetUserIdExtractor(extractor UserIdExtractor) {
-	defaultUserIdExtractor = extractor
-}
-
-func GetUserIdFromContext(ctx context.Context) int {
-	return defaultUserIdExtractor(ctx)
 }
