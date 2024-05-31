@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -91,5 +92,5 @@ func createCursorValue(c Cursorable) string {
 		return ""
 	}
 	cursorValue := strings.Join(cursorColumns, ",")
-	return Base64Encode(cursorValue)
+	return base64.StdEncoding.EncodeToString([]byte(cursorValue))
 }

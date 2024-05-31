@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"time"
 )
@@ -51,18 +50,6 @@ func StructToMap(input interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return result, nil
-}
-
-func Base64Encode(input string) string {
-	return base64.StdEncoding.EncodeToString([]byte(input))
-}
-
-func Base64Decode(input string) (string, error) {
-	decoded, err := base64.StdEncoding.DecodeString(input)
-	if err != nil {
-		return "", err
-	}
-	return string(decoded), nil
 }
 
 func GetBoolFromContext(ctx context.Context, key any) bool {

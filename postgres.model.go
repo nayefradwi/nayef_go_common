@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -159,8 +160,8 @@ func (b *paginationQueryBuilder) Build() PaginationQuery {
 }
 
 func (q PaginationQuery) GetCurrentCursor() []string {
-	decoded, _ := Base64Decode(q.CursorValue)
-	return strings.Split(decoded, ",")
+	decoded, _ := base64.StdEncoding.DecodeString(q.CursorValue)
+	return strings.Split(string(decoded), ",")
 }
 
 func (q *PaginationQuery) getFinalArgAndJoinedConditions() (int, string) {
