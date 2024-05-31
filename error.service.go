@@ -26,7 +26,8 @@ func Recover(f http.Handler) http.Handler {
 					zap.Stack("stack trace"),
 				)
 				err := NewInternalServerError()
-				WriteResponse[interface{}](Result[interface{}]{Error: err, Writer: w})
+				result := Result[interface{}]{Error: err, Writer: w}
+				result.WriteResponse()
 			}
 		}()
 		f.ServeHTTP(w, r)

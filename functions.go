@@ -57,10 +57,8 @@ func GetBoolFromContext(ctx context.Context, key any) bool {
 	if value == nil {
 		return false
 	}
-	if val, ok := value.(bool); ok {
-		return val
-	}
-	return false
+	val, _ := value.(bool)
+	return val
 }
 
 func SetBoolToContext(ctx context.Context, key any, value string) context.Context {

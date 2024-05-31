@@ -54,7 +54,7 @@ so the pattern is always:
   - call service which calls repo
   - write response
 */
-func WriteResponse[T any](result Result[T]) {
+func (result Result[T]) WriteResponse() {
 	if result.Error != nil {
 		WriteResponseFromError(result.Writer, result.Error)
 		return
@@ -63,7 +63,7 @@ func WriteResponse[T any](result Result[T]) {
 	json.NewEncoder(result.Writer).Encode(result.Data)
 }
 
-func WriteCreatedResponse(result EmptyResult) {
+func (result EmptyResult) WriteCreatedResponse() {
 	if result.Error != nil {
 		WriteResponseFromError(result.Writer, result.Error)
 		return
@@ -71,7 +71,7 @@ func WriteCreatedResponse(result EmptyResult) {
 	writeResponse(result, 201)
 
 }
-func WriteEmptyResponse(result EmptyResult) {
+func (result EmptyResult) WriteEmptyResponse() {
 	if result.Error != nil {
 		WriteResponseFromError(result.Writer, result.Error)
 		return
@@ -109,7 +109,6 @@ func handleInternalError(w http.ResponseWriter) {
 
 func JsonResponseMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		next.ServeHTTP(w, r)
 	})
 }
