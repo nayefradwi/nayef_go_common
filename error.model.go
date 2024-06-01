@@ -1,5 +1,7 @@
 package common
 
+import "encoding/json"
+
 // only for common errors the codes are like their status codes
 // for custom errors the code will be based on the operation
 const (
@@ -35,4 +37,13 @@ type ErrorDetails struct {
 
 func (e *ApiError) Error() string {
 	return e.Message
+}
+
+func (e ApiError) GenerateResponse() []byte {
+	errorResponse, err := json.Marshal(e)
+	if err != nil {
+		internalServerError, _ := json.Marshal(NewInternalServerError())
+		return internalServerError
+	}
+	return errorResponse
 }

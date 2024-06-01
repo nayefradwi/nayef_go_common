@@ -1,6 +1,6 @@
 package common
 
-func newError(message string, status int, code string) *ApiError {
+func newError(status int, code string, message string) *ApiError {
 	return &ApiError{
 		Message: message,
 		Status:  status,
@@ -8,7 +8,7 @@ func newError(message string, status int, code string) *ApiError {
 	}
 }
 
-func NewCustomError(message string, status int, code string, errors ...ErrorDetails) *ApiError {
+func NewCustomError(status int, code string, message string, errors ...ErrorDetails) *ApiError {
 	return &ApiError{
 		Message: message,
 		Status:  status,
@@ -18,31 +18,31 @@ func NewCustomError(message string, status int, code string, errors ...ErrorDeta
 }
 
 func NewUnAuthorizedError(message string) *ApiError {
-	return newError(message, UNAUTHORIZED, UNAUTHORIZED_CODE)
+	return newError(UNAUTHORIZED, UNAUTHORIZED_CODE, message)
 }
 
 func NewInternalServerError() *ApiError {
-	return newError("Internal server error", INTERNAL_SERVER_ERROR, INTERNAL_ERROR_CODE)
+	return newError(INTERNAL_SERVER_ERROR, INTERNAL_ERROR_CODE, "Internal server error")
 }
 
 func NewNotFoundError(message string) *ApiError {
-	return newError(message, NOT_FOUND, NOT_FOUND_CODE)
+	return newError(NOT_FOUND, NOT_FOUND_CODE, message)
 }
 
-func NewBadRequestError(message string, code string) *ApiError {
-	return NewCustomError(message, BAD_REQUEST, code)
+func NewBadRequestError(code string, message string) *ApiError {
+	return NewCustomError(BAD_REQUEST, code, message)
 }
 
 func NewBadRequestFromMessage(message string) *ApiError {
-	return NewBadRequestError(message, BAD_REQUEST_CODE)
+	return NewBadRequestError(BAD_REQUEST_CODE, message)
 }
 
-func NewForbiddenError(message string, code string) *ApiError {
-	return NewCustomError(message, FORBIDDEN, code)
+func NewForbiddenError(code string, message string) *ApiError {
+	return NewCustomError(FORBIDDEN, code, message)
 }
 
 func NewValidationError(message string, errors ...ErrorDetails) *ApiError {
-	return NewCustomError(message, BAD_REQUEST, INVALID_INPUT_CODE, errors...)
+	return NewCustomError(BAD_REQUEST, INVALID_INPUT_CODE, message, errors...)
 }
 
 func GenerateErrorFromStatus(status int) *ApiError {
