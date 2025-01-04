@@ -6,9 +6,9 @@ import (
 	"net/http"
 )
 
-type SuccessCallback[T any] func(jw JsonResponseWriter, data T)
+type SuccessParsingCallback[T any] func(jw JsonResponseWriter, data T)
 
-func ParseJsonBody[T any](w http.ResponseWriter, body io.ReadCloser, onSuccess SuccessCallback[T]) {
+func ParseJsonBody[T any](w http.ResponseWriter, body io.ReadCloser, onSuccess SuccessParsingCallback[T]) {
 	var data T
 	jw := NewJsonResponseWriter(w)
 	err := json.NewDecoder(body).Decode(&data)
