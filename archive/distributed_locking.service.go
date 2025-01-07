@@ -120,7 +120,7 @@ func (s *RedisLockService) ReleaseMany(ctx context.Context, locks *[]Lock) {
 func (s *RedisLockService) RunWithLock(ctx context.Context, name string, f func() error) error {
 	lock, err := s.Acquire(ctx, name)
 	if err != nil {
-		return NewBadRequestFromMessage("Failed to acquire lock")
+		return errors.New("Failed to acquire lock")
 	}
 	defer s.Release(ctx, lock)
 	return f()
