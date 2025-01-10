@@ -3,12 +3,14 @@ package auth
 import (
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/nayefradwi/nayef_go_common/core"
 )
 
 type JwtTokenProviderConfig struct {
-	SecretKey string
-	ExpiresIn time.Duration
+	SecretKey     string
+	ExpiresIn     time.Duration
+	SigningMethod jwt.SigningMethod
 }
 
 var defaultSecretKey = "SuperSecretKeyShouldBeOverriden"
@@ -22,13 +24,33 @@ func ReplaceDefaultJwtExpiresIn(expiresIn time.Duration) {
 	DefaultJwtTokenProviderConfig.ExpiresIn = expiresIn
 }
 
+func ReplaceDefaultJwtSigningMethod(signingMethod jwt.SigningMethod) {
+	DefaultJwtTokenProviderConfig.SigningMethod = signingMethod
+}
+
 var DefaultJwtTokenProviderConfig = NewJwtTokenProviderConfig(defaultSecretKey, defaultExpiresIn)
 
 func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration) JwtTokenProviderConfig {
 	return JwtTokenProviderConfig{
-		SecretKey: secretKey,
-		ExpiresIn: expiresIn,
+		SecretKey:     secretKey,
+		ExpiresIn:     expiresIn,
+		SigningMethod: jwt.SigningMethodHS256,
 	}
+}
+
+func (c JwtTokenProviderConfig) SetSecretKey(secretKey string) JwtTokenProviderConfig {
+	c.SecretKey = secretKey
+	return c
+}
+
+func (c JwtTokenProviderConfig) SetExpiresIn(expiresIn time.Duration) JwtTokenProviderConfig {
+	c.ExpiresIn = expiresIn
+	return c
+}
+
+func (c JwtTokenProviderConfig) SetSigningMethod(signingMethod jwt.SigningMethod) JwtTokenProviderConfig {
+	c.SigningMethod = signingMethod
+	return c
 }
 
 type JwtTokenProvider[T string | int] struct {

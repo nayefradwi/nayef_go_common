@@ -8,6 +8,7 @@ type Token[T string | int] struct {
 	Value     string
 	OwnerId   T
 	ExpiresAt time.Time
+	Claims    map[string]Claim[T]
 }
 
 type ITokenProvider[T string | int] interface {
