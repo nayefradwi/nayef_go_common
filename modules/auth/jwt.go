@@ -16,16 +16,19 @@ type JwtTokenProviderConfig struct {
 var defaultSecretKey = "SuperSecretKeyShouldBeOverriden"
 var defaultExpiresIn = time.Hour * 24
 
-func ReplaceDefaultJwtSecretKey(secretKey string) {
+func ReplaceDefaultJwtSecretKey(secretKey string) JwtTokenProviderConfig {
 	DefaultJwtTokenProviderConfig.SecretKey = secretKey
+	return DefaultJwtTokenProviderConfig
 }
 
-func ReplaceDefaultJwtExpiresIn(expiresIn time.Duration) {
+func ReplaceDefaultJwtExpiresIn(expiresIn time.Duration) JwtTokenProviderConfig {
 	DefaultJwtTokenProviderConfig.ExpiresIn = expiresIn
+	return DefaultJwtTokenProviderConfig
 }
 
-func ReplaceDefaultJwtSigningMethod(signingMethod jwt.SigningMethod) {
+func ReplaceDefaultJwtSigningMethod(signingMethod jwt.SigningMethod) JwtTokenProviderConfig {
 	DefaultJwtTokenProviderConfig.SigningMethod = signingMethod
+	return DefaultJwtTokenProviderConfig
 }
 
 var DefaultJwtTokenProviderConfig = NewJwtTokenProviderConfig(defaultSecretKey, defaultExpiresIn)
