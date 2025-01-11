@@ -40,7 +40,7 @@ func (jw JsonResponseWriter) writeData(data interface{}) {
 }
 
 func (jw JsonResponseWriter) writeError(err error) {
-	resultError, ok := err.(core.ResultError)
+	resultError, ok := err.(*core.ResultError)
 	if !ok {
 		resultError = core.InternalError(err.Error())
 	}
@@ -49,7 +49,7 @@ func (jw JsonResponseWriter) writeError(err error) {
 	json.NewEncoder(jw.Writer).Encode(resultError)
 }
 
-func getStatusCodeFromResultError(err core.ResultError) int {
+func getStatusCodeFromResultError(err *core.ResultError) int {
 	switch err.Code {
 	case core.BAD_REQUEST_CODE:
 		return http.StatusBadRequest

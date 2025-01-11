@@ -4,16 +4,24 @@ import (
 	"time"
 )
 
+const (
+	ownerClaimKey    = "owner"
+	expiryClaimKey   = "exp"
+	issuerClaimKey   = "iss"
+	issuedAtClaimKey = "iat"
+)
+
 type Token[T string | int] struct {
 	Value     string
 	OwnerId   T
 	ExpiresAt time.Time
-	Claims    map[string]Claim[T]
+	issuedAt  time.Time
+	Claims    map[string]interface{}
 }
 
 type ITokenProvider[T string | int] interface {
 	GetClaims(token string) (Token[T], error)
-	SignClaims(owner T, claims Claim[T]) (string, error)
+	SignClaims(owner T, claims map[string]interface{}) (string, error)
 }
 
 func (t Token[T]) IsExpired() bool {

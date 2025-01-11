@@ -26,8 +26,8 @@ func (e ResultError) Error() string {
 	return e.Message
 }
 
-func NewResultError(message string, code string, details ...ErrorDetails) ResultError {
-	return ResultError{
+func NewResultError(message string, code string, details ...ErrorDetails) *ResultError {
+	return &ResultError{
 		Message: message,
 		Code:    code,
 		Errors:  details,
