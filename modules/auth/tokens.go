@@ -12,11 +12,13 @@ const (
 )
 
 type Token[T string | int] struct {
+	Id        T
 	Value     string
 	OwnerId   T
 	ExpiresAt time.Time
 	issuedAt  time.Time
 	Claims    map[string]interface{}
+	Type      int
 }
 
 type ITokenProvider[T string | int] interface {

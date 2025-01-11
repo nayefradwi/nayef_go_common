@@ -1,4 +1,4 @@
-package refreshtoken
+package auth
 
 import (
 	"time"
@@ -6,12 +6,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
 )
-
-type IRefreshTokenProvider[T string | int] interface {
-	GenerateToken(ownerId T, claims map[string]interface{}) (*RefreshToken, error)
-	GetAccessToken(accessToken string) (auth.Token[T], error)
-	GetRefreshToken(refreshToken string) (auth.Token[T], error)
-}
 
 var defaultExpiresInRefreshToken = 30 * 24 * time.Hour
 var DefaultJwtRefreshTokenProviderConfig = auth.ReplaceDefaultJwtExpiresIn(defaultExpiresInRefreshToken)
