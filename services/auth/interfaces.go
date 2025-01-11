@@ -15,3 +15,11 @@ type IReferenceTokenRepository[T string | int] interface {
 	DeleteToken(id T) error
 	DeleteAllTokensByOwner(ownerId T) error
 }
+
+type IReferenceTokenProvider[T string | int] interface {
+	GenerateId() T
+	GenerateToken(ownerId T, claims map[string]interface{}) (*ReferenceToken, error)
+	GetToken(id T, tokenType int) (auth.Token[T], error)
+	RevokeToken(id T) error
+	RevokeOwner(ownerId T) error
+}

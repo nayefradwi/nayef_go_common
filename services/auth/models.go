@@ -11,6 +11,6 @@ type RefreshToken struct {
 }
 
 type ReferenceToken struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessTokenId  string `json:"access_token"`
+	RefreshTokenId string `json:"refresh_token"`
 }
