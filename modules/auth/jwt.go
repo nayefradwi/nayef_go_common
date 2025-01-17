@@ -114,7 +114,7 @@ func (t JwtTokenProvider[T]) GetClaims(token string) (Token[T], *core.ResultErro
 
 }
 
-func (t JwtTokenProvider[T]) SignClaims(owner T, claims map[string]interface{}) (string, *core.ResultError) {
+func (t JwtTokenProvider[T]) SignClaims(owner T, claims map[string]interface{}) (string, error) {
 	issuer, issuedAt := t.Config.Issuer, time.Now().UTC()
 	expiresAt := issuedAt.Add(t.Config.ExpiresIn)
 	claims[issuerClaimKey] = issuer

@@ -1,6 +1,8 @@
 package auth
 
-import "github.com/nayefradwi/nayef_go_common/modules/auth"
+import (
+	"github.com/nayefradwi/nayef_go_common/modules/auth"
+)
 
 type IRefreshTokenProvider[T string | int] interface {
 	GenerateToken(ownerId T, claims map[string]interface{}) (*RefreshToken, error)

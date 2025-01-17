@@ -3,7 +3,6 @@ package auth
 import (
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
 )
 
@@ -42,10 +41,10 @@ func (t JwtRefreshTokenProvider[T]) GenerateToken(ownerId T, claims map[string]i
 	}, nil
 }
 
-func (t JwtRefreshTokenProvider[T]) GetAccessToken(accessToken string) (auth.Token[T], *core.ResultError) {
+func (t JwtRefreshTokenProvider[T]) GetAccessToken(accessToken string) (auth.Token[T], error) {
 	return t.AccessTokenProvider.GetClaims(accessToken)
 }
 
-func (t JwtRefreshTokenProvider[T]) GetRefreshToken(refreshToken string) (auth.Token[T], *core.ResultError) {
+func (t JwtRefreshTokenProvider[T]) GetRefreshToken(refreshToken string) (auth.Token[T], error) {
 	return t.RefreshTokenProvider.GetClaims(refreshToken)
 }
