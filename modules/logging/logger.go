@@ -35,23 +35,23 @@ func NewRollingLogger(filename string, maxSize int, maxBackups int, maxAge int) 
 }
 
 type LoggerConfig struct {
-	Syncs     []zapcore.WriteSyncer
-	InfoLevel zapcore.Level
-	Encoder   zapcore.Encoder
+	Syncs   []zapcore.WriteSyncer
+	Level   zapcore.Level
+	Encoder zapcore.Encoder
 }
 
-func NewLoggerConfig(syncs []zapcore.WriteSyncer, infoLevel zapcore.Level, encoder zapcore.Encoder) LoggerConfig {
+func NewLoggerConfig(syncs []zapcore.WriteSyncer, level zapcore.Level, encoder zapcore.Encoder) LoggerConfig {
 	return LoggerConfig{
-		Syncs:     syncs,
-		InfoLevel: infoLevel,
-		Encoder:   encoder,
+		Syncs:   syncs,
+		Level:   level,
+		Encoder: encoder,
 	}
 }
 
 func (c LoggerConfig) ReplaceGlobalLogger() {
 	cores := make([]zapcore.Core, len(c.Syncs))
 	for i, sync := range c.Syncs {
-		cores[i] = zapcore.NewCore(c.Encoder, sync, c.InfoLevel)
+		cores[i] = zapcore.NewCore(c.Encoder, sync, c.Level)
 	}
 
 	core := zapcore.NewTee(cores...)
