@@ -10,23 +10,26 @@ var defaultExpiresInRefreshToken = 30 * 24 * time.Hour
 var DefaultJwtRefreshTokenProviderConfig = auth.ReplaceDefaultJwtExpiresIn(defaultExpiresInRefreshToken)
 var DefaultJwtAccesTokenProviderConfig = auth.DefaultJwtTokenProviderConfig
 
-type JwtRefreshTokenProvider[T string | int] struct {
-	RefreshTokenProvider auth.JwtTokenProvider[T]
-	AccessTokenProvider  auth.JwtTokenProvider[T]
+type JwtRefreshTokenProvider struct {
+	RefreshTokenProvider auth.JwtTokenProvider
+	AccessTokenProvider  auth.JwtTokenProvider
 }
 
-func NewJwtRefreshTokenProvider[T string | int](refreshTokenProvider auth.JwtTokenProvider[T], accessTokenProvider auth.JwtTokenProvider[T]) JwtRefreshTokenProvider[T] {
-	return JwtRefreshTokenProvider[T]{
+func NewJwtRefreshTokenProvider(refreshTokenProvider auth.JwtTokenProvider, accessTokenProvider auth.JwtTokenProvider) JwtRefreshTokenProvider {
+	return JwtRefreshTokenProvider{
 		RefreshTokenProvider: refreshTokenProvider,
 		AccessTokenProvider:  accessTokenProvider,
 	}
 }
 
-func NewDefaultJwtRefreshTokenProvider[T string | int]() JwtRefreshTokenProvider[T] {
-	return NewJwtRefreshTokenProvider[T](auth.NewJwtTokenProvider[T](DefaultJwtRefreshTokenProviderConfig), auth.NewJwtTokenProvider[T](DefaultJwtAccesTokenProviderConfig))
+func NewDefaultJwtRefreshTokenProvider() JwtRefreshTokenProvider {
+	return NewJwtRefreshTokenProvider(
+		auth.NewJwtTokenProvider(DefaultJwtRefreshTokenProviderConfig),
+		auth.NewJwtTokenProvider(DefaultJwtAccesTokenProviderConfig),
+	)
 }
 
-func (t JwtRefreshTokenProvider[T]) GenerateToken(ownerId T, claims map[string]interface{}) (*RefreshToken, error) {
+func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string]interface{}) (*RefreshToken, error) {
 	accessToken, err := t.AccessTokenProvider.SignClaims(ownerId, claims)
 	if err != nil {
 		return nil, err
@@ -41,10 +44,10 @@ func (t JwtRefreshTokenProvider[T]) GenerateToken(ownerId T, claims map[string]i
 	}, nil
 }
 
-func (t JwtRefreshTokenProvider[T]) GetAccessToken(accessToken string) (auth.Token[T], error) {
+func (t JwtRefreshTokenProvider) GetAccessToken(accessToken string) (auth.Token[string], error) {
 	return t.AccessTokenProvider.GetClaims(accessToken)
 }
 
-func (t JwtRefreshTokenProvider[T]) GetRefreshToken(refreshToken string) (auth.Token[T], error) {
+func (t JwtRefreshTokenProvider) GetRefreshToken(refreshToken string) (auth.Token[string], error) {
 	return t.RefreshTokenProvider.GetClaims(refreshToken)
 }

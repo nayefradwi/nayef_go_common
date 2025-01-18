@@ -68,21 +68,21 @@ func (c JwtTokenProviderConfig) SetIssuer(issuer string) JwtTokenProviderConfig 
 	return c
 }
 
-type JwtTokenProvider[T string | int] struct {
+type JwtTokenProvider struct {
 	Config JwtTokenProviderConfig
 }
 
-func NewJwtTokenProvider[T string | int](config JwtTokenProviderConfig) JwtTokenProvider[T] {
-	return JwtTokenProvider[T]{
+func NewJwtTokenProvider(config JwtTokenProviderConfig) JwtTokenProvider {
+	return JwtTokenProvider{
 		Config: config,
 	}
 }
 
-func NewDefaultJwtTokenProvider[T string | int]() JwtTokenProvider[T] {
-	return NewJwtTokenProvider[T](DefaultJwtTokenProviderConfig)
+func NewDefaultJwtTokenProvider() JwtTokenProvider {
+	return NewJwtTokenProvider(DefaultJwtTokenProviderConfig)
 }
 
-func (t JwtTokenProvider[T]) GetClaims(token string) (Token[T], *core.ResultError) {
+func (t JwtTokenProvider) GetClaims(token string) (Token[string], error) {
 
 	jwtToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -93,18 +93,18 @@ func (t JwtTokenProvider[T]) GetClaims(token string) (Token[T], *core.ResultErro
 	})
 
 	if err != nil {
-		return Token[T]{}, core.UnauthorizedError(err.Error())
+		return Token[string]{}, core.UnauthorizedError(err.Error())
 	}
 
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return Token[T]{}, core.UnauthorizedError("Invalid token")
+		return Token[string]{}, core.UnauthorizedError("Invalid token")
 	}
 
-	owner, _ := claims[ownerClaimKey].(T)
+	owner, _ := claims[ownerClaimKey].(string)
 	issuedAt, _ := claims[issuedAtClaimKey].(float64)
 	expiresAt, _ := claims[expiryClaimKey].(float64)
-	return Token[T]{
+	return Token[string]{
 		Value:     token,
 		OwnerId:   owner,
 		ExpiresAt: time.Unix(int64(expiresAt), 0),
@@ -114,7 +114,7 @@ func (t JwtTokenProvider[T]) GetClaims(token string) (Token[T], *core.ResultErro
 
 }
 
-func (t JwtTokenProvider[T]) SignClaims(owner T, claims map[string]interface{}) (string, error) {
+func (t JwtTokenProvider) SignClaims(owner string, claims map[string]interface{}) (string, error) {
 	issuer, issuedAt := t.Config.Issuer, time.Now().UTC()
 	expiresAt := issuedAt.Add(t.Config.ExpiresIn)
 	claims[issuerClaimKey] = issuer
