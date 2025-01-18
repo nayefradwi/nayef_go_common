@@ -7,8 +7,8 @@ import (
 	"github.com/nayefradwi/nayef_go_common/modules/rest"
 )
 
-func SetOffsetPaginationMiddleware(f http.HandlerFunc) http.HandlerFunc {
-	hanlder := func(w http.ResponseWriter, r *http.Request) {
+func SetOffsetPaginationMiddleware(f http.Handler) http.Handler {
+	hanlder := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pageKey := rest.GetIntQueryParam(r, pagination.PageKey)
 		pageSizeKey := rest.GetIntQueryParam(r, pagination.PageSizeKey)
 		query := pagination.NewOffsetPageQuery(pageKey, pageSizeKey)
@@ -16,8 +16,8 @@ func SetOffsetPaginationMiddleware(f http.HandlerFunc) http.HandlerFunc {
 		ctx := query.WithContext(r.Context())
 		r = r.WithContext(ctx)
 
-		f(w, r)
-	}
+		f.ServeHTTP(w, r)
+	})
 
 	return hanlder
 }

@@ -8,17 +8,17 @@ import (
 
 type JwtReferenceTokenProvider struct {
 	tokenProvider            JwtRefreshTokenProvider
-	referenceTokenRepository IReferenceTokenRepository[string]
+	referenceTokenRepository IReferenceTokenRepository
 }
 
-func NewJwtReferenceTokenProvider(tokenProvider JwtRefreshTokenProvider, repo IReferenceTokenRepository[string]) JwtReferenceTokenProvider {
+func NewJwtReferenceTokenProvider(tokenProvider JwtRefreshTokenProvider, repo IReferenceTokenRepository) JwtReferenceTokenProvider {
 	return JwtReferenceTokenProvider{
 		tokenProvider:            tokenProvider,
 		referenceTokenRepository: repo,
 	}
 }
 
-func NewDefaultJwtReferenceTokenProvider(repo IReferenceTokenRepository[string]) JwtReferenceTokenProvider {
+func NewDefaultJwtReferenceTokenProvider(repo IReferenceTokenRepository) JwtReferenceTokenProvider {
 	return NewJwtReferenceTokenProvider(NewDefaultJwtRefreshTokenProvider(), repo)
 }
 
@@ -49,18 +49,18 @@ func (t JwtReferenceTokenProvider) GenerateToken(ownerId string, claims map[stri
 	return t.referenceTokenRepository.StoreToken(accessToken, refreshToken)
 }
 
-func (t JwtReferenceTokenProvider) GetAccessToken(id string) (auth.Token[string], error) {
+func (t JwtReferenceTokenProvider) GetAccessToken(id string) (auth.Token, error) {
 	return t.getToken(id, AccessTokenType)
 }
 
-func (t JwtReferenceTokenProvider) GetRefreshToken(id string) (auth.Token[string], error) {
+func (t JwtReferenceTokenProvider) GetRefreshToken(id string) (auth.Token, error) {
 	return t.getToken(id, RefreshTokenType)
 }
 
-func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (auth.Token[string], error) {
+func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (auth.Token, error) {
 	token, err := t.referenceTokenRepository.GetTokenByReference(id, tokenType)
 	if err != nil {
-		return auth.Token[string]{}, core.UnauthorizedError("Token not found")
+		return auth.Token{}, core.UnauthorizedError("Token not found")
 	}
 
 	return token, nil
@@ -72,4 +72,8 @@ func (t JwtReferenceTokenProvider) RevokeToken(id string) error {
 
 func (t JwtReferenceTokenProvider) RevokeOwner(ownerId string) error {
 	return t.referenceTokenRepository.DeleteAllTokensByOwner(ownerId)
+}
+
+func (t JwtReferenceTokenProvider) GetAccessTokenProvider() auth.ITokenProvider {
+	return t.tokenProvider.GetAccessTokenProvider()
 }

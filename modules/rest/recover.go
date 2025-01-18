@@ -20,6 +20,6 @@ func recoverError(w http.ResponseWriter) {
 	if err, ok := recovered.(error); ok {
 		zap.L().Error("internal server error", zap.Any("error", err), zap.Stack("stack trace"))
 		jw := NewJsonResponseWriter(w)
-		jw.writeError(err)
+		jw.WriteError(err)
 	}
 }

@@ -4,25 +4,27 @@ import (
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
 )
 
-type IRefreshTokenProvider[T string | int] interface {
-	GenerateToken(ownerId T, claims map[string]interface{}) (*RefreshToken, error)
-	GetAccessToken(accessToken string) (auth.Token[T], error)
-	GetRefreshToken(refreshToken string) (auth.Token[T], error)
+type IRefreshTokenProvider interface {
+	GenerateToken(ownerId string, claims map[string]interface{}) (*RefreshToken, error)
+	GetAccessToken(accessToken string) (auth.Token, error)
+	GetRefreshToken(refreshToken string) (auth.Token, error)
+	GetAccessTokenProvider() auth.ITokenProvider
 }
 
-type IReferenceTokenRepository[T string | int] interface {
-	StoreToken(accessToken auth.Token[T], refreshToken auth.Token[T]) (ReferenceToken, error)
-	GetTokenByReference(id T, tokenType int) (auth.Token[T], error)
-	GetTokenByOwner(ownerId T, tokenType int) (auth.Token[T], error)
-	DeleteToken(id T) error
-	DeleteAllTokensByOwner(ownerId T) error
+type IReferenceTokenRepository interface {
+	StoreToken(accessToken auth.Token, refreshToken auth.Token) (ReferenceToken, error)
+	GetTokenByReference(id string, tokenType int) (auth.Token, error)
+	GetTokenByOwner(ownerId string, tokenType int) (auth.Token, error)
+	DeleteToken(id string) error
+	DeleteAllTokensByOwner(ownerId string) error
 }
 
-type IReferenceTokenProvider[T string | int] interface {
-	GenerateId() T
-	GenerateToken(ownerId T, claims map[string]interface{}) (ReferenceToken, error)
-	GetAccessToken(id string) (auth.Token[T], error)
-	GetRefreshToken(id string) (auth.Token[T], error)
-	RevokeToken(id T) error
-	RevokeOwner(ownerId T) error
+type IReferenceTokenProvider interface {
+	GenerateId() string
+	GenerateToken(ownerId string, claims map[string]interface{}) (ReferenceToken, error)
+	GetAccessToken(id string) (auth.Token, error)
+	GetRefreshToken(id string) (auth.Token, error)
+	RevokeToken(id string) error
+	RevokeOwner(ownerId string) error
+	GetAccessTokenProvider() auth.ITokenProvider
 }

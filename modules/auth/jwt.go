@@ -82,7 +82,7 @@ func NewDefaultJwtTokenProvider() JwtTokenProvider {
 	return NewJwtTokenProvider(DefaultJwtTokenProviderConfig)
 }
 
-func (t JwtTokenProvider) GetClaims(token string) (Token[string], error) {
+func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 
 	jwtToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -93,18 +93,18 @@ func (t JwtTokenProvider) GetClaims(token string) (Token[string], error) {
 	})
 
 	if err != nil {
-		return Token[string]{}, core.UnauthorizedError(err.Error())
+		return Token{}, core.UnauthorizedError(err.Error())
 	}
 
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return Token[string]{}, core.UnauthorizedError("Invalid token")
+		return Token{}, core.UnauthorizedError("Invalid token")
 	}
 
 	owner, _ := claims[ownerClaimKey].(string)
 	issuedAt, _ := claims[issuedAtClaimKey].(float64)
 	expiresAt, _ := claims[expiryClaimKey].(float64)
-	return Token[string]{
+	return Token{
 		Value:     token,
 		OwnerId:   owner,
 		ExpiresAt: time.Unix(int64(expiresAt), 0),

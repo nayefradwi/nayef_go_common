@@ -44,10 +44,14 @@ func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string
 	}, nil
 }
 
-func (t JwtRefreshTokenProvider) GetAccessToken(accessToken string) (auth.Token[string], error) {
+func (t JwtRefreshTokenProvider) GetAccessToken(accessToken string) (auth.Token, error) {
 	return t.AccessTokenProvider.GetClaims(accessToken)
 }
 
-func (t JwtRefreshTokenProvider) GetRefreshToken(refreshToken string) (auth.Token[string], error) {
+func (t JwtRefreshTokenProvider) GetRefreshToken(refreshToken string) (auth.Token, error) {
 	return t.RefreshTokenProvider.GetClaims(refreshToken)
+}
+
+func (t JwtRefreshTokenProvider) GetAccessTokenProvider() auth.ITokenProvider {
+	return t.AccessTokenProvider
 }

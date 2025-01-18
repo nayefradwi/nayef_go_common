@@ -16,7 +16,7 @@ func ParseJsonBody[T any](w http.ResponseWriter, body io.ReadCloser, onSuccess S
 	err := json.NewDecoder(body).Decode(&data)
 	if err != nil {
 		zap.L().Error("failed to parse body", zap.Error(err))
-		jw.writeError(err)
+		jw.WriteError(err)
 		return
 	}
 

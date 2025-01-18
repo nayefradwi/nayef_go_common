@@ -28,18 +28,18 @@ func (jw JsonResponseWriter) SetHttpStatusCode(statusCode int) {
 func (jw JsonResponseWriter) WriteJsonResponse(data interface{}, err error) {
 	jw.Writer.Header().Set("Content-Type", "application/json")
 	if err == nil {
-		jw.writeError(err)
+		jw.WriteError(err)
 	} else {
-		jw.writeData(data)
+		jw.WriteData(data)
 	}
 }
 
-func (jw JsonResponseWriter) writeData(data interface{}) {
+func (jw JsonResponseWriter) WriteData(data interface{}) {
 	jw.SetHttpStatusCode(jw.SuccessStatus)
 	json.NewEncoder(jw.Writer).Encode(data)
 }
 
-func (jw JsonResponseWriter) writeError(err error) {
+func (jw JsonResponseWriter) WriteError(err error) {
 	resultError, ok := err.(*core.ResultError)
 	if !ok {
 		resultError = core.InternalError(err.Error())
