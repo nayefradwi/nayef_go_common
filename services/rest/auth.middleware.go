@@ -49,3 +49,25 @@ func (m JwtAuthenticationMiddleware) UseAuthenitcation(f http.Handler) http.Hand
 
 	return handler
 }
+
+func (m JwtReferenceTokenAuthenicationMiddleware) UseAuthenitcation(f http.Handler) http.Handler {
+	hanlder := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		jw := rest.NewJsonResponseWriter(w)
+		tokenId := rest.GetBearerToken(r)
+		if tokenId == "" {
+			jw.WriteError(core.UnauthorizedError("Token not found"))
+		}
+
+		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(tokenId)
+		if err != nil {
+			jw.WriteError(core.UnauthorizedError("Invalid token"))
+		}
+
+		ctx := accessToken.WithToken(r.Context())
+		r = r.WithContext(ctx)
+
+		f.ServeHTTP(w, r)
+	})
+
+	return hanlder
+}
