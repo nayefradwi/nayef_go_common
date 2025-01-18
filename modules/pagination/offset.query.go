@@ -4,6 +4,11 @@ import "context"
 
 var DefaultPageQuery = NewOffsetPageQuery(1, 10)
 
+const (
+	PageKey     = "page"
+	PageSizeKey = "page_size"
+)
+
 type OffsetPageQuery struct {
 	Page     int `json:"page"`
 	PageSize int `json:"page_size"`
