@@ -27,3 +27,7 @@ func InvalidInputError(message string) *ResultError {
 func UnknownError(message string) *ResultError {
 	return NewResultError(message, UNKNOWN_ERROR_CODE)
 }
+
+func NewValidationError(errors []ErrorDetails) *ResultError {
+	return NewResultError("Invalid", VALIDATION_ERROR_CODE, errors...)
+}
