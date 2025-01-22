@@ -20,9 +20,9 @@ func StringValidatorFromValidator(validator *Validator) *StringValidator {
 
 func (s *StringValidator) MatchesPattern(opts ValidateOption, pattern string) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		matched, err := regexp.MatchString(pattern, str)
@@ -38,9 +38,9 @@ func (s *StringValidator) MatchesPattern(opts ValidateOption, pattern string) {
 
 func (s *StringValidator) MaxLength(opts ValidateOption, max int) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		if len(str) > max {
@@ -55,9 +55,9 @@ func (s *StringValidator) MaxLength(opts ValidateOption, max int) {
 
 func (s *StringValidator) MinLength(opts ValidateOption, min int) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		if len(str) < min {
@@ -72,9 +72,9 @@ func (s *StringValidator) MinLength(opts ValidateOption, min int) {
 
 func (s *StringValidator) ExactLength(opts ValidateOption, length int) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		if len(str) != length {
@@ -89,9 +89,9 @@ func (s *StringValidator) ExactLength(opts ValidateOption, length int) {
 
 func (s *StringValidator) IsEmail(opts ValidateOption) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
@@ -108,9 +108,9 @@ func (s *StringValidator) IsEmail(opts ValidateOption) {
 
 func (s *StringValidator) IsRequired(opts ValidateOption) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, ok := opts.Data.(string)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		str, errDetails := s.parseData(opts)
+		if errDetails.Message != "" {
+			return errDetails
 		}
 
 		if str == "" {
@@ -125,4 +125,18 @@ func (s *StringValidator) IsRequired(opts ValidateOption) {
 
 func (s *StringValidator) Validate() error {
 	return s.Validator.Validate()
+}
+
+func (s *StringValidator) parseData(opts ValidateOption) (string, core.ErrorDetails) {
+	switch v := opts.Data.(type) {
+	case string:
+		return v, core.ErrorDetails{}
+	case *string:
+		if v == nil {
+			return "", opts.ToInvalidDataType()
+		}
+		return *v, core.ErrorDetails{}
+	default:
+		return "", opts.ToInvalidDataType()
+	}
 }

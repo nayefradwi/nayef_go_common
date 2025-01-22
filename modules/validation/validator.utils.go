@@ -6,10 +6,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/core"
 )
 
-const (
-	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
-)
-
 func NotEmptyMap[K comparable, V any](opts ValidateOption) ValidationFunc {
 
 	vf := func(opts ValidateOption) core.ErrorDetails {

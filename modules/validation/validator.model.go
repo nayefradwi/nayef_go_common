@@ -2,6 +2,10 @@ package validation
 
 import "github.com/nayefradwi/nayef_go_common/core"
 
+const (
+	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
+)
+
 type IValidator interface {
 	Validate() error
 }
@@ -10,6 +14,10 @@ type ValidateOption struct {
 	Field   string
 	Message string
 	Data    any
+}
+
+func (opts ValidateOption) ToInvalidDataType() core.ErrorDetails {
+	return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
 }
 
 func ValidateOptionsFrom(data any, field, message string) ValidateOption {
