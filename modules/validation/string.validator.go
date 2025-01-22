@@ -123,6 +123,18 @@ func (s *StringValidator) IsRequired(opts ValidateOption) {
 	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
+func (s *StringValidator) IsAlphanumeric(opts ValidateOption) {
+	s.MatchesPattern(opts, `^[a-zA-Z0-9]*$`)
+}
+
+func (s *StringValidator) IsNumeric(opts ValidateOption) {
+	s.MatchesPattern(opts, `^[0-9]*$`)
+}
+
+func (s *StringValidator) IsAlpha(opts ValidateOption) {
+	s.MatchesPattern(opts, `^[a-zA-Z]*$`)
+}
+
 func (s *StringValidator) Validate() error {
 	return s.Validator.Validate()
 }
