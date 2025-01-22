@@ -16,23 +16,27 @@ func ValidateOptionsFrom(data any, field, message string) ValidateOption {
 	return ValidateOption{Field: field, Message: message, Data: data}
 }
 
-type ValidationFunc func(opts ValidateOption) core.ErrorDetails
+type ValidationFunc struct {
+	Opts ValidateOption
+	fn   func(opts ValidateOption) core.ErrorDetails
+}
+
+func (vf ValidationFunc) Validate() core.ErrorDetails {
+	return vf.fn(vf.Opts)
+}
 
 type Validator struct {
-	Validations       []ValidationFunc
-	ValidationOptions []ValidateOption
+	Validations []ValidationFunc
 }
 
 func NewValidator() *Validator {
 	validator := &Validator{}
 	validator.Validations = make([]ValidationFunc, 0)
-	validator.ValidationOptions = make([]ValidateOption, 0)
 	return validator
 }
 
-func (v *Validator) AddValidation(fn ValidationFunc, opts ValidateOption) {
+func (v *Validator) AddValidation(fn ValidationFunc) {
 	v.Validations = append(v.Validations, fn)
-	v.ValidationOptions = append(v.ValidationOptions, opts)
 }
 
 func (v *Validator) Validate() error {
@@ -40,7 +44,7 @@ func (v *Validator) Validate() error {
 	hasError := false
 
 	for i, fn := range v.Validations {
-		errorDetails[i] = fn(v.ValidationOptions[i])
+		errorDetails[i] = fn.Validate()
 		if errorDetails[i].Message != "" {
 			hasError = true
 		}
