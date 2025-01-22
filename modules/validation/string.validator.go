@@ -69,6 +69,24 @@ func (s *StringValidator) MinLength(opts ValidateOption, min int) {
 
 	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
+
+func (s *StringValidator) ExactLength(opts ValidateOption, length int) {
+	vf := func(opts ValidateOption) core.ErrorDetails {
+		str, ok := opts.Data.(string)
+		if !ok {
+			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
+		}
+
+		if len(str) != length {
+			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
+		}
+
+		return core.ErrorDetails{}
+	}
+
+	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
+}
+
 func (s *StringValidator) IsEmail(opts ValidateOption) {
 	vf := func(opts ValidateOption) core.ErrorDetails {
 		str, ok := opts.Data.(string)

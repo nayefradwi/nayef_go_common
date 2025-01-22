@@ -2,7 +2,7 @@ package validation
 
 type testUser struct {
 	name  string
-	email string
+	email *string
 	age   int
 }
 
