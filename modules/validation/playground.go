@@ -8,8 +8,9 @@ type testUser struct {
 
 func (u testUser) validate() error {
 	validator := NewValidator()
-
-	validator.AddValidation(NotEmptyString(ValidateOptionsFrom(u.name, "name", "Name is required")))
+	strValidator := StringValidatorFromValidator(validator)
+	strValidator.IsRequired(ValidateOptionsFrom(u.name, "name", "Name is required"))
+	strValidator.IsEmail(ValidateOptionsFrom(u.email, "email", "Email is required"))
 
 	return validator.Validate()
 }
