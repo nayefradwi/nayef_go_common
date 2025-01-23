@@ -40,3 +40,14 @@ func (t Token) IsOwner(owner string) bool {
 func (t Token) WithToken(ctx context.Context) context.Context {
 	return context.WithValue(ctx, TokenKey{}, t)
 }
+
+func GetToken(ctx context.Context) Token {
+	t, ok := ctx.Value(TokenKey{}).(Token)
+	if !ok {
+		return Token{
+			Claims: make(map[string]interface{}),
+		}
+	}
+
+	return t
+}
