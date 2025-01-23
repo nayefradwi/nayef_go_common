@@ -12,13 +12,13 @@ type InMemoryLocker struct {
 	locks map[string]*sync.Mutex
 }
 
-func NewInMemoryLocker() *InMemoryLocker {
+func NewInMemoryLocker() ILocker {
 	return &InMemoryLocker{
 		locks: make(map[string]*sync.Mutex),
 	}
 }
 
-func (l *InMemoryLocker) AquireLock(ctx context.Context, key string, params LockParams) error {
+func (l *InMemoryLocker) AcquireLock(ctx context.Context, key string, params LockParams) error {
 	lock, ok := l.locks[key]
 	if !ok {
 		lock = &sync.Mutex{}
@@ -30,7 +30,7 @@ func (l *InMemoryLocker) AquireLock(ctx context.Context, key string, params Lock
 
 func (l *InMemoryLocker) AcquireLocks(ctx context.Context, keys []string, params LockParams) error {
 	for _, key := range keys {
-		err := l.AquireLock(ctx, key, params)
+		err := l.AcquireLock(ctx, key, params)
 		if err != nil {
 			l.ReleaseLocks(ctx, keys)
 			return err
@@ -56,7 +56,7 @@ func (l *InMemoryLocker) ReleaseLocks(ctx context.Context, keys []string) {
 }
 
 func (l *InMemoryLocker) RunWithLock(ctx context.Context, key string, params LockParams, f func() error) error {
-	err := l.AquireLock(ctx, key, params)
+	err := l.AcquireLock(ctx, key, params)
 	if err != nil {
 		return err
 	}
