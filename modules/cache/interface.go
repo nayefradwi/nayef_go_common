@@ -3,6 +3,8 @@ package cache
 import (
 	"context"
 	"time"
+
+	"github.com/nayefradwi/nayef_go_common/core"
 )
 
 const (
@@ -26,4 +28,13 @@ type ICacheStore interface {
 type ICachable interface {
 	CacheKey() string
 	GetValue() (interface{}, error)
+}
+
+func CastCacheValue[T any](value interface{}) (T, error) {
+	v, ok := value.(T)
+	if !ok {
+		return v, core.BadRequestError("Failed to cast cache value")
+	}
+
+	return v, nil
 }
