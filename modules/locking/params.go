@@ -3,12 +3,13 @@ package locking
 import "time"
 
 type LockParams struct {
-	TimeToLive time.Duration
-	WaitTime   time.Duration
-	MaxRetries int
+	TimeToLive      time.Duration
+	WaitTime        time.Duration
+	MaxRetries      int
+	InitialWaitTime time.Duration
 }
 
-var DefaultLockParams = NewLockParams(2*time.Second, 100*time.Millisecond, 10)
+var DefaultLockParams = NewLockParams(2*time.Second, 100*time.Millisecond, 10, 100*time.Millisecond)
 
 func ReplaceDefaultWaitTime(waitTime time.Duration) LockParams {
 	DefaultLockParams.WaitTime = waitTime
@@ -25,10 +26,11 @@ func ReplaceDefaultMaxRetries(maxRetries int) LockParams {
 	return DefaultLockParams
 }
 
-func NewLockParams(timeToLive time.Duration, waitTime time.Duration, maxRetries int) LockParams {
+func NewLockParams(timeToLive time.Duration, waitTime time.Duration, maxRetries int, initialWaitTime time.Duration) LockParams {
 	return LockParams{
-		TimeToLive: timeToLive,
-		WaitTime:   waitTime,
-		MaxRetries: maxRetries,
+		TimeToLive:      timeToLive,
+		WaitTime:        waitTime,
+		MaxRetries:      maxRetries,
+		InitialWaitTime: initialWaitTime,
 	}
 }
