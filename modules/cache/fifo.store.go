@@ -40,12 +40,7 @@ func (f *FifoCacheStore) Set(ctx context.Context, key string, value interface{})
 }
 
 func (f *FifoCacheStore) SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) {
-	timeOutCtx, _ := context.WithTimeout(ctx, expiration)
-	go func(ctx context.Context) {
-		<-ctx.Done()
-		f.Delete(ctx, key)
-	}(timeOutCtx)
-
+	go f.DeleteAfter(ctx, key, expiration)
 	f.Set(ctx, key, value)
 }
 
@@ -65,12 +60,7 @@ func (f *FifoCacheStore) GetWithCacheMiss(ctx context.Context, key string, miss 
 }
 
 func (f *FifoCacheStore) GetCachable(ctx context.Context, cachable ICachable) (interface{}, error) {
-	key := cachable.CacheKey()
-	if value, ok := f.cache[key]; ok {
-		return value, nil
-	}
-
-	return nil, core.BadRequestError("Key not found")
+	return f.Get(ctx, cachable.CacheKey())
 }
 
 func (f *FifoCacheStore) SetCachable(ctx context.Context, cachable ICachable) {
@@ -101,4 +91,11 @@ func (f *FifoCacheStore) Delete(ctx context.Context, key string) {
 			break
 		}
 	}
+}
+
+func (f *FifoCacheStore) DeleteAfter(ctx context.Context, key string, expiration time.Duration) {
+	timeOutCtx, cancel := context.WithTimeout(ctx, expiration)
+	defer cancel()
+	<-timeOutCtx.Done()
+	f.Delete(ctx, key)
 }

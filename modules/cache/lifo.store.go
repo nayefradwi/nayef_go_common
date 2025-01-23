@@ -40,12 +40,7 @@ func (l *LifoCacheStore) Set(ctx context.Context, key string, value interface{})
 }
 
 func (l *LifoCacheStore) SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) {
-	timeOutCtx, _ := context.WithTimeout(ctx, expiration)
-	go func(ctx context.Context) {
-		<-ctx.Done()
-		l.Delete(ctx, key)
-	}(timeOutCtx)
-
+	go l.DeleteAfter(ctx, key, expiration)
 	l.Set(ctx, key, value)
 }
 
@@ -92,4 +87,11 @@ func (l *LifoCacheStore) Delete(ctx context.Context, key string) {
 			l.cacheKeyStack = append(l.cacheKeyStack[:i], l.cacheKeyStack[i+1:]...)
 		}
 	}
+}
+
+func (f *LifoCacheStore) DeleteAfter(ctx context.Context, key string, expiration time.Duration) {
+	timeOutCtx, cancel := context.WithTimeout(ctx, expiration)
+	defer cancel()
+	<-timeOutCtx.Done()
+	f.Delete(ctx, key)
 }
