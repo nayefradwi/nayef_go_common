@@ -21,7 +21,7 @@ func NewConnectionConfig(url string) ConnectionConfig {
 }
 
 func (cc ConnectionConfig) Connect(ctx context.Context) *pgxpool.Pool {
-	zap.L().Debug("connecting to postgres...")
+	zap.L().Info("connecting to postgres...")
 	if cc.err != nil {
 		zap.L().Fatal("error parsing config", zap.Error(cc.err))
 	}
@@ -31,5 +31,6 @@ func (cc ConnectionConfig) Connect(ctx context.Context) *pgxpool.Pool {
 		zap.L().Fatal("error connecting to postgres", zap.Error(err))
 	}
 
+	zap.L().Info("connected to postgres")
 	return pool
 }

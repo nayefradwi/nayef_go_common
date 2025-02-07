@@ -21,7 +21,7 @@ func NewConnectionConfig(url string) ConnectionConfig {
 }
 
 func (cc ConnectionConfig) Connect(ctx context.Context) *redis.Client {
-	zap.L().Debug("connecting to redis...")
+	zap.L().Info("connecting to redis...")
 	if cc.err != nil {
 		zap.L().Fatal("failed to parse redis connection url", zap.Error(cc.err))
 	}
