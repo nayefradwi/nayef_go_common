@@ -27,7 +27,7 @@ func (jw JsonResponseWriter) SetHttpStatusCode(statusCode int) {
 
 func (jw JsonResponseWriter) WriteJsonResponse(data interface{}, err error) {
 	jw.Writer.Header().Set("Content-Type", "application/json")
-	if err == nil {
+	if err != nil {
 		jw.WriteError(err)
 	} else {
 		jw.WriteData(data)

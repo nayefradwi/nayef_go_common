@@ -48,13 +48,14 @@ func (v *Validator) AddValidation(fn ValidationFunc) {
 }
 
 func (v *Validator) Validate() error {
-	errorDetails := make([]core.ErrorDetails, len(v.Validations))
+	errorDetails := make([]core.ErrorDetails, 0)
 	hasError := false
 
-	for i, fn := range v.Validations {
-		errorDetails[i] = fn.Validate()
-		if errorDetails[i].Message != "" {
+	for _, fn := range v.Validations {
+		errDetails := fn.Validate()
+		if errDetails.Message != "" {
 			hasError = true
+			errorDetails = append(errorDetails, errDetails)
 		}
 	}
 
