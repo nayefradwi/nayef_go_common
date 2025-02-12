@@ -22,8 +22,13 @@ func LoadEnv() {
 }
 
 func getEnvFromArgs() string {
-	flavorArg := os.Args[1]
 
+	args := os.Args
+	if len(args) < 2 {
+		return Flavor
+	}
+
+	flavorArg := args[1]
 	if strings.Contains(flavorArg, "flavor=") {
 		kv := strings.Split(flavorArg, "=")
 		if len(kv) == 2 {
