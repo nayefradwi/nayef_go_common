@@ -16,6 +16,7 @@ require (
 	github.com/go-redsync/redsync/v4 v4.13.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
