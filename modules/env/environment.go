@@ -13,6 +13,8 @@ const (
 	Production  = "production"
 )
 
+var Flavor string = Development
+
 func LoadEnv() {
 	godotenv.Load()
 	flavor := getEnvFromArgs()
@@ -21,18 +23,18 @@ func LoadEnv() {
 
 func getEnvFromArgs() string {
 	flavorArg := os.Args[1]
-	flavor := ""
 
 	if strings.Contains(flavorArg, "flavor=") {
 		kv := strings.Split(flavorArg, "=")
 		if len(kv) == 2 {
-			flavor = kv[1]
+			Flavor = kv[1]
 		}
 	}
 
-	if flavor == Development || flavor == Staging || flavor == Production {
-		return flavor
+	if Flavor == Development || Flavor == Staging || Flavor == Production {
+		return Flavor
 	}
 
-	return Development
+	Flavor = Development
+	return Flavor
 }
