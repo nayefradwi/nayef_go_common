@@ -15,9 +15,10 @@ func WithTx(ctx context.Context, pool *pgxpool.Pool, f func(ctx context.Context,
 		zap.L().Error("Error starting transaction", zap.Error(err))
 		return core.InternalError("Error starting transaction")
 	}
-	defer rollbackOnPanic(tx)
+	defer tx.Rollback(ctx)
 	if err := f(ctx, tx); err != nil {
-		tx.Rollback(ctx)
+		zap.L().Error("Error executing transaction", zap.Error(err))
+		return err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -26,11 +27,4 @@ func WithTx(ctx context.Context, pool *pgxpool.Pool, f func(ctx context.Context,
 	}
 
 	return nil
-}
-
-func rollbackOnPanic(tx pgx.Tx) {
-	if r := recover(); r != nil {
-		tx.Rollback(context.Background())
-		panic(r)
-	}
 }
