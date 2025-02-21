@@ -35,11 +35,13 @@ func (m JwtAuthenticationMiddleware) UseAuthenitcation(f http.Handler) http.Hand
 		token := rest.GetBearerToken(r)
 		if token == "" {
 			jw.WriteError(core.UnauthorizedError("Token not found"))
+			return
 		}
 
 		accessToken, err := m.TokenProvider.GetClaims(token)
 		if err != nil {
 			jw.WriteError(core.UnauthorizedError("Invalid token"))
+			return
 		}
 
 		ctx := accessToken.WithToken(r.Context())
@@ -56,11 +58,13 @@ func (m JwtReferenceTokenAuthenicationMiddleware) UseAuthenitcation(f http.Handl
 		tokenId := rest.GetBearerToken(r)
 		if tokenId == "" {
 			jw.WriteError(core.UnauthorizedError("Token not found"))
+			return
 		}
 
 		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(tokenId)
 		if err != nil {
 			jw.WriteError(core.UnauthorizedError("Invalid token"))
+			return
 		}
 
 		ctx := accessToken.WithToken(r.Context())
