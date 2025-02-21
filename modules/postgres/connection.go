@@ -31,6 +31,12 @@ func (cc ConnectionConfig) Connect(ctx context.Context) *pgxpool.Pool {
 		zap.L().Fatal("error connecting to postgres", zap.Error(err))
 	}
 
+	testConn, err := pool.Acquire(ctx)
+	if err != nil {
+		zap.L().Fatal("error acquiring test connection", zap.Error(err))
+	}
+	testConn.Release()
+
 	zap.L().Info("connected to postgres")
 	return pool
 }
