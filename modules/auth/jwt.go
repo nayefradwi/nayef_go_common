@@ -120,6 +120,7 @@ func (t JwtTokenProvider) SignClaims(owner string, claims map[string]interface{}
 	claims[issuerClaimKey] = issuer
 	claims[issuedAtClaimKey] = issuedAt.Unix()
 	claims[expiryClaimKey] = expiresAt.Unix()
+	claims[ownerClaimKey] = owner
 
 	token := jwt.NewWithClaims(t.Config.SigningMethod, jwt.MapClaims(claims))
 	tokenString, err := token.SignedString([]byte(t.Config.SecretKey))
