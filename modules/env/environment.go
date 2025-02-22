@@ -21,6 +21,12 @@ func LoadEnv() {
 	godotenv.Overload("." + flavor + ".env")
 }
 
+func LoadEnvWithPrefixPath(prefixPath string) {
+	godotenv.Load(prefixPath + ".env")
+	flavor := getEnvFromArgs()
+	godotenv.Overload(prefixPath + "." + flavor + ".env")
+}
+
 func getEnvFromArgs() string {
 
 	args := os.Args
