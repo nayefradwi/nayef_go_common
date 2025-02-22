@@ -7,6 +7,10 @@ import (
 	"github.com/nayefradwi/nayef_go_common/core"
 )
 
+func SuccessJsonResponseMessage(message string) map[string]string {
+	return map[string]string{"message": message}
+}
+
 type JsonResponseWriter struct {
 	Writer        http.ResponseWriter
 	SuccessStatus int
@@ -32,6 +36,11 @@ func (jw JsonResponseWriter) WriteJsonResponse(data interface{}, err error) {
 	} else {
 		jw.WriteData(data)
 	}
+}
+
+func (jw JsonResponseWriter) WriteSuccessMessage(data string, err error) {
+	messageResponse := SuccessJsonResponseMessage(data)
+	jw.WriteJsonResponse(messageResponse, err)
 }
 
 func (jw JsonResponseWriter) WriteData(data interface{}) {
