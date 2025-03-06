@@ -19,7 +19,7 @@ type Token struct {
 	Value     string
 	OwnerId   string
 	ExpiresAt time.Time
-	issuedAt  time.Time
+	IssuedAt  time.Time
 	Claims    map[string]interface{}
 	Type      int
 }
