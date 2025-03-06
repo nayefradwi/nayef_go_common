@@ -12,6 +12,11 @@ const (
 	issuedAtClaimKey = "iat"
 )
 
+const (
+	AccessTokenType  = 1
+	RefreshTokenType = 2
+)
+
 type TokenKey struct{}
 
 type Token struct {
@@ -22,11 +27,6 @@ type Token struct {
 	IssuedAt  time.Time
 	Claims    map[string]interface{}
 	Type      int
-}
-
-type ITokenProvider interface {
-	GetClaims(token string) (Token, error)
-	SignClaims(owner string, claims map[string]interface{}) (string, error)
 }
 
 func (t Token) IsExpired() bool {

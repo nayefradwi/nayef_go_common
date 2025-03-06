@@ -6,7 +6,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
 	"github.com/nayefradwi/nayef_go_common/modules/rest"
-	authService "github.com/nayefradwi/nayef_go_common/services/auth"
 )
 
 type JwtAuthenticationMiddleware struct {
@@ -14,7 +13,7 @@ type JwtAuthenticationMiddleware struct {
 }
 
 type JwtReferenceTokenAuthenicationMiddleware struct {
-	ReferenceTokenProvider authService.IReferenceTokenProvider
+	ReferenceTokenProvider auth.IReferenceTokenProvider
 }
 
 func NewJwtAuthenticationMiddleware(tokenProvider auth.ITokenProvider) JwtAuthenticationMiddleware {
@@ -23,7 +22,7 @@ func NewJwtAuthenticationMiddleware(tokenProvider auth.ITokenProvider) JwtAuthen
 	}
 }
 
-func NewJwtReferenceTokenAuthenicationMiddleware(referenceTokenProvider authService.IReferenceTokenProvider) JwtReferenceTokenAuthenicationMiddleware {
+func NewJwtReferenceTokenAuthenicationMiddleware(referenceTokenProvider auth.IReferenceTokenProvider) JwtReferenceTokenAuthenicationMiddleware {
 	return JwtReferenceTokenAuthenicationMiddleware{
 		ReferenceTokenProvider: referenceTokenProvider,
 	}

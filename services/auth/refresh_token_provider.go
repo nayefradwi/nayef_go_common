@@ -29,19 +29,18 @@ func NewDefaultJwtRefreshTokenProvider() JwtRefreshTokenProvider {
 	)
 }
 
-func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string]interface{}) (*RefreshToken, error) {
+func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string]interface{}) (auth.TokenDTO, error) {
 	accessToken, err := t.AccessTokenProvider.SignClaims(ownerId, claims)
 	if err != nil {
-		return nil, err
+		return auth.EmptyTokenDTO(), err
 	}
+
 	refreshToken, err := t.RefreshTokenProvider.SignClaims(ownerId, claims)
 	if err != nil {
-		return nil, err
+		return auth.EmptyTokenDTO(), err
 	}
-	return &RefreshToken{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+
+	return auth.NewTokenDTOWithRefresh(accessToken, refreshToken), nil
 }
 
 func (t JwtRefreshTokenProvider) GetAccessToken(accessToken string) (auth.Token, error) {
