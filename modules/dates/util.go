@@ -24,3 +24,12 @@ func StripTimeUTC(t time.Time) time.Time {
 func TimeToISO8601(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
+
+func RemainingSeconds(target time.Time) int64 {
+	duration := time.Until(target)
+	seconds := int64(duration.Seconds())
+	if seconds < 0 {
+		return 0
+	}
+	return seconds
+}
