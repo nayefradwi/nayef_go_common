@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Catalyst-Vault/cv_marketplace_core_be/pkg/core"
-	"github.com/Catalyst-Vault/cv_marketplace_core_be/pkg/modules/otp"
+	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/modules/otp"
 	"go.uber.org/zap"
 )
 
