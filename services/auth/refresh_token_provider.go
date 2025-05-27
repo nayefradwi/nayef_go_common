@@ -15,14 +15,14 @@ type JwtRefreshTokenProvider struct {
 	AccessTokenProvider  auth.JwtTokenProvider
 }
 
-func NewJwtRefreshTokenProvider(refreshTokenProvider auth.JwtTokenProvider, accessTokenProvider auth.JwtTokenProvider) JwtRefreshTokenProvider {
+func NewJwtRefreshTokenProvider(refreshTokenProvider auth.JwtTokenProvider, accessTokenProvider auth.JwtTokenProvider) auth.IRefreshTokenProvider {
 	return JwtRefreshTokenProvider{
 		RefreshTokenProvider: refreshTokenProvider,
 		AccessTokenProvider:  accessTokenProvider,
 	}
 }
 
-func NewDefaultJwtRefreshTokenProvider() JwtRefreshTokenProvider {
+func NewDefaultJwtRefreshTokenProvider() auth.IRefreshTokenProvider {
 	return NewJwtRefreshTokenProvider(
 		auth.NewJwtTokenProvider(DefaultJwtRefreshTokenProviderConfig),
 		auth.NewJwtTokenProvider(DefaultJwtAccesTokenProviderConfig),
