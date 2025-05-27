@@ -11,14 +11,14 @@ type JwtReferenceTokenProvider struct {
 	tokenStore    auth.ITokenStore
 }
 
-func NewJwtReferenceTokenProvider(tokenProvider JwtRefreshTokenProvider, tokenStore auth.ITokenStore) JwtReferenceTokenProvider {
+func NewJwtReferenceTokenProvider(tokenProvider JwtRefreshTokenProvider, tokenStore auth.ITokenStore) auth.IReferenceTokenProvider {
 	return JwtReferenceTokenProvider{
 		tokenProvider: tokenProvider,
 		tokenStore:    tokenStore,
 	}
 }
 
-func NewDefaultJwtReferenceTokenProvider(tokenStore auth.ITokenStore) JwtReferenceTokenProvider {
+func NewDefaultJwtReferenceTokenProvider(tokenStore auth.ITokenStore) auth.IReferenceTokenProvider {
 	return NewJwtReferenceTokenProvider(NewDefaultJwtRefreshTokenProvider(), tokenStore)
 }
 
