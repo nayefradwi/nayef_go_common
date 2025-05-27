@@ -23,6 +23,7 @@ type IRefreshTokenProvider interface {
 
 type IRefreshTokenProviderWithRevoke interface {
 	IRefreshTokenProvider
+	GenerateId() string
 	RevokeToken(reference string) error
 	RevokeOwner(ownerId string) error
 }
