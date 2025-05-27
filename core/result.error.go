@@ -19,8 +19,8 @@ type ResultError struct {
 
 type ErrorDetails struct {
 	Message string `json:"message"`
-	Code    string `json:"code,omitempty"`
-	Field   string `json:"field,omitempty"`
+	Code    string `json:"code"`
+	Field   string `json:"field"`
 }
 
 func (e ResultError) Error() string {
