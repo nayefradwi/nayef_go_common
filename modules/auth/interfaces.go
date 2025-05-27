@@ -36,28 +36,3 @@ type IReferenceTokenProvider interface {
 	RevokeOwner(ownerId string) error
 	GetAccessTokenProvider() ITokenProvider
 }
-
-/// example code for how I want to use the interfaces
-// package auth
-
-// // REFURNTYPE options:
-// // 1. {"access":JWT, "refresh":JWT}
-// // 2. {"access":JWT}
-// // 3. {"access":REFERENCE, "refresh":REFERENCE}
-// // 4. {"access":REFERENCE}
-// // 5. {"access":JWT, "refresh":REFERENCE}
-// func (s *SomeService) Login(username, password string) (RETURNTYPE, error){
-// 	user, err := // get user function call
-// 	if err != nil {
-// 		return nil, err // this can be mapped instead
-// 	}
-
-// 	// check password
-// 	if !user.CheckPassword(password) {
-// 		return nil, errors.New("invalid password") // different error this is just an example
-// 	}
-
-// 	// generate token which can be refresh + access, access only it doesnt matter
-// 	// the code should just be like this:
-// 	return s.tokenProvider.generateToken(user.ID, user.GetClaims)
-// }
