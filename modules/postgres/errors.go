@@ -3,7 +3,7 @@ package postgres
 import (
 	"errors"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nayefradwi/nayef_go_common/core"
 	"go.uber.org/zap"
@@ -39,11 +39,15 @@ func MapPgError(err error, message string) error {
 	}
 
 	mappedErr := mapPgError(err, message)
-	zap.L().Error("Error inserting user", zap.Error(err))
+	zap.L().Error("Postgres error:", zap.Error(err))
 	return mappedErr
 }
 
 func mapPgError(err error, message string) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.NotFoundError(message)
+	}
+
 	if pgErr, ok := err.(*pgconn.PgError); ok {
 		switch pgErr.Code {
 		case UniqueViolationErr:
@@ -69,8 +73,6 @@ func mapPgError(err error, message string) error {
 		case DeadlockDetectedErr:
 			return core.NewResultError(message, "DEADLOCK")
 		}
-	} else if errors.Is(err, pgx.ErrNoRows) {
-		return core.NotFoundError(message)
 	}
 
 	return core.InternalError(message)
