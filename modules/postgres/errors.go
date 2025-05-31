@@ -3,7 +3,7 @@ package postgres
 import (
 	"errors"
 
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nayefradwi/nayef_go_common/core"
 	"go.uber.org/zap"
