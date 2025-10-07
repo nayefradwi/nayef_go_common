@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/nayefradwi/nayef_go_common/core"
@@ -49,10 +50,11 @@ func (jw JsonResponseWriter) WriteData(data interface{}) {
 }
 
 func (jw JsonResponseWriter) WriteError(err error) {
-	resultError, ok := err.(*core.ResultError)
-	if !ok {
+	var resultError *core.ResultError
+	if !errors.As(err, &resultError) {
 		resultError = core.InternalError(err.Error())
 	}
+
 	statusCode := getStatusCodeFromResultError(resultError)
 	jw.SetHttpStatusCode(statusCode)
 	json.NewEncoder(jw.Writer).Encode(resultError)
