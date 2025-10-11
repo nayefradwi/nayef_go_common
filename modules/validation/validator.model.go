@@ -1,6 +1,8 @@
 package validation
 
-import "github.com/nayefradwi/nayef_go_common/result"
+import (
+	"github.com/nayefradwi/nayef_go_common/result"
+)
 
 const (
 	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
@@ -35,8 +37,26 @@ func NewValidator() *Validator {
 	return validator
 }
 
-func (v *Validator) AddValidation(fn ValidationRule[any]) {
-	v.Rules = append(v.Rules, fn)
+func AddValidation[T any](v *Validator, rule ValidationRule[T]) {
+	v.Rules = append(v.Rules, toAny(rule))
+}
+
+func toAny[T any](rule ValidationRule[T]) ValidationRule[any] {
+	return ValidationRule[any]{
+		Opts: ValidationRuleOption[any]{
+			Field:   rule.Opts.Field,
+			Message: rule.Opts.Message,
+			Data:    rule.Opts.Data,
+		},
+		Validate: func(opts ValidationRuleOption[any]) result.ErrorDetails {
+			typedOpts := ValidationRuleOption[T]{
+				Field:   opts.Field,
+				Message: opts.Message,
+				Data:    opts.Data.(T),
+			}
+			return rule.Validate(typedOpts)
+		},
+	}
 }
 
 func (v *Validator) Validate() error {

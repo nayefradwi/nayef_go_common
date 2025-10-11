@@ -191,3 +191,11 @@ func TestMust_CustomLogic(t *testing.T) {
 
 	assert.NotEmpty(t, badRule.Validate(badRule.Opts).Message)
 }
+
+func Test_UsingValidator(t *testing.T) {
+	validator := NewValidator()
+	floatFactory := NewNumValidationRuleFactory[float64]()
+	rule := floatFactory.MinValue(10, "field", 11)
+	AddValidation(validator, rule)
+	assert.NotEmpty(t, validator.Validate().Error())
+}
