@@ -3,7 +3,7 @@ package validation
 import (
 	"fmt"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type SliceValidationRuleFactory[E any] struct{}
@@ -16,7 +16,7 @@ func (f SliceValidationRuleFactory[E]) Must(
 	data []E,
 	field string,
 	message string,
-	ruleCb func(opts ValidationRuleOption[[]E]) core.ErrorDetails,
+	ruleCb func(opts ValidationRuleOption[[]E]) result.ErrorDetails,
 ) ValidationRule[[]E] {
 	return ValidationRule[[]E]{
 		Validate: ruleCb,
@@ -35,24 +35,24 @@ func (f SliceValidationRuleFactory[E]) NotNilOrEmpty(data []E, field string) Val
 			Message: fmt.Sprintf("%s cannot be nil or empty", field),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[[]E]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[[]E]) result.ErrorDetails {
 			if data == nil {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
 
 			if len(data) == 0 {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
 
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }

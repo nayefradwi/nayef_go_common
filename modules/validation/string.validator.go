@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type StringValidationRuleFactory struct{}
@@ -17,7 +17,7 @@ func (f StringValidationRuleFactory) Must(
 	data string,
 	field string,
 	message string,
-	ruleCb func(opts ValidationRuleOption[string]) core.ErrorDetails,
+	ruleCb func(opts ValidationRuleOption[string]) result.ErrorDetails,
 ) ValidationRule[string] {
 	return ValidationRule[string]{
 		Validate: ruleCb,
@@ -36,15 +36,15 @@ func (f StringValidationRuleFactory) IsRequired(data string, field string) Valid
 			Message: fmt.Sprintf("%s is required", field),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			if data == "" {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }
@@ -56,15 +56,15 @@ func (f StringValidationRuleFactory) MinLength(data string, field string, min in
 			Message: fmt.Sprintf("%s must be at least %d characters long", field, min),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			if len(data) < min {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }
@@ -76,15 +76,15 @@ func (f StringValidationRuleFactory) MaxLength(data string, field string, max in
 			Message: fmt.Sprintf("%s cannot exceed %d characters", field, max),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			if len(data) > max {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }
@@ -96,15 +96,15 @@ func (f StringValidationRuleFactory) ExactLength(data string, field string, leng
 			Message: fmt.Sprintf("%s must be exactly %d characters long", field, length),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			if len(data) != length {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }
@@ -116,16 +116,16 @@ func (f StringValidationRuleFactory) MatchesPattern(data string, field, pattern 
 			Message: fmt.Sprintf("%s must match pattern %q", field, pattern),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			matched, err := regexp.MatchString(pattern, string(data))
 			if err != nil || !matched {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }
@@ -138,16 +138,16 @@ func (f StringValidationRuleFactory) IsEmail(data string, field string) Validati
 			Message: fmt.Sprintf("%s must be a valid email address", field),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[string]) result.ErrorDetails {
 			matched, err := regexp.MatchString(emailRegex, string(data))
 			if err != nil || !matched {
-				return core.ErrorDetails{
+				return result.ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    core.INVALID_INPUT_CODE,
+					Code:    result.INVALID_INPUT_CODE,
 				}
 			}
-			return core.ErrorDetails{}
+			return result.ErrorDetails{}
 		},
 	}
 }

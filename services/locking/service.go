@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
-	"github.com/nayefradwi/nayef_go_common/core"
 	modules_locking "github.com/nayefradwi/nayef_go_common/modules/locking"
 	modules_redis "github.com/nayefradwi/nayef_go_common/modules/redis"
+	"github.com/nayefradwi/nayef_go_common/result"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -48,7 +48,7 @@ func (l *DistributedLocker) AcquireLock(
 
 	time.Sleep(params.InitialWaitTime)
 	if err := mutex.Lock(); err != nil {
-		return core.BadRequestError("failed to acquire lock")
+		return result.BadRequestError("failed to acquire lock")
 	}
 
 	return nil

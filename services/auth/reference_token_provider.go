@@ -2,8 +2,8 @@ package auth
 
 import (
 	"github.com/google/uuid"
-	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type JwtReferenceTokenProvider struct {
@@ -64,7 +64,7 @@ func (t JwtReferenceTokenProvider) GetRefreshToken(id string) (auth.Token, error
 func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (auth.Token, error) {
 	token, err := t.tokenStore.GetTokenByReference(id, tokenType)
 	if err != nil {
-		return auth.Token{}, core.UnauthorizedError("Token not found")
+		return auth.Token{}, result.UnauthorizedError("Token not found")
 	}
 
 	return token, nil

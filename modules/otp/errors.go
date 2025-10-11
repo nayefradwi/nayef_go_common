@@ -1,6 +1,6 @@
 package otp
 
-import "github.com/nayefradwi/nayef_go_common/core"
+import "github.com/nayefradwi/nayef_go_common/result"
 
 const (
 	IncorrectOtpErrorCode = "INCORRECT_OTP"
@@ -9,7 +9,7 @@ const (
 )
 
 var (
-	ErrIncorrectOTP     = core.NewResultError("incorrect otp", IncorrectOtpErrorCode)
-	ErrMaxTriesExceeded = core.NewResultError("max tries exceeded", MaxTriesExceededCode)
-	ErrExpiredOTP       = core.NewResultError("expired otp", ExpiredOtpCode)
+	ErrIncorrectOTP     = result.NewResultError("incorrect otp", IncorrectOtpErrorCode)
+	ErrMaxTriesExceeded = result.NewResultError("max tries exceeded", MaxTriesExceededCode)
+	ErrExpiredOTP       = result.NewResultError("expired otp", ExpiredOtpCode)
 )

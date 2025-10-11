@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type JwtTokenProvider struct {
@@ -25,12 +25,12 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 
 	jwtToken, err := jwt.Parse(token, t.Config.parser)
 	if err != nil {
-		return Token{}, core.UnauthorizedError(err.Error())
+		return Token{}, result.UnauthorizedError(err.Error())
 	}
 
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return Token{}, core.UnauthorizedError("Invalid token")
+		return Token{}, result.UnauthorizedError("Invalid token")
 	}
 
 	owner, _ := claims[ownerClaimKey].(string)

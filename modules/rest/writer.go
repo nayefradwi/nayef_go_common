@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 func SuccessJsonResponseMessage(message string) map[string]string {
@@ -50,9 +50,9 @@ func (jw JsonResponseWriter) WriteData(data interface{}) {
 }
 
 func (jw JsonResponseWriter) WriteError(err error) {
-	var resultError *core.ResultError
+	var resultError *result.ResultError
 	if !errors.As(err, &resultError) {
-		resultError = core.InternalError(err.Error())
+		resultError = result.InternalError(err.Error())
 	}
 
 	statusCode := getStatusCodeFromResultError(resultError)
@@ -60,21 +60,21 @@ func (jw JsonResponseWriter) WriteError(err error) {
 	json.NewEncoder(jw.Writer).Encode(resultError)
 }
 
-func getStatusCodeFromResultError(err *core.ResultError) int {
+func getStatusCodeFromResultError(err *result.ResultError) int {
 	switch err.Code {
-	case core.BAD_REQUEST_CODE:
+	case result.BAD_REQUEST_CODE:
 		return http.StatusBadRequest
-	case core.UNAUTHORIZED_CODE:
+	case result.UNAUTHORIZED_CODE:
 		return http.StatusUnauthorized
-	case core.FORBIDDEN_CODE:
+	case result.FORBIDDEN_CODE:
 		return http.StatusForbidden
-	case core.NOT_FOUND_CODE:
+	case result.NOT_FOUND_CODE:
 		return http.StatusNotFound
-	case core.UNKNOWN_ERROR_CODE:
+	case result.UNKNOWN_ERROR_CODE:
 		return http.StatusInternalServerError
-	case core.INTERNAL_ERROR_CODE:
+	case result.INTERNAL_ERROR_CODE:
 		return http.StatusInternalServerError
-	case core.INVALID_INPUT_CODE:
+	case result.INVALID_INPUT_CODE:
 		return http.StatusBadRequest
 	default:
 		return http.StatusBadRequest

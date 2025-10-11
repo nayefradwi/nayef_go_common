@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/otp"
+	"github.com/nayefradwi/nayef_go_common/result"
 	"go.uber.org/zap"
 )
 
@@ -42,7 +42,7 @@ func (s *OtpService) GenerateOtp(ctx context.Context, ownerId string) (*otp.OTP,
 	o = s.generateNewOtp(ownerId)
 	if err := s.otpRepository.UpsertOtp(ctx, o); err != nil {
 		zap.L().Error("failed to upsert otp", zap.Error(err))
-		return nil, core.InternalError("failed to create otp")
+		return nil, result.InternalError("failed to create otp")
 	}
 
 	return o, nil
@@ -76,7 +76,7 @@ func (s *OtpService) getOtp(ctx context.Context, ownerId string) (*otp.OTP, erro
 	otp, err := s.otpRepository.GetOtp(ctx, ownerId)
 	if err != nil {
 		zap.L().Error("failed to get otp", zap.Error(err))
-		return nil, core.InternalError("failed to get otp")
+		return nil, result.InternalError("failed to get otp")
 	}
 
 	return otp, nil

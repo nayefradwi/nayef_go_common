@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +29,7 @@ func TestStringValidation_IsRequired(t *testing.T) {
 	err := rule.Validate(rule.Opts)
 
 	assert.NotEmpty(t, err.Message)
-	assert.Equal(t, core.INVALID_INPUT_CODE, err.Code)
+	assert.Equal(t, result.INVALID_INPUT_CODE, err.Code)
 
 	valid := factory.IsRequired("hello", "username")
 	assert.Empty(t, valid.Validate(valid.Opts).Message)
@@ -97,24 +97,24 @@ func TestSliceValidation_NotNilOrEmpty(t *testing.T) {
 func TestSliceValidation_CustomMustRule(t *testing.T) {
 	factory := NewSliceValidationRuleFactory[string]()
 
-	rule := factory.Must([]string{"a"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) core.ErrorDetails {
+	rule := factory.Must([]string{"a"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) result.ErrorDetails {
 		if len(opts.Data) < 2 {
-			return core.ErrorDetails{
+			return result.ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    core.INVALID_INPUT_CODE,
+				Code:    result.INVALID_INPUT_CODE,
 			}
 		}
-		return core.ErrorDetails{}
+		return result.ErrorDetails{}
 	})
 
 	assert.NotEmpty(t, rule.Validate(rule.Opts).Message)
 
-	valid := factory.Must([]string{"a", "b"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) core.ErrorDetails {
+	valid := factory.Must([]string{"a", "b"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) result.ErrorDetails {
 		if len(opts.Data) < 2 {
-			return core.ErrorDetails{Message: opts.Message}
+			return result.ErrorDetails{Message: opts.Message}
 		}
-		return core.ErrorDetails{}
+		return result.ErrorDetails{}
 	})
 
 	assert.Empty(t, valid.Validate(valid.Opts).Message)
@@ -165,28 +165,28 @@ func TestDateValidation_IsDate_IsAfter_IsBefore_IsBetween(t *testing.T) {
 func TestMust_CustomLogic(t *testing.T) {
 	factory := NewNumValidationRuleFactory[int]()
 
-	rule := factory.Must(10, "age", "must be even", func(opts ValidationRuleOption[int]) core.ErrorDetails {
+	rule := factory.Must(10, "age", "must be even", func(opts ValidationRuleOption[int]) result.ErrorDetails {
 		if opts.Data%2 != 0 {
-			return core.ErrorDetails{
+			return result.ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    core.INVALID_INPUT_CODE,
+				Code:    result.INVALID_INPUT_CODE,
 			}
 		}
-		return core.ErrorDetails{}
+		return result.ErrorDetails{}
 	})
 
 	assert.Empty(t, rule.Validate(rule.Opts).Message)
 
-	badRule := factory.Must(11, "age", "must be even", func(opts ValidationRuleOption[int]) core.ErrorDetails {
+	badRule := factory.Must(11, "age", "must be even", func(opts ValidationRuleOption[int]) result.ErrorDetails {
 		if opts.Data%2 != 0 {
-			return core.ErrorDetails{
+			return result.ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    core.INVALID_INPUT_CODE,
+				Code:    result.INVALID_INPUT_CODE,
 			}
 		}
-		return core.ErrorDetails{}
+		return result.ErrorDetails{}
 	})
 
 	assert.NotEmpty(t, badRule.Validate(badRule.Opts).Message)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 	"go.uber.org/zap"
 )
 
@@ -13,7 +13,7 @@ func Tx(ctx context.Context, pool *pgxpool.Pool, f func(ctx context.Context, tx 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		zap.L().Error("Error starting transaction", zap.Error(err))
-		return core.InternalError("Error starting transaction")
+		return result.InternalError("Error starting transaction")
 	}
 	defer tx.Rollback(ctx)
 	if err := f(ctx, tx); err != nil {
@@ -23,7 +23,7 @@ func Tx(ctx context.Context, pool *pgxpool.Pool, f func(ctx context.Context, tx 
 
 	if err := tx.Commit(ctx); err != nil {
 		zap.L().Error("Error committing transaction", zap.Error(err))
-		return core.InternalError("Error committing transaction")
+		return result.InternalError("Error committing transaction")
 	}
 
 	return nil
@@ -34,7 +34,7 @@ func TxWithData[T any](ctx context.Context, pool *pgxpool.Pool, f func(ctx conte
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		zap.L().Error("Error starting transaction", zap.Error(err))
-		return empty, core.InternalError("Error starting transaction")
+		return empty, result.InternalError("Error starting transaction")
 	}
 	defer tx.Rollback(ctx)
 	data, err := f(ctx, tx)
@@ -45,7 +45,7 @@ func TxWithData[T any](ctx context.Context, pool *pgxpool.Pool, f func(ctx conte
 
 	if err := tx.Commit(ctx); err != nil {
 		zap.L().Error("Error committing transaction", zap.Error(err))
-		return empty, core.InternalError("Error committing transaction")
+		return empty, result.InternalError("Error committing transaction")
 	}
 
 	return data, nil

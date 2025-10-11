@@ -3,9 +3,9 @@ package rest
 import (
 	"net/http"
 
-	"github.com/nayefradwi/nayef_go_common/core"
 	"github.com/nayefradwi/nayef_go_common/modules/auth"
 	"github.com/nayefradwi/nayef_go_common/modules/rest"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type JwtAuthenticationMiddleware struct {
@@ -33,13 +33,13 @@ func (m JwtAuthenticationMiddleware) UseAuthenitcation(f http.Handler) http.Hand
 		jw := rest.NewJsonResponseWriter(w)
 		token := rest.GetBearerToken(r)
 		if token == "" {
-			jw.WriteError(core.UnauthorizedError("Token not found"))
+			jw.WriteError(result.UnauthorizedError("Token not found"))
 			return
 		}
 
 		accessToken, err := m.TokenProvider.GetClaims(token)
 		if err != nil {
-			jw.WriteError(core.UnauthorizedError("Invalid token"))
+			jw.WriteError(result.UnauthorizedError("Invalid token"))
 			return
 		}
 
@@ -56,13 +56,13 @@ func (m JwtReferenceTokenAuthenicationMiddleware) UseAuthenitcation(f http.Handl
 		jw := rest.NewJsonResponseWriter(w)
 		tokenId := rest.GetBearerToken(r)
 		if tokenId == "" {
-			jw.WriteError(core.UnauthorizedError("Token not found"))
+			jw.WriteError(result.UnauthorizedError("Token not found"))
 			return
 		}
 
 		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(tokenId)
 		if err != nil {
-			jw.WriteError(core.UnauthorizedError("Invalid token"))
+			jw.WriteError(result.UnauthorizedError("Invalid token"))
 			return
 		}
 
