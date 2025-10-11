@@ -1,154 +1,165 @@
 package validation
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/nayefradwi/nayef_go_common/core"
 )
 
-type StringValidator struct {
-	*Validator
+type StringValidationRuleFactory struct{}
+
+func NewStringValidationRuleFactory() StringValidationRuleFactory {
+	return StringValidationRuleFactory{}
 }
 
-func NewStringValidator() *StringValidator {
-	return &StringValidator{Validator: NewValidator()}
-}
-
-func StringValidatorFromValidator(validator *Validator) *StringValidator {
-	return &StringValidator{Validator: validator}
-}
-
-func (s *StringValidator) MatchesPattern(opts ValidateOption, pattern string) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		matched, err := regexp.MatchString(pattern, str)
-		if err != nil || !matched {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) Must(
+	data string,
+	field string,
+	message string,
+	ruleCb func(opts ValidationRuleOption[string]) core.ErrorDetails,
+) ValidationRule[string] {
+	return ValidationRule[string]{
+		Validate: ruleCb,
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: message,
+			Data:    data,
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) MaxLength(opts ValidateOption, max int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if len(str) > max {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) IsRequired(data string, field string) ValidationRule[string] {
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s is required", field),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			if data == "" {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) MinLength(opts ValidateOption, min int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if len(str) < min {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) MinLength(data string, field string, min int) ValidationRule[string] {
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be at least %d characters long", field, min),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			if len(data) < min {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) ExactLength(opts ValidateOption, length int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if len(str) != length {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) MaxLength(data string, field string, max int) ValidationRule[string] {
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s cannot exceed %d characters", field, max),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			if len(data) > max {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) IsEmail(opts ValidateOption) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-		matched, err := regexp.MatchString(emailRegex, str)
-		if err != nil || !matched {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) ExactLength(data string, field string, length int) ValidationRule[string] {
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be exactly %d characters long", field, length),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			if len(data) != length {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) IsRequired(opts ValidateOption) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		str, errDetails := s.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if str == "" {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f StringValidationRuleFactory) MatchesPattern(data string, field, pattern string) ValidationRule[string] {
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s must match pattern %q", field, pattern),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			matched, err := regexp.MatchString(pattern, string(data))
+			if err != nil || !matched {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (s *StringValidator) IsAlphanumeric(opts ValidateOption) {
-	s.MatchesPattern(opts, `^[a-zA-Z0-9]*$`)
-}
-
-func (s *StringValidator) IsNumeric(opts ValidateOption) {
-	s.MatchesPattern(opts, `^[0-9]*$`)
-}
-
-func (s *StringValidator) IsAlpha(opts ValidateOption) {
-	s.MatchesPattern(opts, `^[a-zA-Z]*$`)
-}
-
-func (s *StringValidator) Validate() error {
-	return s.Validator.Validate()
-}
-
-func (s *StringValidator) parseData(opts ValidateOption) (string, core.ErrorDetails) {
-	switch v := opts.Data.(type) {
-	case string:
-		return v, core.ErrorDetails{}
-	case *string:
-		if v == nil {
-			return "", opts.ToInvalidDataType()
-		}
-		return *v, core.ErrorDetails{}
-	default:
-		return "", opts.ToInvalidDataType()
+func (f StringValidationRuleFactory) IsEmail(data string, field string) ValidationRule[string] {
+	emailRegex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
+	return ValidationRule[string]{
+		Opts: ValidationRuleOption[string]{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be a valid email address", field),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[string]) core.ErrorDetails {
+			matched, err := regexp.MatchString(emailRegex, string(data))
+			if err != nil || !matched {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
+}
+
+func (f StringValidationRuleFactory) IsAlpha(data string, field string) ValidationRule[string] {
+	return f.MatchesPattern(data, field, `^[a-zA-Z]*$`)
+}
+
+func (f StringValidationRuleFactory) IsNumeric(data string, field string) ValidationRule[string] {
+	return f.MatchesPattern(data, field, `^[0-9]*$`)
+}
+
+func (f StringValidationRuleFactory) IsAlphanumeric(data string, field string) ValidationRule[string] {
+	return f.MatchesPattern(data, field, `^[a-zA-Z0-9]*$`)
 }

@@ -1,101 +1,85 @@
 package validation
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/nayefradwi/nayef_go_common/core"
 )
 
-// at this point i got lazy and made chatgpt generate the rest of the code for me
+type NumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 | float32] struct{}
 
-type IntegerValidator struct {
-	Validator *Validator
+func NewNumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 | float32]() NumValidationRuleFactory[T] {
+	return NumValidationRuleFactory[T]{}
 }
 
-func NewIntegerValidator() *IntegerValidator {
-	return &IntegerValidator{Validator: NewValidator()}
-}
-
-func IntegerValidatorFromValidator(validator *Validator) *IntegerValidator {
-	return &IntegerValidator{Validator: validator}
-}
-
-func (i *IntegerValidator) MinValue(opts ValidateOption, min int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		num, errDetails := i.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if num < min {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (n NumValidationRuleFactory[T]) Must(data T, field string, message string, ruleCb func(opts ValidationRuleOption[T]) core.ErrorDetails) ValidationRule[T] {
+	return ValidationRule[T]{
+		Validate: ruleCb,
+		Opts: ValidationRuleOption[T]{
+			Field:   field,
+			Message: message,
+			Data:    data,
+		},
 	}
-
-	i.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (i *IntegerValidator) MaxValue(opts ValidateOption, max int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		num, errDetails := i.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
+func (f NumValidationRuleFactory[T]) MinValue(data T, field string, min T) ValidationRule[T] {
+	return ValidationRule[T]{
+		Opts: ValidationRuleOption[T]{
+			Field:   field,
+			Message: fmt.Sprintf("%s cannot be less than %v", field, min),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[T]) core.ErrorDetails {
+			if data < min {
+				return core.ErrorDetails{
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+					Field:   opts.Field,
+				}
+			}
 
-		if num > max {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+			return core.ErrorDetails{}
+		},
 	}
-
-	i.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (i *IntegerValidator) Between(opts ValidateOption, min, max int) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		num, errDetails := i.parseData(opts)
-		if errDetails.Message != "" {
-			return errDetails
-		}
-
-		if num < min || num > max {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f NumValidationRuleFactory[T]) MaxValue(data T, field string, max T) ValidationRule[T] {
+	return ValidationRule[T]{
+		Opts: ValidationRuleOption[T]{
+			Field:   field,
+			Message: fmt.Sprintf("%s cannot be greater than %v", field, max),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[T]) core.ErrorDetails {
+			if data > max {
+				return core.ErrorDetails{
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+					Field:   opts.Field,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
-
-	i.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
 }
 
-func (i *IntegerValidator) parseData(opts ValidateOption) (int, core.ErrorDetails) {
-	switch v := opts.Data.(type) {
-	case int:
-		return v, core.ErrorDetails{}
-	case *int:
-		if v == nil {
-			return 0, opts.ToInvalidDataType()
-		}
-		return *v, core.ErrorDetails{}
-	case string:
-		parsed, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, opts.ToInvalidDataType()
-		}
-		return parsed, core.ErrorDetails{}
-	case *string:
-		if v == nil {
-			return 0, opts.ToInvalidDataType()
-		}
-		parsed, err := strconv.Atoi(*v)
-		if err != nil {
-			return 0, opts.ToInvalidDataType()
-		}
-		return parsed, core.ErrorDetails{}
-	default:
-		return 0, opts.ToInvalidDataType()
+func (f NumValidationRuleFactory[T]) Between(data T, field string, min, max T) ValidationRule[T] {
+	return ValidationRule[T]{
+		Opts: ValidationRuleOption[T]{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be between %v and %v", field, min, max),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[T]) core.ErrorDetails {
+			if data < min || data > max {
+				return core.ErrorDetails{
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+					Field:   opts.Field,
+				}
+			}
+			return core.ErrorDetails{}
+		},
 	}
 }

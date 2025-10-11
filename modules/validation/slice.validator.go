@@ -1,36 +1,58 @@
 package validation
 
-import "github.com/nayefradwi/nayef_go_common/core"
+import (
+	"fmt"
 
-type SliceValidator struct {
-	*Validator
+	"github.com/nayefradwi/nayef_go_common/core"
+)
+
+type SliceValidationRuleFactory[E any] struct{}
+
+func NewSliceValidationRuleFactory[E any]() SliceValidationRuleFactory[E] {
+	return SliceValidationRuleFactory[E]{}
 }
 
-func NewSliceValidator() *SliceValidator {
-	return &SliceValidator{Validator: NewValidator()}
-}
-
-func SliceValidatorFromValidator(validator *Validator) *SliceValidator {
-	return &SliceValidator{Validator: validator}
-}
-
-func (s *SliceValidator) NotEmpty(opts ValidateOption) {
-	vf := func(opts ValidateOption) core.ErrorDetails {
-		if opts.Data == nil {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		slice, ok := opts.Data.([]any)
-		if !ok {
-			return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
-		}
-
-		if len(slice) == 0 {
-			return core.ErrorDetails{Field: opts.Field, Message: opts.Message}
-		}
-
-		return core.ErrorDetails{}
+func (f SliceValidationRuleFactory[E]) Must(
+	data []E,
+	field string,
+	message string,
+	ruleCb func(opts ValidationRuleOption[[]E]) core.ErrorDetails,
+) ValidationRule[[]E] {
+	return ValidationRule[[]E]{
+		Validate: ruleCb,
+		Opts: ValidationRuleOption[[]E]{
+			Field:   field,
+			Message: message,
+			Data:    data,
+		},
 	}
+}
 
-	s.Validator.AddValidation(ValidationFunc{Opts: opts, fn: vf})
+func (f SliceValidationRuleFactory[E]) NotNilOrEmpty(data []E, field string) ValidationRule[[]E] {
+	return ValidationRule[[]E]{
+		Opts: ValidationRuleOption[[]E]{
+			Field:   field,
+			Message: fmt.Sprintf("%s cannot be nil or empty", field),
+			Data:    data,
+		},
+		Validate: func(opts ValidationRuleOption[[]E]) core.ErrorDetails {
+			if data == nil {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+
+			if len(data) == 0 {
+				return core.ErrorDetails{
+					Field:   opts.Field,
+					Message: opts.Message,
+					Code:    core.INVALID_INPUT_CODE,
+				}
+			}
+
+			return core.ErrorDetails{}
+		},
+	}
 }
