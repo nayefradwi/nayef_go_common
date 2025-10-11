@@ -1,4 +1,4 @@
-package core
+package result
 
 const (
 	NOT_FOUND_CODE        = "NOT_FOUND"

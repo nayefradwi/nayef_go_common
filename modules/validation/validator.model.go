@@ -1,6 +1,6 @@
 package validation
 
-import "github.com/nayefradwi/nayef_go_common/core"
+import "github.com/nayefradwi/nayef_go_common/result"
 
 const (
 	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
@@ -10,49 +10,41 @@ type IValidator interface {
 	Validate() error
 }
 
-type ValidateOption struct {
+type IValidationRuleFactory[T any] interface {
+	Must(data T, field, message string, ruleCb func(opts ValidationRuleOption[T]) result.ErrorDetails) ValidationRule[T]
+}
+
+type ValidationRuleOption[T any] struct {
 	Field   string
 	Message string
-	Data    any
+	Data    T
 }
 
-func (opts ValidateOption) ToInvalidDataType() core.ErrorDetails {
-	return core.ErrorDetails{Field: opts.Field, Message: "Invalid data type", Code: INVALID_DATA_TYPE}
-}
-
-func ValidateOptionsFrom(data any, field, message string) ValidateOption {
-	return ValidateOption{Field: field, Message: message, Data: data}
-}
-
-type ValidationFunc struct {
-	Opts ValidateOption
-	fn   func(opts ValidateOption) core.ErrorDetails
-}
-
-func (vf ValidationFunc) Validate() core.ErrorDetails {
-	return vf.fn(vf.Opts)
+type ValidationRule[T any] struct {
+	Opts     ValidationRuleOption[T]
+	Validate func(opts ValidationRuleOption[T]) result.ErrorDetails
 }
 
 type Validator struct {
-	Validations []ValidationFunc
+	Rules []ValidationRule[any]
 }
 
 func NewValidator() *Validator {
 	validator := &Validator{}
-	validator.Validations = make([]ValidationFunc, 0)
+	validator.Rules = make([]ValidationRule[any], 0)
 	return validator
 }
 
-func (v *Validator) AddValidation(fn ValidationFunc) {
-	v.Validations = append(v.Validations, fn)
+func (v *Validator) AddValidation(fn ValidationRule[any]) {
+	v.Rules = append(v.Rules, fn)
 }
 
 func (v *Validator) Validate() error {
-	errorDetails := make([]core.ErrorDetails, 0)
+	errorDetails := make([]result.ErrorDetails, 0)
 	hasError := false
 
-	for _, fn := range v.Validations {
-		errDetails := fn.Validate()
+	for _, rule := range v.Rules {
+		errDetails := rule.Validate(rule.Opts)
 		if errDetails.Message != "" {
 			hasError = true
 			errorDetails = append(errorDetails, errDetails)
@@ -60,7 +52,7 @@ func (v *Validator) Validate() error {
 	}
 
 	if hasError {
-		return core.NewValidationError(errorDetails)
+		return result.NewValidationError(errorDetails)
 	}
 
 	return nil

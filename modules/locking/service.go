@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 type InMemoryLocker struct {
@@ -82,7 +82,7 @@ func (l *InMemoryLocker) tryToAquireLock(context context.Context, lock *sync.Mut
 	for i := 0; i < params.MaxRetries; i++ {
 		select {
 		case <-context.Done():
-			return core.BadRequestError("Context cancelled")
+			return result.BadRequestError("Context cancelled")
 		default:
 			if lock.TryLock() {
 				return nil
@@ -91,7 +91,7 @@ func (l *InMemoryLocker) tryToAquireLock(context context.Context, lock *sync.Mut
 		}
 	}
 
-	return core.BadRequestError("Failed to aquire lock")
+	return result.BadRequestError("Failed to aquire lock")
 }
 
 func (l *InMemoryLocker) releaseAfter(lock *sync.Mutex, timeToLive time.Duration) {

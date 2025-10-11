@@ -1,4 +1,4 @@
-package core
+package result
 
 func BadRequestError(message string) *ResultError {
 	return NewResultError(message, BAD_REQUEST_CODE)

@@ -5,12 +5,12 @@ import (
 	"crypto/rsa"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 	"go.uber.org/zap"
 )
 
 var (
-	nilTokenError = core.InternalError("trying to sign nil token using")
+	nilTokenError = result.InternalError("trying to sign nil token using")
 )
 
 type tokenSigner func(token *jwt.Token) (string, error)

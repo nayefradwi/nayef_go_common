@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 const (
@@ -43,35 +43,35 @@ func MapPgError(err error, message string) error {
 
 func mapPgError(err error, message string) error {
 	if errors.Is(err, pgx.ErrNoRows) {
-		return core.NotFoundError(message)
+		return result.NotFoundError(message)
 	}
 
 	if pgErr, ok := err.(*pgconn.PgError); ok {
 		switch pgErr.Code {
 		case UniqueViolationErr:
-			return core.NewResultError(message, "DUPLICATE")
+			return result.NewResultError(message, "DUPLICATE")
 		case ForeignKeyViolationErr:
-			return core.NewResultError(message, "FOREIGN_KEY_VIOLATION")
+			return result.NewResultError(message, "FOREIGN_KEY_VIOLATION")
 		case NotNullViolationErr:
-			return core.NewResultError(message, "NOT_NULL_VIOLATION")
+			return result.NewResultError(message, "NOT_NULL_VIOLATION")
 		case CheckViolationErr:
-			return core.NewResultError(message, "CHECK_VIOLATION")
+			return result.NewResultError(message, "CHECK_VIOLATION")
 		case ExclusionViolationErr:
-			return core.NewResultError(message, "EXCLUSION_VIOLATION")
+			return result.NewResultError(message, "EXCLUSION_VIOLATION")
 		case InvalidTextRepresentationErr:
-			return core.NewResultError(message, "INVALID_INPUT")
+			return result.NewResultError(message, "INVALID_INPUT")
 		case NumericValueOutOfRangeErr:
-			return core.NewResultError(message, "VALUE_OUT_OF_RANGE")
+			return result.NewResultError(message, "VALUE_OUT_OF_RANGE")
 		case StringDataRightTruncationErr:
-			return core.NewResultError(message, "STRING_TRUNCATION")
+			return result.NewResultError(message, "STRING_TRUNCATION")
 		case DivisionByZeroErr:
-			return core.NewResultError(message, "DIVISION_BY_ZERO")
+			return result.NewResultError(message, "DIVISION_BY_ZERO")
 		case InvalidForeignKeyErr:
-			return core.NewResultError(message, "INVALID_FOREIGN_KEY")
+			return result.NewResultError(message, "INVALID_FOREIGN_KEY")
 		case DeadlockDetectedErr:
-			return core.NewResultError(message, "DEADLOCK")
+			return result.NewResultError(message, "DEADLOCK")
 		}
 	}
 
-	return core.InternalError(message)
+	return result.InternalError(message)
 }

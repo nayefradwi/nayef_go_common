@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/core"
+	"github.com/nayefradwi/nayef_go_common/result"
 )
 
 const (
@@ -33,7 +33,7 @@ type ICachable interface {
 func CastCacheValue[T any](value interface{}) (T, error) {
 	v, ok := value.(T)
 	if !ok {
-		return v, core.BadRequestError("Failed to cast cache value")
+		return v, result.BadRequestError("Failed to cast cache value")
 	}
 
 	return v, nil
