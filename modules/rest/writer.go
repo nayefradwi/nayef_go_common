@@ -8,6 +8,12 @@ import (
 	"github.com/nayefradwi/nayef_go_common/result"
 )
 
+type WriterOnErrorListener func(err error)
+
+var (
+	GlobalWriterOnErrorListener WriterOnErrorListener = func(err error) {}
+)
+
 func SuccessJsonResponseMessage(message string) map[string]string {
 	return map[string]string{"message": message}
 }
@@ -15,14 +21,21 @@ func SuccessJsonResponseMessage(message string) map[string]string {
 type JsonResponseWriter struct {
 	Writer        http.ResponseWriter
 	SuccessStatus int
+	ErrorStatus   int
+	ErrorListener WriterOnErrorListener
 }
 
 func NewJsonResponseWriter(w http.ResponseWriter) JsonResponseWriter {
-	return JsonResponseWriter{Writer: w, SuccessStatus: http.StatusOK}
+	return JsonResponseWriter{Writer: w, SuccessStatus: http.StatusOK, ErrorListener: GlobalWriterOnErrorListener}
 }
 
-func (jw JsonResponseWriter) WithStatusCode(statusCode int) JsonResponseWriter {
+func (jw JsonResponseWriter) WithSuccessStatus(statusCode int) JsonResponseWriter {
 	jw.SuccessStatus = statusCode
+	return jw
+}
+
+func (jw JsonResponseWriter) WithErrorStatus(status int) JsonResponseWriter {
+	jw.ErrorStatus = status
 	return jw
 }
 
@@ -50,12 +63,17 @@ func (jw JsonResponseWriter) WriteData(data interface{}) {
 }
 
 func (jw JsonResponseWriter) WriteError(err error) {
+	jw.ErrorListener(err)
 	var resultError *result.ResultError
 	if !errors.As(err, &resultError) {
 		resultError = result.InternalError(err.Error())
 	}
 
-	statusCode := getStatusCodeFromResultError(resultError)
+	statusCode := jw.ErrorStatus
+	if statusCode < 400 || statusCode > 505 {
+		statusCode = getStatusCodeFromResultError(resultError)
+	}
+
 	jw.SetHttpStatusCode(statusCode)
 	json.NewEncoder(jw.Writer).Encode(resultError)
 }
