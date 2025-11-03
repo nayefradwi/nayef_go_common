@@ -8,10 +8,8 @@ import (
 	"github.com/nayefradwi/nayef_go_common/result"
 )
 
-type WriterOnErrorListener func(err error)
-
 var (
-	GlobalWriterOnErrorListener WriterOnErrorListener = func(err error) {}
+	GlobalJsonWriterOnErrorListener result.OnErrorListener = func(err error) {}
 )
 
 func SuccessJsonResponseMessage(message string) map[string]string {
@@ -22,11 +20,11 @@ type JsonResponseWriter struct {
 	Writer        http.ResponseWriter
 	SuccessStatus int
 	ErrorStatus   int
-	ErrorListener WriterOnErrorListener
+	ErrorListener result.OnErrorListener
 }
 
 func NewJsonResponseWriter(w http.ResponseWriter) JsonResponseWriter {
-	return JsonResponseWriter{Writer: w, SuccessStatus: http.StatusOK, ErrorListener: GlobalWriterOnErrorListener}
+	return JsonResponseWriter{Writer: w, SuccessStatus: http.StatusOK, ErrorListener: GlobalJsonWriterOnErrorListener}
 }
 
 func (jw JsonResponseWriter) WithSuccessStatus(statusCode int) JsonResponseWriter {

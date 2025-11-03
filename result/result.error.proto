@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package result;
+
+option go_package = "github.com/nayefradwi/nayef_go_common/result;result";
+
+message ErrorDetailsPb {
+  string message = 1;
+  string code = 2;
+  string field = 3;
+}
+
+message ResultErrorPb {
+  string message = 1;
+  string code = 2;
+  repeated ErrorDetailsPb errors = 3;
+}
