@@ -6,21 +6,19 @@ import (
 	"github.com/nayefradwi/nayef_go_common/result"
 )
 
-type WriterOnErrorListener func(err error)
-
 var (
-	GlobalWriterOnErrorListener WriterOnErrorListener = func(err error) {}
+	GlobalWriterOnErrorListener result.OnErrorListener = func(err error) {}
 )
 
 type GrpcResponseWriter[T any] struct {
-	ErrorListener WriterOnErrorListener
+	ErrorListener result.OnErrorListener
 }
 
 func NewGrpcResponseWriter[T any]() GrpcResponseWriter[T] {
 	return GrpcResponseWriter[T]{ErrorListener: GlobalWriterOnErrorListener}
 }
 
-func (gw GrpcResponseWriter[T]) WithErrorListener(listener WriterOnErrorListener) GrpcResponseWriter[T] {
+func (gw GrpcResponseWriter[T]) WithErrorListener(listener result.OnErrorListener) GrpcResponseWriter[T] {
 	gw.ErrorListener = listener
 	return gw
 }
