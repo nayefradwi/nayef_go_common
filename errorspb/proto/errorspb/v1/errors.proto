@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto.errorspb.v1;
+
+option go_package = "github.com/nayefradwi/nayef_go_common/errorspb;errorspb";
+
+message ErrorDetailsPb {
+  string message = 1;
+  string code = 2;
+  string field = 3;
+}
+
+message ErrorDetailsPbList {
+  repeated ErrorDetailsPb items = 1;
+}
+
+message ResultErrorPb {
+  string message = 1;
+  string code = 2;
+  map<string, ErrorDetailsPbList> errors = 3;
+}
