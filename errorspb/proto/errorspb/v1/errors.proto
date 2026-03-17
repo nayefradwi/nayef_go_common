@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto.errorspb.v1;
 
-option go_package = "github.com/nayefradwi/nayef_go_common/errorspb;errorspb";
+option go_package = ".;errorspb";
 
 message ErrorDetailsPb {
   string message = 1;

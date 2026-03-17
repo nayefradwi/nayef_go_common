@@ -202,7 +202,8 @@ const file_proto_errorspb_v1_errors_proto_rawDesc = "" +
 	"\x06errors\x18\x03 \x03(\v2,.proto.errorspb.v1.ResultErrorPb.ErrorsEntryR\x06errors\x1a`\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
-	"\x05value\x18\x02 \x01(\v2%.proto.errorspb.v1.ErrorDetailsPbListR\x05value:\x028\x01B9Z7github.com/nayefradwi/nayef_go_common/errorspb;errorspbb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2%.proto.errorspb.v1.ErrorDetailsPbListR\x05value:\x028\x01B\fZ\n" +
+	".;errorspbb\x06proto3"
 
 var (
 	file_proto_errorspb_v1_errors_proto_rawDescOnce sync.Once
