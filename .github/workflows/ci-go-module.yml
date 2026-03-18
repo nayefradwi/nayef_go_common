@@ -1,0 +1,36 @@
+name: CI Go Module
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        description: "Path to the Go module relative to repo root (e.g. errors, errorspb, httputil)"
+        required: true
+        type: string
+
+jobs:
+  ci:
+    name: CI ${{ inputs.module_path }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.module_path }}/go.mod
+          cache: true
+
+      - name: Vet
+        working-directory: ${{ inputs.module_path }}
+        run: go vet ./...
+
+      - name: Test
+        working-directory: ${{ inputs.module_path }}
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Build
+        working-directory: ${{ inputs.module_path }}
+        run: go build ./...
