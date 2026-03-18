@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"go.uber.org/zap"
 )
 
 type JwtTokenProviderConfig struct {
@@ -95,15 +94,15 @@ func (c JwtTokenProviderConfig) SetHS512SigningMethod() JwtTokenProviderConfig {
 func (c JwtTokenProviderConfig) SetRSASigningMethod(signingMethod jwt.SigningMethod, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) JwtTokenProviderConfig {
 
 	if signingMethod.Alg() != "RS256" && signingMethod.Alg() != "RS384" && signingMethod.Alg() != "RS512" {
-		zap.L().Fatal("Invalid RSA signing method", zap.String("method", signingMethod.Alg()))
+		// zap.L().Fatal("Invalid RSA signing method", zap.String("method", signingMethod.Alg()))
 	}
 
 	if privateKey == nil {
-		zap.L().Fatal("Invalid RSA private key")
+		// zap.L().Fatal("Invalid RSA private key")
 	}
 
 	if publicKey == nil {
-		zap.L().Fatal("Invalid RSA public key")
+		// zap.L().Fatal("Invalid RSA public key")
 	}
 
 	c.signingMethod = signingMethod
@@ -122,15 +121,15 @@ func (c JwtTokenProviderConfig) SetECDSASigningMethod(
 ) JwtTokenProviderConfig {
 
 	if signingMethod.Alg() != "ES256" && signingMethod.Alg() != "ES384" && signingMethod.Alg() != "ES512" {
-		zap.L().Fatal("Invalid ECDSA signing method", zap.String("method", signingMethod.Alg()))
+		// zap.L().Fatal("Invalid ECDSA signing method", zap.String("method", signingMethod.Alg()))
 	}
 
 	if privateKey == nil {
-		zap.L().Fatal("Invalid ECDSA private key")
+		// zap.L().Fatal("Invalid ECDSA private key")
 	}
 
 	if publicKey == nil {
-		zap.L().Fatal("Invalid ECDSA public key")
+		// zap.L().Fatal("Invalid ECDSA public key")
 	}
 
 	c.signingMethod = signingMethod

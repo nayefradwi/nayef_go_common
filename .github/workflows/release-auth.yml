@@ -1,0 +1,19 @@
+name: Release auth
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/deploy-go-module.yml
+    with:
+      module_path: auth
+      bump_type: patch
+    secrets: inherit

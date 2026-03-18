@@ -5,12 +5,11 @@ import (
 	"crypto/rsa"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nayefradwi/nayef_go_common/result"
-	"go.uber.org/zap"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 var (
-	nilTokenError = result.InternalError("trying to sign nil token using")
+	nilTokenError = InternalError("trying to sign nil token using")
 )
 
 type tokenSigner func(token *jwt.Token) (string, error)
@@ -27,7 +26,7 @@ func defaultHMACSigner(secretKey string) tokenSigner {
 func defaultRSASigner(privateKey interface{}) tokenSigner {
 	privateKey, ok := privateKey.(*rsa.PrivateKey)
 	if !ok {
-		zap.L().Fatal("Invalid RSA private key")
+		// zap.L().Fatal("Invalid RSA private key")
 	}
 
 	return func(token *jwt.Token) (string, error) {
@@ -42,7 +41,7 @@ func defaultRSASigner(privateKey interface{}) tokenSigner {
 func defaultECDSASigner(privateKey interface{}) tokenSigner {
 	privateKey, ok := privateKey.(*ecdsa.PrivateKey)
 	if !ok {
-		zap.L().Fatal("Invalid ECDSA private key")
+		// zap.L().Fatal("Invalid ECDSA private key")
 	}
 
 	return func(token *jwt.Token) (string, error) {
