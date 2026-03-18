@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # generate_workflows.sh
 # Auto-generates ci-MODULE.yml and release-MODULE.yml for each Go module in the repo.
-# Usage: ./scripts/generate_workflows.sh [--bump-type patch|minor|major] [--dry-run]
+# Usage: ./scripts/generate_workflows.sh [--bump-type patch|minor|major] [--dry-run] [--module <name>...] [--yes]
 
 set -euo pipefail
 
@@ -11,6 +11,8 @@ WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 
 BUMP_TYPE="patch"
 DRY_RUN=false
+AUTO_YES=false
+SELECTED_MODULES=()
 
 # Modules to skip (legacy/non-active directories)
 IGNORED_MODULES=("archive")
@@ -26,9 +28,17 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    --module)
+      SELECTED_MODULES+=("$2")
+      shift 2
+      ;;
+    --yes|-y)
+      AUTO_YES=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: $0 [--bump-type patch|minor|major] [--dry-run]" >&2
+      echo "Usage: $0 [--bump-type patch|minor|major] [--dry-run] [--module <name>...] [--yes]" >&2
       exit 1
       ;;
   esac
@@ -109,29 +119,82 @@ write_or_print() {
     echo "=== [dry-run] ${file} ==="
     echo "$content"
     echo ""
-  else
-    echo "$content" > "$file"
-    echo "Written: ${file}"
+    return
   fi
+  if [[ -f "$file" ]] && [[ "$AUTO_YES" == "false" ]]; then
+    read -r -p "File $(basename "$file") already exists. Overwrite? [y/N] " answer </dev/tty
+    if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+      echo "Skipped: ${file}"
+      return
+    fi
+  fi
+  echo "$content" > "$file"
+  echo "Written: ${file}"
 }
 
 mkdir -p "${WORKFLOWS_DIR}"
 
-PROCESSED=()
-
+# Build list of non-ignored modules
+AVAILABLE_MODULES=()
 for module_dir in "${MODULE_DIRS[@]}"; do
   module="$(basename "${module_dir}")"
-
-  # Skip ignored modules
   skip=false
   for ignored in "${IGNORED_MODULES[@]}"; do
     [[ "$module" == "$ignored" ]] && skip=true && break
   done
-  if [[ "$skip" == "true" ]]; then
-    echo "Skipping: ${module}"
-    continue
-  fi
+  [[ "$skip" == "false" ]] && AVAILABLE_MODULES+=("$module")
+done
 
+# Determine target modules
+TARGET_MODULES=()
+if [[ ${#SELECTED_MODULES[@]} -gt 0 ]]; then
+  # Validate provided module names
+  for sel in "${SELECTED_MODULES[@]}"; do
+    found=false
+    for avail in "${AVAILABLE_MODULES[@]}"; do
+      [[ "$sel" == "$avail" ]] && found=true && break
+    done
+    if [[ "$found" == "false" ]]; then
+      echo "Unknown module: '${sel}'. Available modules: $(IFS=', '; echo "${AVAILABLE_MODULES[*]}")" >&2
+      exit 1
+    fi
+    TARGET_MODULES+=("$sel")
+  done
+elif [[ -t 0 ]]; then
+  # Interactive multi-select
+  echo "Available modules:"
+  for i in "${!AVAILABLE_MODULES[@]}"; do
+    printf "  %d) %s\n" "$((i+1))" "${AVAILABLE_MODULES[$i]}"
+  done
+  echo ""
+  read -r -p "Select modules (space-separated numbers, or 'a' for all): " selection </dev/tty
+  if [[ "$selection" == "a" || "$selection" == "A" ]]; then
+    TARGET_MODULES=("${AVAILABLE_MODULES[@]}")
+  else
+    for num in $selection; do
+      if ! [[ "$num" =~ ^[0-9]+$ ]] || (( num < 1 || num > ${#AVAILABLE_MODULES[@]} )); then
+        echo "Invalid selection: '${num}'" >&2
+        exit 1
+      fi
+      TARGET_MODULES+=("${AVAILABLE_MODULES[$((num-1))]}")
+    done
+  fi
+  if [[ ${#TARGET_MODULES[@]} -eq 0 ]]; then
+    echo "No modules selected." >&2
+    exit 1
+  fi
+  echo ""
+  echo "Selected: $(IFS=', '; echo "${TARGET_MODULES[*]}")"
+  read -r -p "Proceed? [y/N] " confirm </dev/tty
+  [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+  echo ""
+else
+  TARGET_MODULES=("${AVAILABLE_MODULES[@]}")
+fi
+
+PROCESSED=()
+
+for module in "${TARGET_MODULES[@]}"; do
   ci_file="${WORKFLOWS_DIR}/ci-${module}.yml"
   release_file="${WORKFLOWS_DIR}/release-${module}.yml"
 

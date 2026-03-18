@@ -1,0 +1,17 @@
+name: CI pagination
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pagination/**"
+  pull_request:
+    paths:
+      - "pagination/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: pagination

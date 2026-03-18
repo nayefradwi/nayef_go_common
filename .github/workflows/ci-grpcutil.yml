@@ -1,0 +1,17 @@
+name: CI grpcutil
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "grpcutil/**"
+  pull_request:
+    paths:
+      - "grpcutil/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: grpcutil
