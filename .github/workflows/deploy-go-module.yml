@@ -1,0 +1,118 @@
+name: Deploy Go Module
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        description: "Path of the Go module relative to repo root (e.g. errors, errorspb, httputil)"
+        required: true
+        type: string
+      bump_type:
+        description: "Version segment to bump: patch, minor, or major"
+        required: false
+        type: string
+        default: patch
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release ${{ inputs.module_path }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate module path exists
+        run: |
+          if [ ! -f "${{ inputs.module_path }}/go.mod" ]; then
+            echo "ERROR: ${{ inputs.module_path }}/go.mod not found. Aborting."
+            exit 1
+          fi
+
+      - name: Compute next version
+        id: versioning
+        run: |
+          MODULE_PATH="${{ inputs.module_path }}"
+          BUMP_TYPE="${{ inputs.bump_type }}"
+
+          # Find the latest existing tag for this module using version-aware sort
+          LATEST_TAG=$(git tag --list "${MODULE_PATH}/v*" --sort=-v:refname | head -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No tag exists yet — bootstrap at v0.1.0
+            NEXT_VERSION="0.1.0"
+            PREV_TAG=""
+          else
+            # Strip the module path prefix to isolate the semver (e.g. "errors/v1.2.3" -> "1.2.3")
+            SEMVER="${LATEST_TAG#${MODULE_PATH}/v}"
+            MAJOR=$(echo "$SEMVER" | cut -d. -f1)
+            MINOR=$(echo "$SEMVER" | cut -d. -f2)
+            PATCH=$(echo "$SEMVER" | cut -d. -f3)
+
+            case "$BUMP_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch|*)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            PREV_TAG="$LATEST_TAG"
+          fi
+
+          NEXT_TAG="${MODULE_PATH}/v${NEXT_VERSION}"
+
+          echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "next_tag=${NEXT_TAG}"         >> "$GITHUB_OUTPUT"
+          echo "prev_tag=${PREV_TAG}"         >> "$GITHUB_OUTPUT"
+
+          echo "Module:       ${MODULE_PATH}"
+          echo "Bump type:    ${BUMP_TYPE}"
+          echo "Previous tag: ${PREV_TAG:-<none>}"
+          echo "Next tag:     ${NEXT_TAG}"
+
+      - name: Create and push git tag
+        run: |
+          git tag "${{ steps.versioning.outputs.next_tag }}" \
+            -m "Release ${{ steps.versioning.outputs.next_tag }}"
+          git push origin "${{ steps.versioning.outputs.next_tag }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEXT_TAG="${{ steps.versioning.outputs.next_tag }}"
+          PREV_TAG="${{ steps.versioning.outputs.prev_tag }}"
+          MODULE_PATH="${{ inputs.module_path }}"
+          NEXT_VERSION="${{ steps.versioning.outputs.next_version }}"
+
+          # Build optional notes-start-tag argument
+          if [ -n "$PREV_TAG" ]; then
+            NOTES_START="--notes-start-tag ${PREV_TAG}"
+          else
+            NOTES_START=""
+          fi
+
+          gh release create "$NEXT_TAG" \
+            --title "${MODULE_PATH} v${NEXT_VERSION}" \
+            --generate-notes \
+            $NOTES_START \
+            --repo "$GITHUB_REPOSITORY"
