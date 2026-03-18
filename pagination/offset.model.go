@@ -29,3 +29,15 @@ func NewOffsetPage[T any](page, pageSize, totalItems int, items []T) OffsetPage[
 		Items:         items,
 	}
 }
+
+func NewEmptyPage[T any](pageSize int) OffsetPage[T] {
+	return OffsetPage[T]{
+		Page:          1,
+		PageSize:      pageSize,
+		HasNext:       false,
+		HasPrev:       false,
+		TotalItems:    0,
+		NumberOfPages: 1,
+		Items:         []T{},
+	}
+}

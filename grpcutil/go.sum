@@ -1,0 +1,6 @@
+github.com/nayefradwi/nayef_go_common/errors v1.0.0 h1:frbm/RIsaMj2jrn3Zcbk6yZsrWMIkktQmX4InB6mnEg=
+github.com/nayefradwi/nayef_go_common/errors v1.0.0/go.mod h1:dfCHEGsYAJN0VP8JWqpqVQvG8k89zlWqscRBIdI6qV4=
+github.com/nayefradwi/nayef_go_common/errorspb v1.0.0 h1:MBHmAjuQrmLKpripb8CBDGQjICb/63dtvQR2ezNL6gw=
+github.com/nayefradwi/nayef_go_common/errorspb v1.0.0/go.mod h1:6ZMFJ4cRvMW34MdV07a+3I+S9GfFmXoeF2M8h5qP3GI=
+google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
+google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
