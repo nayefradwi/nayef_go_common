@@ -1,0 +1,17 @@
+name: CI errors
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "errors/**"
+  pull_request:
+    paths:
+      - "errors/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: errors

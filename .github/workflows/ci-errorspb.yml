@@ -1,0 +1,17 @@
+name: CI errorspb
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "errorspb/**"
+  pull_request:
+    paths:
+      - "errorspb/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: errorspb
