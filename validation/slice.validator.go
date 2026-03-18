@@ -36,22 +36,13 @@ func (f SliceValidationRuleFactory[E]) NotNilOrEmpty(data []E, field string) Val
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[[]E]) ErrorDetails {
-			if data == nil {
+			if len(opts.Data) == 0 {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
 					Code:    CodeInvalidInput,
 				}
 			}
-
-			if len(data) == 0 {
-				return ErrorDetails{
-					Field:   opts.Field,
-					Message: opts.Message,
-					Code:    CodeInvalidInput,
-				}
-			}
-
 			return ErrorDetails{}
 		},
 	}

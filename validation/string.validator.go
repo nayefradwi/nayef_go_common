@@ -3,9 +3,12 @@ package validation
 import (
 	"fmt"
 	"regexp"
+	"unicode/utf8"
 
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 type StringValidationRuleFactory struct{}
 
@@ -37,7 +40,7 @@ func (f StringValidationRuleFactory) IsRequired(data string, field string) Valid
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			if data == "" {
+			if opts.Data == "" {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -57,7 +60,7 @@ func (f StringValidationRuleFactory) MinLength(data string, field string, min in
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			if len(data) < min {
+			if utf8.RuneCountInString(opts.Data) < min {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -77,7 +80,7 @@ func (f StringValidationRuleFactory) MaxLength(data string, field string, max in
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			if len(data) > max {
+			if utf8.RuneCountInString(opts.Data) > max {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -97,7 +100,7 @@ func (f StringValidationRuleFactory) ExactLength(data string, field string, leng
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			if len(data) != length {
+			if utf8.RuneCountInString(opts.Data) != length {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -110,6 +113,7 @@ func (f StringValidationRuleFactory) ExactLength(data string, field string, leng
 }
 
 func (f StringValidationRuleFactory) MatchesPattern(data string, field, pattern string) ValidationRule[string] {
+	re, compileErr := regexp.Compile(pattern)
 	return ValidationRule[string]{
 		Opts: ValidationRuleOption[string]{
 			Field:   field,
@@ -117,8 +121,7 @@ func (f StringValidationRuleFactory) MatchesPattern(data string, field, pattern 
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			matched, err := regexp.MatchString(pattern, string(data))
-			if err != nil || !matched {
+			if compileErr != nil || !re.MatchString(opts.Data) {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -131,7 +134,6 @@ func (f StringValidationRuleFactory) MatchesPattern(data string, field, pattern 
 }
 
 func (f StringValidationRuleFactory) IsEmail(data string, field string) ValidationRule[string] {
-	emailRegex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 	return ValidationRule[string]{
 		Opts: ValidationRuleOption[string]{
 			Field:   field,
@@ -139,8 +141,7 @@ func (f StringValidationRuleFactory) IsEmail(data string, field string) Validati
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[string]) ErrorDetails {
-			matched, err := regexp.MatchString(emailRegex, string(data))
-			if err != nil || !matched {
+			if !emailRegex.MatchString(opts.Data) {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,

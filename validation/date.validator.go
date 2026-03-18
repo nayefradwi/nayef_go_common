@@ -37,7 +37,7 @@ func (f DateValidationRuleFactory) IsDate(data time.Time, field string) Validati
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
-			if data.IsZero() {
+			if opts.Data.IsZero() {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -57,7 +57,7 @@ func (f DateValidationRuleFactory) IsAfter(data time.Time, field string, after t
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
-			if data.Before(after) {
+			if !opts.Data.After(after) {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -77,7 +77,7 @@ func (f DateValidationRuleFactory) IsBefore(data time.Time, field string, before
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
-			if data.After(before) {
+			if !opts.Data.Before(before) {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
@@ -97,7 +97,7 @@ func (f DateValidationRuleFactory) IsBetween(data time.Time, field string, start
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
-			if data.Before(start) || data.After(end) {
+			if opts.Data.Before(start) || opts.Data.After(end) {
 				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,

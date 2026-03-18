@@ -2,10 +2,6 @@ package validation
 
 import . "github.com/nayefradwi/nayef_go_common/errors"
 
-const (
-	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
-)
-
 type IValidator interface {
 	Validate() error
 }

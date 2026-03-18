@@ -32,12 +32,13 @@ func TestIsAfter_DateBefore(t *testing.T) {
 	assert.Equal(t, CodeInvalidInput, err.Code)
 }
 
-// IsAfter uses data.Before(after) — equal is not "before", so equal passes.
 func TestIsAfter_DateEqual(t *testing.T) {
 	factory := NewDateValidationRuleFactory()
 	now := time.Now().Truncate(time.Second)
 	rule := factory.IsAfter(now, "start_date", now)
-	assert.Empty(t, rule.Validate(rule.Opts).Message)
+	err := rule.Validate(rule.Opts)
+	assert.NotEmpty(t, err.Message)
+	assert.Equal(t, CodeInvalidInput, err.Code)
 }
 
 func TestIsAfter_DateAfter(t *testing.T) {
@@ -58,12 +59,13 @@ func TestIsBefore_DateAfter(t *testing.T) {
 	assert.Equal(t, CodeInvalidInput, err.Code)
 }
 
-// IsBefore uses data.After(before) — equal is not "after", so equal passes.
 func TestIsBefore_DateEqual(t *testing.T) {
 	factory := NewDateValidationRuleFactory()
 	now := time.Now().Truncate(time.Second)
 	rule := factory.IsBefore(now, "end_date", now)
-	assert.Empty(t, rule.Validate(rule.Opts).Message)
+	err := rule.Validate(rule.Opts)
+	assert.NotEmpty(t, err.Message)
+	assert.Equal(t, CodeInvalidInput, err.Code)
 }
 
 func TestIsBefore_DateBefore(t *testing.T) {

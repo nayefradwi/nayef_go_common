@@ -6,9 +6,13 @@ import (
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
-type NumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 | float32] struct{}
+type Numeric interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~float32 | ~float64
+}
 
-func NewNumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 | float32]() NumValidationRuleFactory[T] {
+type NumValidationRuleFactory[T Numeric] struct{}
+
+func NewNumValidationRuleFactory[T Numeric]() NumValidationRuleFactory[T] {
 	return NumValidationRuleFactory[T]{}
 }
 
@@ -31,14 +35,13 @@ func (f NumValidationRuleFactory[T]) MinValue(data T, field string, min T) Valid
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
-			if data < min {
+			if opts.Data < min {
 				return ErrorDetails{
+					Field:   opts.Field,
 					Message: opts.Message,
 					Code:    CodeInvalidInput,
-					Field:   opts.Field,
 				}
 			}
-
 			return ErrorDetails{}
 		},
 	}
@@ -52,11 +55,11 @@ func (f NumValidationRuleFactory[T]) MaxValue(data T, field string, max T) Valid
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
-			if data > max {
+			if opts.Data > max {
 				return ErrorDetails{
+					Field:   opts.Field,
 					Message: opts.Message,
 					Code:    CodeInvalidInput,
-					Field:   opts.Field,
 				}
 			}
 			return ErrorDetails{}
@@ -72,11 +75,11 @@ func (f NumValidationRuleFactory[T]) Between(data T, field string, min, max T) V
 			Data:    data,
 		},
 		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
-			if data < min || data > max {
+			if opts.Data < min || opts.Data > max {
 				return ErrorDetails{
+					Field:   opts.Field,
 					Message: opts.Message,
 					Code:    CodeInvalidInput,
-					Field:   opts.Field,
 				}
 			}
 			return ErrorDetails{}
