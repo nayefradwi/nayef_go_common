@@ -12,6 +12,9 @@ WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 BUMP_TYPE="patch"
 DRY_RUN=false
 
+# Modules to skip (legacy/non-active directories)
+IGNORED_MODULES=("archive")
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -114,15 +117,28 @@ write_or_print() {
 
 mkdir -p "${WORKFLOWS_DIR}"
 
+PROCESSED=()
+
 for module_dir in "${MODULE_DIRS[@]}"; do
   module="$(basename "${module_dir}")"
+
+  # Skip ignored modules
+  skip=false
+  for ignored in "${IGNORED_MODULES[@]}"; do
+    [[ "$module" == "$ignored" ]] && skip=true && break
+  done
+  if [[ "$skip" == "true" ]]; then
+    echo "Skipping: ${module}"
+    continue
+  fi
 
   ci_file="${WORKFLOWS_DIR}/ci-${module}.yml"
   release_file="${WORKFLOWS_DIR}/release-${module}.yml"
 
   write_or_print "$ci_file" "$(generate_ci "$module")"
   write_or_print "$release_file" "$(generate_release "$module" "$BUMP_TYPE")"
+  PROCESSED+=("$module")
 done
 
 echo ""
-echo "Done. Processed modules: $(IFS=', '; echo "${MODULE_DIRS[*]##*/}")"
+echo "Done. Processed modules: $(IFS=', '; echo "${PROCESSED[*]}")"
