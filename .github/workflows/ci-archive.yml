@@ -1,0 +1,17 @@
+name: CI archive
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "archive/**"
+  pull_request:
+    paths:
+      - "archive/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: archive
