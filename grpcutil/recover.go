@@ -1,3 +1,14 @@
+package grpcutil
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"runtime/debug"
+
+	"google.golang.org/grpc"
+)
+
 type RecoveryOptions struct {
 	Logger *slog.Logger
 }
