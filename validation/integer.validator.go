@@ -3,7 +3,7 @@ package validation
 import (
 	"fmt"
 
-	"github.com/nayefradwi/nayef_go_common/result"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 type NumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 | float32] struct{}
@@ -12,7 +12,7 @@ func NewNumValidationRuleFactory[T int64 | int32 | int16 | int8 | int | float64 
 	return NumValidationRuleFactory[T]{}
 }
 
-func (n NumValidationRuleFactory[T]) Must(data T, field string, message string, ruleCb func(opts ValidationRuleOption[T]) result.ErrorDetails) ValidationRule[T] {
+func (n NumValidationRuleFactory[T]) Must(data T, field string, message string, ruleCb func(opts ValidationRuleOption[T]) ErrorDetails) ValidationRule[T] {
 	return ValidationRule[T]{
 		Validate: ruleCb,
 		Opts: ValidationRuleOption[T]{
@@ -30,16 +30,16 @@ func (f NumValidationRuleFactory[T]) MinValue(data T, field string, min T) Valid
 			Message: fmt.Sprintf("%s cannot be less than %v", field, min),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[T]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
 			if data < min {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 					Field:   opts.Field,
 				}
 			}
 
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
@@ -51,15 +51,15 @@ func (f NumValidationRuleFactory[T]) MaxValue(data T, field string, max T) Valid
 			Message: fmt.Sprintf("%s cannot be greater than %v", field, max),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[T]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
 			if data > max {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 					Field:   opts.Field,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
@@ -71,15 +71,15 @@ func (f NumValidationRuleFactory[T]) Between(data T, field string, min, max T) V
 			Message: fmt.Sprintf("%s must be between %v and %v", field, min, max),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[T]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[T]) ErrorDetails {
 			if data < min || data > max {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 					Field:   opts.Field,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }

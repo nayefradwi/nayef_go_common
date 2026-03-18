@@ -1,0 +1,19 @@
+name: Release validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "validation/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/deploy-go-module.yml
+    with:
+      module_path: validation
+      bump_type: patch
+    secrets: inherit

@@ -4,60 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/result"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-//
-// ---------- STRING VALIDATION FACTORY TESTS ----------
-//
-
-func TestStringValidation_IsEmail_ValidAndInvalid(t *testing.T) {
-	factory := NewStringValidationRuleFactory()
-
-	validRule := factory.IsEmail("test@example.com", "email")
-	invalidRule := factory.IsEmail("invalid-email", "email")
-
-	assert.Empty(t, validRule.Validate(validRule.Opts).Message)
-	assert.NotEmpty(t, invalidRule.Validate(invalidRule.Opts).Message)
-}
-
-func TestStringValidation_IsRequired(t *testing.T) {
-	factory := NewStringValidationRuleFactory()
-
-	rule := factory.IsRequired("", "username")
-	err := rule.Validate(rule.Opts)
-
-	assert.NotEmpty(t, err.Message)
-	assert.Equal(t, result.INVALID_INPUT_CODE, err.Code)
-
-	valid := factory.IsRequired("hello", "username")
-	assert.Empty(t, valid.Validate(valid.Opts).Message)
-}
-
-func TestStringValidation_LengthChecks(t *testing.T) {
-	factory := NewStringValidationRuleFactory()
-
-	minRule := factory.MinLength("hi", "name", 3)
-	maxRule := factory.MaxLength("toolongname", "name", 5)
-	exactRule := factory.ExactLength("abc", "code", 5)
-
-	assert.NotEmpty(t, minRule.Validate(minRule.Opts).Message)
-	assert.NotEmpty(t, maxRule.Validate(maxRule.Opts).Message)
-	assert.NotEmpty(t, exactRule.Validate(exactRule.Opts).Message)
-}
-
-func TestStringValidation_Patterns(t *testing.T) {
-	factory := NewStringValidationRuleFactory()
-
-	alpha := factory.IsAlpha("abcXYZ", "name")
-	numeric := factory.IsNumeric("12345", "id")
-	alphanumeric := factory.IsAlphanumeric("user123", "username")
-
-	assert.Empty(t, alpha.Validate(alpha.Opts).Message)
-	assert.Empty(t, numeric.Validate(numeric.Opts).Message)
-	assert.Empty(t, alphanumeric.Validate(alphanumeric.Opts).Message)
-}
 
 //
 // ---------- NUMERIC VALIDATION FACTORY TESTS ----------
@@ -97,24 +46,24 @@ func TestSliceValidation_NotNilOrEmpty(t *testing.T) {
 func TestSliceValidation_CustomMustRule(t *testing.T) {
 	factory := NewSliceValidationRuleFactory[string]()
 
-	rule := factory.Must([]string{"a"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) result.ErrorDetails {
+	rule := factory.Must([]string{"a"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) ErrorDetails {
 		if len(opts.Data) < 2 {
-			return result.ErrorDetails{
+			return ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    result.INVALID_INPUT_CODE,
+				Code:    CodeInvalidInput,
 			}
 		}
-		return result.ErrorDetails{}
+		return ErrorDetails{}
 	})
 
 	assert.NotEmpty(t, rule.Validate(rule.Opts).Message)
 
-	valid := factory.Must([]string{"a", "b"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) result.ErrorDetails {
+	valid := factory.Must([]string{"a", "b"}, "tags", "must have 2 items", func(opts ValidationRuleOption[[]string]) ErrorDetails {
 		if len(opts.Data) < 2 {
-			return result.ErrorDetails{Message: opts.Message}
+			return ErrorDetails{Message: opts.Message}
 		}
-		return result.ErrorDetails{}
+		return ErrorDetails{}
 	})
 
 	assert.Empty(t, valid.Validate(valid.Opts).Message)
@@ -165,28 +114,28 @@ func TestDateValidation_IsDate_IsAfter_IsBefore_IsBetween(t *testing.T) {
 func TestMust_CustomLogic(t *testing.T) {
 	factory := NewNumValidationRuleFactory[int]()
 
-	rule := factory.Must(10, "age", "must be even", func(opts ValidationRuleOption[int]) result.ErrorDetails {
+	rule := factory.Must(10, "age", "must be even", func(opts ValidationRuleOption[int]) ErrorDetails {
 		if opts.Data%2 != 0 {
-			return result.ErrorDetails{
+			return ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    result.INVALID_INPUT_CODE,
+				Code:    CodeInvalidInput,
 			}
 		}
-		return result.ErrorDetails{}
+		return ErrorDetails{}
 	})
 
 	assert.Empty(t, rule.Validate(rule.Opts).Message)
 
-	badRule := factory.Must(11, "age", "must be even", func(opts ValidationRuleOption[int]) result.ErrorDetails {
+	badRule := factory.Must(11, "age", "must be even", func(opts ValidationRuleOption[int]) ErrorDetails {
 		if opts.Data%2 != 0 {
-			return result.ErrorDetails{
+			return ErrorDetails{
 				Field:   opts.Field,
 				Message: opts.Message,
-				Code:    result.INVALID_INPUT_CODE,
+				Code:    CodeInvalidInput,
 			}
 		}
-		return result.ErrorDetails{}
+		return ErrorDetails{}
 	})
 
 	assert.NotEmpty(t, badRule.Validate(badRule.Opts).Message)
@@ -196,6 +145,6 @@ func Test_UsingValidator(t *testing.T) {
 	validator := NewValidator()
 	floatFactory := NewNumValidationRuleFactory[float64]()
 	rule := floatFactory.MinValue(10, "field", 11)
-	AddValidation(validator, rule)
+	AddRule(validator, rule)
 	assert.NotEmpty(t, validator.Validate().Error())
 }

@@ -1,8 +1,6 @@
 package validation
 
-import (
-	"github.com/nayefradwi/nayef_go_common/result"
-)
+import . "github.com/nayefradwi/nayef_go_common/errors"
 
 const (
 	INVALID_DATA_TYPE = "INVALID_DATA_TYPE"
@@ -13,7 +11,7 @@ type IValidator interface {
 }
 
 type IValidationRuleFactory[T any] interface {
-	Must(data T, field, message string, ruleCb func(opts ValidationRuleOption[T]) result.ErrorDetails) ValidationRule[T]
+	Must(data T, field, message string, ruleCb func(opts ValidationRuleOption[T]) ErrorDetails) ValidationRule[T]
 }
 
 type ValidationRuleOption[T any] struct {
@@ -24,7 +22,7 @@ type ValidationRuleOption[T any] struct {
 
 type ValidationRule[T any] struct {
 	Opts     ValidationRuleOption[T]
-	Validate func(opts ValidationRuleOption[T]) result.ErrorDetails
+	Validate func(opts ValidationRuleOption[T]) ErrorDetails
 }
 
 type Validator struct {
@@ -37,7 +35,7 @@ func NewValidator() *Validator {
 	return validator
 }
 
-func AddValidation[T any](v *Validator, rule ValidationRule[T]) {
+func AddRule[T any](v *Validator, rule ValidationRule[T]) {
 	v.Rules = append(v.Rules, toAny(rule))
 }
 
@@ -48,7 +46,7 @@ func toAny[T any](rule ValidationRule[T]) ValidationRule[any] {
 			Message: rule.Opts.Message,
 			Data:    rule.Opts.Data,
 		},
-		Validate: func(opts ValidationRuleOption[any]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[any]) ErrorDetails {
 			typedOpts := ValidationRuleOption[T]{
 				Field:   opts.Field,
 				Message: opts.Message,
@@ -60,7 +58,7 @@ func toAny[T any](rule ValidationRule[T]) ValidationRule[any] {
 }
 
 func (v *Validator) Validate() error {
-	errorDetails := make([]result.ErrorDetails, 0)
+	errorDetails := make([]ErrorDetails, 0)
 	hasError := false
 
 	for _, rule := range v.Rules {
@@ -72,7 +70,7 @@ func (v *Validator) Validate() error {
 	}
 
 	if hasError {
-		return result.NewValidationError(errorDetails)
+		return NewValidationError(errorDetails...)
 	}
 
 	return nil

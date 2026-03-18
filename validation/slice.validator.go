@@ -3,7 +3,7 @@ package validation
 import (
 	"fmt"
 
-	"github.com/nayefradwi/nayef_go_common/result"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 type SliceValidationRuleFactory[E any] struct{}
@@ -16,7 +16,7 @@ func (f SliceValidationRuleFactory[E]) Must(
 	data []E,
 	field string,
 	message string,
-	ruleCb func(opts ValidationRuleOption[[]E]) result.ErrorDetails,
+	ruleCb func(opts ValidationRuleOption[[]E]) ErrorDetails,
 ) ValidationRule[[]E] {
 	return ValidationRule[[]E]{
 		Validate: ruleCb,
@@ -35,24 +35,24 @@ func (f SliceValidationRuleFactory[E]) NotNilOrEmpty(data []E, field string) Val
 			Message: fmt.Sprintf("%s cannot be nil or empty", field),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[[]E]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[[]E]) ErrorDetails {
 			if data == nil {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
 
 			if len(data) == 0 {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
 
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nayefradwi/nayef_go_common/result"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 type DateValidationRuleFactory struct{}
@@ -17,7 +17,7 @@ func (f DateValidationRuleFactory) Must(
 	data time.Time,
 	field string,
 	message string,
-	ruleCb func(opts ValidationRuleOption[time.Time]) result.ErrorDetails,
+	ruleCb func(opts ValidationRuleOption[time.Time]) ErrorDetails,
 ) ValidationRule[time.Time] {
 	return ValidationRule[time.Time]{
 		Validate: ruleCb,
@@ -36,15 +36,15 @@ func (f DateValidationRuleFactory) IsDate(data time.Time, field string) Validati
 			Message: fmt.Sprintf("%s must be a valid date", field),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[time.Time]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
 			if data.IsZero() {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
@@ -56,15 +56,15 @@ func (f DateValidationRuleFactory) IsAfter(data time.Time, field string, after t
 			Message: fmt.Sprintf("%s must be after %s", field, after.Format(time.RFC3339)),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[time.Time]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
 			if data.Before(after) {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
@@ -76,15 +76,15 @@ func (f DateValidationRuleFactory) IsBefore(data time.Time, field string, before
 			Message: fmt.Sprintf("%s must be before %s", field, before.Format(time.RFC3339)),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[time.Time]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
 			if data.After(before) {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
@@ -96,15 +96,15 @@ func (f DateValidationRuleFactory) IsBetween(data time.Time, field string, start
 			Message: fmt.Sprintf("%s must be between %s and %s", field, start.Format(time.RFC3339), end.Format(time.RFC3339)),
 			Data:    data,
 		},
-		Validate: func(opts ValidationRuleOption[time.Time]) result.ErrorDetails {
+		Validate: func(opts ValidationRuleOption[time.Time]) ErrorDetails {
 			if data.Before(start) || data.After(end) {
-				return result.ErrorDetails{
+				return ErrorDetails{
 					Field:   opts.Field,
 					Message: opts.Message,
-					Code:    result.INVALID_INPUT_CODE,
+					Code:    CodeInvalidInput,
 				}
 			}
-			return result.ErrorDetails{}
+			return ErrorDetails{}
 		},
 	}
 }
