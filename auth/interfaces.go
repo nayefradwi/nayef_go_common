@@ -2,7 +2,7 @@ package auth
 
 type ITokenProvider interface {
 	GetClaims(token string) (Token, error)
-	SignClaims(owner string, claims map[string]interface{}) (string, error)
+	SignClaims(owner string, claims map[string]any) (string, error)
 }
 
 type ITokenStore interface {
@@ -15,7 +15,7 @@ type ITokenStore interface {
 }
 
 type IRefreshTokenProvider interface {
-	GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error)
+	GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error)
 	GetAccessToken(accessToken string) (Token, error)
 	GetRefreshToken(refreshToken string) (Token, error)
 	GetAccessTokenProvider() ITokenProvider
@@ -30,7 +30,7 @@ type IRefreshTokenProviderWithRevoke interface {
 
 type IReferenceTokenProvider interface {
 	GenerateId() (string, error)
-	GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error)
+	GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error)
 	GetAccessToken(id string) (Token, error)
 	GetRefreshToken(id string) (Token, error)
 	RevokeToken(id string) error

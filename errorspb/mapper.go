@@ -25,7 +25,6 @@ func FromResultError(e *customerrors.ResultError) *ResultErrorPb {
 	}
 }
 
-// ToResultError converts a ResultErrorPb back to a ResultError.
 func ToResultError(pb *ResultErrorPb) *customerrors.ResultError {
 	if pb == nil {
 		return nil
