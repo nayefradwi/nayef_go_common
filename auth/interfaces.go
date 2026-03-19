@@ -23,13 +23,13 @@ type IRefreshTokenProvider interface {
 
 type IRefreshTokenProviderWithRevoke interface {
 	IRefreshTokenProvider
-	GenerateId() string
+	GenerateId() (string, error)
 	RevokeToken(reference string) error
 	RevokeOwner(ownerId string) error
 }
 
 type IReferenceTokenProvider interface {
-	GenerateId() string
+	GenerateId() (string, error)
 	GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error)
 	GetAccessToken(id string) (Token, error)
 	GetRefreshToken(id string) (Token, error)

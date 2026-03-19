@@ -1,13 +1,5 @@
 package auth
 
-import (
-	"time"
-)
-
-var defaultExpiresInRefreshToken = 30 * 24 * time.Hour
-var DefaultJwtRefreshTokenProviderConfig = ReplaceDefaultJwtExpiresIn(defaultExpiresInRefreshToken)
-var DefaultJwtAccesTokenProviderConfig = DefaultJwtTokenProviderConfig
-
 type JwtRefreshTokenProvider struct {
 	RefreshTokenProvider JwtTokenProvider
 	AccessTokenProvider  JwtTokenProvider
@@ -20,14 +12,7 @@ func NewJwtRefreshTokenProvider(refreshTokenProvider JwtTokenProvider, accessTok
 	}
 }
 
-func NewDefaultJwtRefreshTokenProvider() IRefreshTokenProvider {
-	return NewJwtRefreshTokenProvider(
-		NewJwtTokenProvider(DefaultJwtRefreshTokenProviderConfig),
-		NewJwtTokenProvider(DefaultJwtAccesTokenProviderConfig),
-	)
-}
-
-func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error) {
+func (t JwtRefreshTokenProvider) GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error) {
 	accessToken, err := t.AccessTokenProvider.SignClaims(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err

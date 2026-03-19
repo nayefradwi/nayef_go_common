@@ -17,33 +17,40 @@ func NewJwtReferenceTokenProvider(tokenProvider IRefreshTokenProvider, tokenStor
 	}
 }
 
-func NewDefaultJwtReferenceTokenProvider(tokenStore ITokenStore) IReferenceTokenProvider {
-	return NewJwtReferenceTokenProvider(NewDefaultJwtRefreshTokenProvider(), tokenStore)
+func (t JwtReferenceTokenProvider) GenerateId() (string, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return "", InternalError("failed to generate token id: " + err.Error())
+	}
+	return id.String(), nil
 }
 
-func (t JwtReferenceTokenProvider) GenerateId() string {
-	id, _ := uuid.NewV7()
-	return id.String()
-}
-
-func (t JwtReferenceTokenProvider) GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error) {
-	TokenPair, err := t.tokenProvider.GenerateToken(ownerId, claims)
+func (t JwtReferenceTokenProvider) GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error) {
+	tokenPair, err := t.tokenProvider.GenerateToken(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	accessJwt, refreshJwt := TokenPair.AccessToken, TokenPair.RefreshToken
-	accessToken, err := t.tokenProvider.GetAccessToken(accessJwt)
+	accessToken, err := t.tokenProvider.GetAccessToken(tokenPair.AccessToken)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	refreshToken, err := t.tokenProvider.GetRefreshToken(refreshJwt)
+	refreshToken, err := t.tokenProvider.GetRefreshToken(tokenPair.RefreshToken)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	accessTokenId, refreshTokenId := t.GenerateId(), t.GenerateId()
+	accessTokenId, err := t.GenerateId()
+	if err != nil {
+		return EmptyTokenDTO(), err
+	}
+
+	refreshTokenId, err := t.GenerateId()
+	if err != nil {
+		return EmptyTokenDTO(), err
+	}
+
 	accessToken.Id, refreshToken.Id = accessTokenId, refreshTokenId
 	if err := t.tokenStore.StoreTokens(accessToken, refreshToken); err != nil {
 		return EmptyTokenDTO(), err
@@ -65,7 +72,6 @@ func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (Token, er
 	if err != nil {
 		return Token{}, UnauthorizedError("Token not found")
 	}
-
 	return token, nil
 }
 

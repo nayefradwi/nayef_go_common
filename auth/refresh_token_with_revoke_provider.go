@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/google/uuid"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 type JwtRefreshTokenWithRevokeProvider struct {
@@ -16,36 +17,35 @@ func NewJwtRefreshTokenWithRevokeProvider(tokenProvider IRefreshTokenProvider, t
 	}
 }
 
-func NewDefaultJwtRefreshTokenWithRevokeProvider(tokenStore ITokenStore) IRefreshTokenProviderWithRevoke {
-	return NewJwtRefreshTokenWithRevokeProvider(
-		NewDefaultJwtRefreshTokenProvider(),
-		tokenStore,
-	)
+func (t JwtRefreshTokenWithRevokeProvider) GenerateId() (string, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return "", InternalError("failed to generate token id: " + err.Error())
+	}
+	return id.String(), nil
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) GenerateId() string {
-	id, _ := uuid.NewV7()
-	return id.String()
-}
-
-func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId string, claims map[string]interface{}) (TokenDTO, error) {
-	TokenPair, err := t.TokenProvider.GenerateToken(ownerId, claims)
+func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error) {
+	tokenPair, err := t.TokenProvider.GenerateToken(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	accessJwt, refreshJwt := TokenPair.AccessToken, TokenPair.RefreshToken
-	refreshToken, err := t.TokenProvider.GetRefreshToken(refreshJwt)
+	refreshToken, err := t.TokenProvider.GetRefreshToken(tokenPair.RefreshToken)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	refreshToken.Id = t.GenerateId()
+	refreshToken.Id, err = t.GenerateId()
+	if err != nil {
+		return EmptyTokenDTO(), err
+	}
+
 	if err := t.TokenStore.StoreToken(refreshToken); err != nil {
 		return EmptyTokenDTO(), err
 	}
 
-	return NewTokenDTOWithRefresh(accessJwt, refreshToken.Id), nil
+	return NewTokenDTOWithRefresh(tokenPair.AccessToken, refreshToken.Id), nil
 }
 
 func (t JwtRefreshTokenWithRevokeProvider) GetAccessToken(accessToken string) (Token, error) {
@@ -61,15 +61,9 @@ func (t JwtRefreshTokenWithRevokeProvider) GetAccessTokenProvider() ITokenProvid
 }
 
 func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(reference string) error {
-	if err := t.TokenStore.DeleteToken(reference); err != nil {
-		return err
-	}
-	return nil
+	return t.TokenStore.DeleteToken(reference)
 }
 
 func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ownerId string) error {
-	if err := t.TokenStore.DeleteAllTokensByOwner(ownerId); err != nil {
-		return err
-	}
-	return nil
+	return t.TokenStore.DeleteAllTokensByOwner(ownerId)
 }

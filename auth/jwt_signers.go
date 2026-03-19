@@ -23,32 +23,20 @@ func defaultHMACSigner(secretKey string) tokenSigner {
 	}
 }
 
-func defaultRSASigner(privateKey interface{}) tokenSigner {
-	privateKey, ok := privateKey.(*rsa.PrivateKey)
-	if !ok {
-		// zap.L().Fatal("Invalid RSA private key")
-	}
-
+func defaultRSASigner(key *rsa.PrivateKey) tokenSigner {
 	return func(token *jwt.Token) (string, error) {
 		if token == nil {
 			return "", nilTokenError
 		}
-
-		return token.SignedString(privateKey)
+		return token.SignedString(key)
 	}
 }
 
-func defaultECDSASigner(privateKey interface{}) tokenSigner {
-	privateKey, ok := privateKey.(*ecdsa.PrivateKey)
-	if !ok {
-		// zap.L().Fatal("Invalid ECDSA private key")
-	}
-
+func defaultECDSASigner(key *ecdsa.PrivateKey) tokenSigner {
 	return func(token *jwt.Token) (string, error) {
 		if token == nil {
 			return "", nilTokenError
 		}
-
-		return token.SignedString(privateKey)
+		return token.SignedString(key)
 	}
 }

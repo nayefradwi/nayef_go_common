@@ -6,10 +6,12 @@ import (
 )
 
 const (
-	ownerClaimKey    = "owner"
-	expiryClaimKey   = "exp"
-	issuerClaimKey   = "iss"
-	issuedAtClaimKey = "iat"
+	ownerClaimKey     = "owner"
+	expiryClaimKey    = "exp"
+	issuerClaimKey    = "iss"
+	issuedAtClaimKey  = "iat"
+	tokenTypeClaimKey = "token_type"
+	audienceClaimKey  = "aud"
 )
 
 const (
@@ -25,7 +27,7 @@ type Token struct {
 	OwnerId   string
 	ExpiresAt time.Time
 	IssuedAt  time.Time
-	Claims    map[string]interface{}
+	Claims    map[string]any
 	Type      int
 }
 

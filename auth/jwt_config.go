@@ -3,40 +3,31 @@ package auth
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
 type JwtTokenProviderConfig struct {
 	SecretKey     string
 	ExpiresIn     time.Duration
 	signingMethod jwt.SigningMethod
-	privateKey    interface{}
-	publicKey     interface{}
+	privateKey    any
+	publicKey     any
 	Issuer        string
-	parser        func(token *jwt.Token) (interface{}, error)
+	TokenType     int
+	Audience      string
+	parser        func(token *jwt.Token) (any, error)
 	signer        func(token *jwt.Token) (string, error)
+	parserOpts    []jwt.ParserOption
 }
 
-var defaultSecretKey = "SuperSecretKeyShouldBeOverriden"
-var defaultExpiresIn = time.Hour * 24
-
-func ReplaceDefaultJwtSecretKey(secretKey string) JwtTokenProviderConfig {
-	return DefaultJwtTokenProviderConfig.SetSecretKey(secretKey)
-}
-
-func ReplaceDefaultJwtExpiresIn(expiresIn time.Duration) JwtTokenProviderConfig {
-	return DefaultJwtTokenProviderConfig.SetExpiresIn(expiresIn)
-}
-
-func ReplaceDefaultJwtIssuer(issuer string) JwtTokenProviderConfig {
-	return DefaultJwtTokenProviderConfig.SetIssuer(issuer)
-}
-
-var DefaultJwtTokenProviderConfig = NewJwtTokenProviderConfig(defaultSecretKey, defaultExpiresIn)
-
-func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration) JwtTokenProviderConfig {
+func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration) (JwtTokenProviderConfig, error) {
+	if secretKey == "" {
+		return JwtTokenProviderConfig{}, BadRequestError("secret key must not be empty")
+	}
 	return JwtTokenProviderConfig{
 		SecretKey:     secretKey,
 		ExpiresIn:     expiresIn,
@@ -44,12 +35,17 @@ func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration) JwtTok
 		Issuer:        "AuthModule",
 		parser:        defaultHMACParser(secretKey),
 		signer:        defaultHMACSigner(secretKey),
-	}
+	}, nil
 }
 
-func (c JwtTokenProviderConfig) SetSecretKey(secretKey string) JwtTokenProviderConfig {
+func (c JwtTokenProviderConfig) SetSecretKey(secretKey string) (JwtTokenProviderConfig, error) {
+	if secretKey == "" {
+		return c, BadRequestError("secret key must not be empty")
+	}
 	c.SecretKey = secretKey
-	return c
+	c.parser = defaultHMACParser(secretKey)
+	c.signer = defaultHMACSigner(secretKey)
+	return c, nil
 }
 
 func (c JwtTokenProviderConfig) SetExpiresIn(expiresIn time.Duration) JwtTokenProviderConfig {
@@ -59,6 +55,17 @@ func (c JwtTokenProviderConfig) SetExpiresIn(expiresIn time.Duration) JwtTokenPr
 
 func (c JwtTokenProviderConfig) SetIssuer(issuer string) JwtTokenProviderConfig {
 	c.Issuer = issuer
+	return c
+}
+
+func (c JwtTokenProviderConfig) SetTokenType(tokenType int) JwtTokenProviderConfig {
+	c.TokenType = tokenType
+	return c
+}
+
+func (c JwtTokenProviderConfig) SetAudience(audience string) JwtTokenProviderConfig {
+	c.Audience = audience
+	c.parserOpts = append(c.parserOpts, jwt.WithAudience(audience))
 	return c
 }
 
@@ -91,18 +98,16 @@ func (c JwtTokenProviderConfig) SetHS512SigningMethod() JwtTokenProviderConfig {
 }
 
 // === RSA (RS256, RS384, RS512) ===
-func (c JwtTokenProviderConfig) SetRSASigningMethod(signingMethod jwt.SigningMethod, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) JwtTokenProviderConfig {
-
-	if signingMethod.Alg() != "RS256" && signingMethod.Alg() != "RS384" && signingMethod.Alg() != "RS512" {
-		// zap.L().Fatal("Invalid RSA signing method", zap.String("method", signingMethod.Alg()))
+func (c JwtTokenProviderConfig) SetRSASigningMethod(signingMethod jwt.SigningMethod, privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) (JwtTokenProviderConfig, error) {
+	alg := signingMethod.Alg()
+	if alg != "RS256" && alg != "RS384" && alg != "RS512" {
+		return c, BadRequestError(fmt.Sprintf("invalid RSA signing method: %s", alg))
 	}
-
 	if privateKey == nil {
-		// zap.L().Fatal("Invalid RSA private key")
+		return c, BadRequestError("RSA private key must not be nil")
 	}
-
 	if publicKey == nil {
-		// zap.L().Fatal("Invalid RSA public key")
+		return c, BadRequestError("RSA public key must not be nil")
 	}
 
 	c.signingMethod = signingMethod
@@ -110,7 +115,7 @@ func (c JwtTokenProviderConfig) SetRSASigningMethod(signingMethod jwt.SigningMet
 	c.publicKey = publicKey
 	c.parser = defaultRSAParser(publicKey)
 	c.signer = defaultRSASigner(privateKey)
-	return c
+	return c, nil
 }
 
 // === ECDSA (ES256, ES384, ES512) ===
@@ -118,18 +123,16 @@ func (c JwtTokenProviderConfig) SetECDSASigningMethod(
 	signingMethod jwt.SigningMethod,
 	privateKey *ecdsa.PrivateKey,
 	publicKey *ecdsa.PublicKey,
-) JwtTokenProviderConfig {
-
-	if signingMethod.Alg() != "ES256" && signingMethod.Alg() != "ES384" && signingMethod.Alg() != "ES512" {
-		// zap.L().Fatal("Invalid ECDSA signing method", zap.String("method", signingMethod.Alg()))
+) (JwtTokenProviderConfig, error) {
+	alg := signingMethod.Alg()
+	if alg != "ES256" && alg != "ES384" && alg != "ES512" {
+		return c, BadRequestError(fmt.Sprintf("invalid ECDSA signing method: %s", alg))
 	}
-
 	if privateKey == nil {
-		// zap.L().Fatal("Invalid ECDSA private key")
+		return c, BadRequestError("ECDSA private key must not be nil")
 	}
-
 	if publicKey == nil {
-		// zap.L().Fatal("Invalid ECDSA public key")
+		return c, BadRequestError("ECDSA public key must not be nil")
 	}
 
 	c.signingMethod = signingMethod
@@ -137,5 +140,5 @@ func (c JwtTokenProviderConfig) SetECDSASigningMethod(
 	c.publicKey = publicKey
 	c.parser = defaultECDSAParser(publicKey)
 	c.signer = defaultECDSASigner(privateKey)
-	return c
+	return c, nil
 }
