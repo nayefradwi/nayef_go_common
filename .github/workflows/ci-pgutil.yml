@@ -1,0 +1,17 @@
+name: CI pgutil
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pgutil/**"
+  pull_request:
+    paths:
+      - "pgutil/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: pgutil
