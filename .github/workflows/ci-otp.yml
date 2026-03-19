@@ -1,0 +1,17 @@
+name: CI otp
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "otp/**"
+  pull_request:
+    paths:
+      - "otp/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: otp

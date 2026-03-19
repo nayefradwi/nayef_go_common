@@ -4,21 +4,23 @@ import "time"
 
 type OTP struct {
 	OwnerId    string    `json:"owner_id"`
-	Code       string    `json:"code"`
+	Code       string    `json:"-"`
+	HashedCode string    `json:"-"`
 	RetryCount int       `json:"retry_count"`
 	MaxRetries int       `json:"max_retries"`
 	ExpiresAt  time.Time `json:"expires_at"`
-	UpdateAt   time.Time `json:"updated_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-func NewOtp(ownerId, code string, retryCount, maxRetries int, expiresAt, updatedAt time.Time) *OTP {
+func NewOtp(ownerId, code, hashedCode string, retryCount, maxRetries int, expiresAt, updatedAt time.Time) *OTP {
 	return &OTP{
 		OwnerId:    ownerId,
 		Code:       code,
+		HashedCode: hashedCode,
 		RetryCount: retryCount,
 		MaxRetries: maxRetries,
 		ExpiresAt:  expiresAt,
-		UpdateAt:   updatedAt,
+		UpdatedAt:  updatedAt,
 	}
 }
 
@@ -40,7 +42,7 @@ func (o *OTP) IncrementRetryCount() {
 	}
 
 	o.RetryCount++
-	o.UpdateAt = time.Now().UTC()
+	o.UpdatedAt = time.Now().UTC()
 }
 
 func (o *OTP) IsMaxRetriesReached() bool {
