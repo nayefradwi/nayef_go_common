@@ -2,7 +2,8 @@ package locking
 
 import (
 	"context"
-	"time"
+	"log/slog"
+	"sync"
 
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
@@ -12,12 +13,15 @@ import (
 )
 
 type DistributedLocker struct {
-	rs *redsync.Redsync
+	rs    *redsync.Redsync
+	mu    sync.Mutex
+	locks map[string]*redsync.Mutex
 }
 
 func NewDistributedLocker(rs *redsync.Redsync) ILocker {
 	return &DistributedLocker{
-		rs: rs,
+		rs:    rs,
+		locks: make(map[string]*redsync.Mutex),
 	}
 }
 
@@ -44,10 +48,14 @@ func (l *DistributedLocker) AcquireLock(
 		redsync.WithRetryDelay(params.WaitTime),
 	)
 
-	time.Sleep(params.InitialWaitTime)
-	if err := mutex.Lock(); err != nil {
-		return errors.BadRequestError("failed to acquire lock")
+	if err := mutex.LockContext(ctx); err != nil {
+		slog.ErrorContext(ctx, "failed to acquire lock", "key", key, "error", err)
+		return errors.InternalError("failed to acquire lock")
 	}
+
+	l.mu.Lock()
+	l.locks[key] = mutex
+	l.mu.Unlock()
 
 	return nil
 }
@@ -57,10 +65,10 @@ func (l *DistributedLocker) AcquireLocks(
 	keys []string,
 	params LockParams,
 ) error {
-	for _, key := range keys {
+	for i, key := range keys {
 		err := l.AcquireLock(ctx, key, params)
 		if err != nil {
-			l.ReleaseLocks(ctx, keys)
+			l.safeReleaseLocks(ctx, keys[:i])
 			return err
 		}
 	}
@@ -68,15 +76,33 @@ func (l *DistributedLocker) AcquireLocks(
 	return nil
 }
 
-func (l *DistributedLocker) ReleaseLock(ctx context.Context, key string) {
-	mutex := l.rs.NewMutex(key)
-	mutex.Unlock()
+func (l *DistributedLocker) ReleaseLock(ctx context.Context, key string) error {
+	l.mu.Lock()
+	mutex, ok := l.locks[key]
+	if !ok {
+		l.mu.Unlock()
+		slog.WarnContext(ctx, "attempted to release unknown lock", "key", key)
+		return nil
+	}
+	delete(l.locks, key)
+	l.mu.Unlock()
+
+	if _, err := mutex.UnlockContext(ctx); err != nil {
+		slog.ErrorContext(ctx, "failed to release lock", "key", key, "error", err)
+		return errors.InternalError("failed to release lock")
+	}
+
+	return nil
 }
 
-func (l *DistributedLocker) ReleaseLocks(ctx context.Context, keys []string) {
+func (l *DistributedLocker) ReleaseLocks(ctx context.Context, keys []string) error {
+	var firstErr error
 	for _, key := range keys {
-		l.ReleaseLock(ctx, key)
+		if err := l.ReleaseLock(ctx, key); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
+	return firstErr
 }
 
 func (l *DistributedLocker) RunWithLock(
@@ -90,8 +116,14 @@ func (l *DistributedLocker) RunWithLock(
 		return err
 	}
 
-	defer l.ReleaseLock(ctx, key)
+	defer l.safeReleaseLock(ctx, key)
 	return f()
+}
+
+func (l *DistributedLocker) safeReleaseLock(ctx context.Context, key string) {
+	if releaseErr := l.ReleaseLock(ctx, key); releaseErr != nil {
+		slog.ErrorContext(ctx, "failed to release lock in RunWithLock", "key", key, "error", releaseErr)
+	}
 }
 
 func (l *DistributedLocker) RunWithLocks(
@@ -105,6 +137,12 @@ func (l *DistributedLocker) RunWithLocks(
 		return err
 	}
 
-	defer l.ReleaseLocks(ctx, keys)
+	defer l.safeReleaseLocks(ctx, keys)
 	return f()
+}
+
+func (l *DistributedLocker) safeReleaseLocks(ctx context.Context, keys []string) {
+	if releaseErr := l.ReleaseLocks(ctx, keys); releaseErr != nil {
+		slog.ErrorContext(ctx, "failed to release locks in RunWithLocks", "error", releaseErr)
+	}
 }
