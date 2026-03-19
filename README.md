@@ -165,10 +165,7 @@ validation.AddRule(v, stringFactory.IsRequired(req.Email, "email"))
 validation.AddRule(v, stringFactory.IsEmail(req.Email, "email"))
 validation.AddRule(v, numFactory.MinValue(req.Age, "age", 18))
 
-if err := v.Validate(); err != nil {
-    // err contains all field-level failures at once
-    return err
-}
+return validation.Validate() // which returns an error
 ```
 
 or using a custom rule when the built-in ones are not enough:
