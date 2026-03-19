@@ -1,0 +1,17 @@
+name: CI locking
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "locking/**"
+  pull_request:
+    paths:
+      - "locking/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: locking
