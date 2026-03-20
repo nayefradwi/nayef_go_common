@@ -1,5 +1,6 @@
 package new
 
 func Run() error {
-	return RunForm()
+	_, err := RunForm()
+	return err
 }
