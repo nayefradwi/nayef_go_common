@@ -27,8 +27,9 @@ const (
 type Feature string
 
 const (
-	FeatureLocking Feature = "Locking"
-	FeatureOtp     Feature = "OTP"
+	FeatureLocking    Feature = "Locking"
+	FeatureOtp        Feature = "OTP"
+	FeaturePagination Feature = "Pagination"
 )
 
 var AllFeatures = []Feature{
@@ -45,7 +46,6 @@ type DBLibrary string
 
 const (
 	DBLibrarySqlc DBLibrary = "sqlc"
-	DBLibrarySqlx DBLibrary = "sqlx"
 	DBLibraryNone DBLibrary = "Something Else"
 )
 
@@ -54,7 +54,9 @@ type CreateNewProjectRequest struct {
 	ServiceType    ServiceType
 	AuthType       AuthType
 	WithValidation bool
+	Features       []Feature
 	InfraTypes     []InfraType
 	DBLibrary      DBLibrary
-	Features       []Feature
+	headDir        dir
+	packages       []string
 }

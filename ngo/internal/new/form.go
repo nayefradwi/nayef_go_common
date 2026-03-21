@@ -57,7 +57,6 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				Description("Choose the query library for PostgreSQL").
 				Options(
 					huh.NewOption(string(DBLibrarySqlc), DBLibrarySqlc),
-					huh.NewOption(string(DBLibrarySqlx), DBLibrarySqlx),
 					huh.NewOption(string(DBLibraryNone), DBLibraryNone),
 				).
 				Value(&req.DBLibrary),
