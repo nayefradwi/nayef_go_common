@@ -12,7 +12,7 @@ import (
 var projectNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 func RunForm() (*CreateNewProjectRequest, error) {
-	req := &CreateNewProjectRequest{}
+	req := &CreateNewProjectRequest{DBLibrary: DBLibraryNone}
 
 	form := huh.NewForm(
 		huh.NewGroup(

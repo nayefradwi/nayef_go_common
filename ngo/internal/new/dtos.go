@@ -57,6 +57,7 @@ type CreateNewProjectRequest struct {
 	Features       []Feature
 	InfraTypes     []InfraType
 	DBLibrary      DBLibrary
-	headDir        dir
-	packages       []string
+	HeadDir        Dir
+	Packages       []string
+	RootDirPath    string
 }

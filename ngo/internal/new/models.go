@@ -31,82 +31,84 @@ const (
 )
 
 const (
-	CHI           = "github.com/go-chi/chi/v5"
-	PGX           = "github.com/jackc/pgx/v5"
-	REDIS         = "github.com/redis/go-redis/v9"
-	GODOTENV      = "github.com/joho/godotenv"
-	GRPC          = "google.golang.org/grpc"
-	PGUTIL        = "github.com/nayefradwi/nayef_go_common/pgutil"
-	AUTH          = "github.com/nayefradwi/nayef_go_common/auth"
-	REDISUTIL     = "github.com/nayefradwi/nayef_go_common/redisutil"
-	HTTPUTIL      = "github.com/nayefradwi/nayef_go_common/httputil"
-	GRPCUTIL      = "github.com/nayefradwi/nayef_go_common/grpcutil"
-	VALIDATION    = "github.com/nayefradwi/nayef_go_common/validation"
-	PAGINATION    = "github.com/nayefradwi/nayef_go_common/pagination"
-	OTP           = "github.com/nayefradwi/nayef_go_common/otp"
-	LOCKING       = "github.com/nayefradwi/nayef_go_common/locking"
-	COMMON_ERRORS = "github.com/nayefradwi/nayef_go_common/errors"
-	ERRORSPB      = "github.com/nayefradwi/nayef_go_common/errorspb"
+	DEFAULT_MOD_PATH = "github.com/nayefradwi"
+	TESTIFY          = "github.com/stretchr/testify"
+	CHI              = "github.com/go-chi/chi/v5"
+	PGX              = "github.com/jackc/pgx/v5"
+	REDIS            = "github.com/redis/go-redis/v9"
+	GODOTENV         = "github.com/joho/godotenv"
+	GRPC             = "google.golang.org/grpc"
+	PGUTIL           = "github.com/nayefradwi/nayef_go_common/pgutil"
+	AUTH             = "github.com/nayefradwi/nayef_go_common/auth"
+	REDISUTIL        = "github.com/nayefradwi/nayef_go_common/redisutil"
+	HTTPUTIL         = "github.com/nayefradwi/nayef_go_common/httputil"
+	GRPCUTIL         = "github.com/nayefradwi/nayef_go_common/grpcutil"
+	VALIDATION       = "github.com/nayefradwi/nayef_go_common/validation"
+	PAGINATION       = "github.com/nayefradwi/nayef_go_common/pagination"
+	OTP              = "github.com/nayefradwi/nayef_go_common/otp"
+	LOCKING          = "github.com/nayefradwi/nayef_go_common/locking"
+	COMMON_ERRORS    = "github.com/nayefradwi/nayef_go_common/errors"
+	ERRORSPB         = "github.com/nayefradwi/nayef_go_common/errorspb"
 )
 
-type file struct {
-	name      string
-	extension string
+type File struct {
+	Name      string
+	Extension string
 }
 
-type dir struct {
-	name        string
-	directories []dir
-	files       []file
+type Dir struct {
+	Name        string
+	Directories []Dir
+	Files       []File
 }
 
-func (d dir) clone() dir {
-	c := dir{name: d.name, files: make([]file, len(d.files))}
-	copy(c.files, d.files)
-	c.directories = make([]dir, len(d.directories))
-	for i, sub := range d.directories {
-		c.directories[i] = sub.clone()
+func (d Dir) clone() Dir {
+	c := Dir{Name: d.Name, Files: make([]File, len(d.Files))}
+	copy(c.Files, d.Files)
+	c.Directories = make([]Dir, len(d.Directories))
+	for i, sub := range d.Directories {
+		c.Directories[i] = sub.clone()
 	}
 	return c
 }
 
-func (d *dir) addSubDir(path []string, node dir) {
+func (d *Dir) addSubDir(path []string, node Dir) {
 	if len(path) == 0 {
-		d.directories = append(d.directories, node)
+		d.Directories = append(d.Directories, node)
 		return
 	}
 
-	for i := range d.directories {
-		if d.directories[i].name == path[0] {
-			d.directories[i].addSubDir(path[1:], node)
+	for i := range d.Directories {
+		if d.Directories[i].Name == path[0] {
+			d.Directories[i].addSubDir(path[1:], node)
 			return
 		}
 	}
 }
 
 var (
-	baseDirectories = dir{
-		directories: []dir{
+	baseDirectories = Dir{
+		Directories: []Dir{
 			{
-				name: CMD,
-				directories: []dir{
+				Name: CMD,
+				Directories: []Dir{
 					{
-						name: API,
-						files: []file{
-							{name: BOOTSTRAP, extension: GO},
-							{name: ROUTER, extension: GO},
-							{name: MAIN, extension: GO},
+						Name: API,
+						Files: []File{
+							{Name: BOOTSTRAP, Extension: GO},
+							{Name: ROUTER, Extension: GO},
+							{Name: MAIN, Extension: GO},
 						},
 					},
 				},
 			},
 			{
-				name: INTERNAL,
-				directories: []dir{
-					{name: CONFIG, files: []file{{name: CONFIG, extension: GO}}},
-					{name: DI, files: []file{{name: DI, extension: GO}}},
-					{name: HEALTH, files: []file{{name: HANDLER, extension: GO}}},
-					{name: INFRA},
+				Name: INTERNAL,
+				Directories: []Dir{
+					{Name: CONFIG, Files: []File{{Name: CONFIG, Extension: GO}}},
+					{Name: DI, Files: []File{{Name: DI, Extension: GO}}},
+					{Name: HEALTH, Files: []File{{Name: HANDLER, Extension: GO}}},
+					{Name: INFRA},
 				},
 			},
 		},
@@ -115,6 +117,7 @@ var (
 	basePackages = []string{
 		GODOTENV,
 		COMMON_ERRORS,
+		TESTIFY,
 	}
 )
 
