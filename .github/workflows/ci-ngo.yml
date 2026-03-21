@@ -1,0 +1,17 @@
+name: CI ngo
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "ngo/**"
+  pull_request:
+    paths:
+      - "ngo/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: ngo

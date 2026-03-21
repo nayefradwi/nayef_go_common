@@ -18,6 +18,16 @@ structuring, and code was implemented by me.
 - Reduce the time it takes to have something up and running when bootstrapping new projects
 - Having something central that keeps getting updated and tested instead of scattering ideas across different projects
 
+## CLI Tool: ngo
+
+`ngo` is a CLI tool that scaffolds new Go backend services using the common modules in this repository. It provides an interactive form to quickly bootstrap a new project with the preferred stack already wired up.
+
+### Installation
+
+```
+go install github.com/nayefradwi/nayef_go_common/ngo@latest
+```
+
 ## Modules
 
 Each module targets a specific area of boilerplate that I am trying to avoid re-writing. Overview of the modules:

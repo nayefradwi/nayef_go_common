@@ -1,0 +1,122 @@
+name: Release ngo
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "ngo/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release ngo CLI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ngo/go.mod
+          cache: true
+
+      - name: Compute next version
+        id: versioning
+        run: |
+          MODULE_PATH="ngo"
+          BUMP_TYPE="patch"
+
+          LATEST_TAG=$(git tag --list "${MODULE_PATH}/v*" --sort=-v:refname | head -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            NEXT_VERSION="0.1.0"
+            PREV_TAG=""
+          else
+            SEMVER="${LATEST_TAG#${MODULE_PATH}/v}"
+            MAJOR=$(echo "$SEMVER" | cut -d. -f1)
+            MINOR=$(echo "$SEMVER" | cut -d. -f2)
+            PATCH=$(echo "$SEMVER" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            PREV_TAG="$LATEST_TAG"
+          fi
+
+          NEXT_TAG="${MODULE_PATH}/v${NEXT_VERSION}"
+
+          echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "next_tag=${NEXT_TAG}"         >> "$GITHUB_OUTPUT"
+          echo "prev_tag=${PREV_TAG}"         >> "$GITHUB_OUTPUT"
+
+          echo "Module:       ${MODULE_PATH}"
+          echo "Previous tag: ${PREV_TAG:-<none>}"
+          echo "Next tag:     ${NEXT_TAG}"
+
+      - name: Build binaries
+        run: |
+          VERSION="${{ steps.versioning.outputs.next_version }}"
+          mkdir -p dist
+
+          platforms=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+          )
+
+          for platform in "${platforms[@]}"; do
+            GOOS="${platform%/*}"
+            GOARCH="${platform#*/}"
+            output="dist/ngo-${GOOS}-${GOARCH}"
+            if [ "$GOOS" = "windows" ]; then
+              output="${output}.exe"
+            fi
+
+            echo "Building ${GOOS}/${GOARCH}..."
+            GOOS=$GOOS GOARCH=$GOARCH go build \
+              -C ngo \
+              -ldflags="-s -w" \
+              -o "../${output}" \
+              .
+          done
+
+          ls -lh dist/
+
+      - name: Create and push git tag
+        run: |
+          git tag "${{ steps.versioning.outputs.next_tag }}" \
+            -m "Release ${{ steps.versioning.outputs.next_tag }}"
+          git push origin "${{ steps.versioning.outputs.next_tag }}"
+
+      - name: Create GitHub release with binaries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEXT_TAG="${{ steps.versioning.outputs.next_tag }}"
+          PREV_TAG="${{ steps.versioning.outputs.prev_tag }}"
+          NEXT_VERSION="${{ steps.versioning.outputs.next_version }}"
+
+          if [ -n "$PREV_TAG" ]; then
+            NOTES_START="--notes-start-tag ${PREV_TAG}"
+          else
+            NOTES_START=""
+          fi
+
+          gh release create "$NEXT_TAG" \
+            dist/* \
+            --title "ngo v${NEXT_VERSION}" \
+            --generate-notes \
+            $NOTES_START \
+            --repo "$GITHUB_REPOSITORY"
