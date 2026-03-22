@@ -13,7 +13,18 @@ import (
 )
 
 func populateRequestDetails(req *CreateNewProjectRequest) {
-	directories, packages := baseDirectories.clone(), slices.Clone(basePackages)
+	wd, _ := os.Getwd()
+	req.RootDirPath = filepath.Join(wd, req.Name)
+
+	path := os.Getenv("GO_MOD_PATH")
+	if path == "" {
+		path = DEFAULT_MOD_PATH
+	}
+
+	module_path := path + "/" + req.Name
+	req.GoModule = module_path
+
+	directories, packages := baseDirectories.Clone(), slices.Clone(basePackages)
 
 	if req.ServiceType == ServiceTypeRest || req.ServiceType == ServiceTypeBoth {
 		packages = append(packages, CHI, HTTPUTIL)
@@ -37,10 +48,10 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	if slices.Contains(req.InfraTypes, InfraTypePostgres) {
 		packages = append(packages, PGX, PGUTIL)
-		directories.addSubDir([]string{INFRA}, Dir{Name: MIGRATIONS})
+		directories.AddSubDir([]string{INFRA}, Dir{Name: MIGRATIONS})
 		if req.DBLibrary == DBLibrarySqlc {
-			directories.addSubDir([]string{}, Dir{Name: CONFIG, Files: []File{{Name: SQLC, Extension: YAML}}})
-			directories.addSubDir([]string{INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
+			directories.AddSubDir([]string{}, Dir{Name: CONFIG, Files: []File{{Name: SQLC, Extension: YAML}}})
+			directories.AddSubDir([]string{INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
 		}
 	}
 
@@ -50,9 +61,6 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	req.HeadDir = directories
 	req.Packages = packages
-
-	wd, _ := os.Getwd()
-	req.RootDirPath = filepath.Join(wd, req.Name)
 }
 
 func runGoTidy(dir string) {
@@ -64,34 +72,33 @@ func runGoTidy(dir string) {
 }
 
 func createGoMod(req CreateNewProjectRequest) error {
-	path := os.Getenv("GO_MOD_PATH")
-	if path == "" {
-		path = DEFAULT_MOD_PATH
-	}
+	stop := printer.Spin("Initializing Go module")
 
-	module_path := path + "/" + req.Name
-	log.Info("running go mod init at", "path", module_path)
-	cmd := exec.Command("go", "mod", "init", module_path)
+	log.Info("running go mod init at", "path", req.GoModule)
+	cmd := exec.Command("go", "mod", "init", req.GoModule)
 	cmd.Dir = req.RootDirPath
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	stop(err)
+	if err != nil {
 		return fmt.Errorf("failed to initialize go module at %s %w", req.RootDirPath, err)
 	}
 
-	printer.Success("Initialized Go module")
 	return nil
 }
 
 func installGoPackages(req CreateNewProjectRequest) error {
+	stop := printer.Spin("Installing go packages")
 	args := append([]string{"get"}, req.Packages...)
 	cmd := exec.Command("go", args...)
 	cmd.Dir = req.RootDirPath
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	stop(err)
+	if err != nil {
 		return fmt.Errorf("failed to get go packages %w", err)
 	}
 
-	printer.Success("Installed go packages")
 	return nil
 }
 
@@ -135,11 +142,17 @@ func populateProjectStructure(req CreateNewProjectRequest) error {
 
 func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
+	runner.Do(req, renderGitIgnore)
+	runner.Do(req, renderEnv)
 	runner.Do(req, renderMain)
 	runner.Do(req, renderBootstrap)
+	runner.Do(req, renderConfig)
+	runner.Do(req, renderDi)
+
 	if req.DBLibrary == DBLibrarySqlc {
 		runner.Do(req, renderSqlcConfig)
 	}
+
 	if runner.Error != nil {
 		return runner.Error
 	}

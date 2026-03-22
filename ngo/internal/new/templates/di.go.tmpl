@@ -1,0 +1,39 @@
+package di
+
+import (
+    {{- range .Imports}}
+    "{{.}}"
+    {{- end}}
+)
+
+type Di struct {
+    {{- if .ShouldAddDb}}
+    Pool *pgxpool.Pool
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    Redis *redis.Client
+    {{- end}}
+}
+
+func RegisterServices(ctx context.Context, config config.Config) *Di {
+	di := Di{}
+    {{- if .ShouldAddDb}}
+    di.connectToDb(ctx, config.DatabaseUrl)
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    di.connectToRedis(ctx, config.RedisUrl)
+    {{- end}}
+    return &di
+}
+
+{{- if .ShouldAddDb}}
+func (d *Di) connectToDb(ctx context.Context, connectionUrl string) {
+    d.Pool = pgutil.ConnectToPostgres(ctx, connectionUrl)
+}
+{{end}}
+
+{{- if .ShouldAddRedis}}
+func (d *Di) connectToRedis(ctx context.Context, connectionUrl string) {
+    d.Redis = redisutil.ConnectToRedis(ctx, connectionUrl)
+}
+{{end}}

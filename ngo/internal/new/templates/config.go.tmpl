@@ -1,0 +1,43 @@
+package config
+
+import (
+    "os"
+    "github.com/joho/godotenv"
+)
+
+type Environment string
+
+const (
+    EnvironmentProduction Environment = "production"
+    EnvironmentStaging Environment = "staging"
+    EnvironmentDevelopment Environment = "development"
+)
+
+type Config struct {
+    Environment Environment
+    {{- if .ShouldAddDb}}
+    DatabaseUrl string
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    RedisUrl string
+    {{- end}}
+    {{- if .ShouldAddSecret}}
+    JwtSecret string
+    {{- end}}
+}
+
+func NewConfig() Config {
+	godotenv.Load()
+    return Config {
+        Environment: Environment(os.Getenv("ENVIRONMENT")),
+        {{- if .ShouldAddDb}}
+        DatabaseUrl: os.Getenv("GOOSE_DBSTRING"),
+        {{- end}}
+        {{- if .ShouldAddRedis}}
+        RedisUrl: os.Getenv("REDIS_URL"),
+        {{- end}}
+        {{- if .ShouldAddSecret}}
+        JwtSecret: os.Getenv("JWT_SECRET"),
+        {{- end}}
+    }
+}
