@@ -36,7 +36,6 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				Options(
 					huh.NewOption(string(ServiceTypeRest), ServiceTypeRest),
 					huh.NewOption(string(ServiceTypeGrpc), ServiceTypeGrpc),
-					huh.NewOption(string(ServiceTypeBoth), ServiceTypeBoth),
 				).Value(&req.ServiceType),
 		),
 		huh.NewGroup(
@@ -83,6 +82,7 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				Options(
 					huh.NewOption(string(FeatureLocking), FeatureLocking),
 					huh.NewOption(string(FeatureOtp), FeatureOtp),
+					huh.NewOption(string(FeaturePagination), FeaturePagination),
 				).
 				Value(&req.Features),
 		),

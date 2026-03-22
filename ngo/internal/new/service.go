@@ -26,11 +26,9 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	directories, packages := baseDirectories.Clone(), slices.Clone(basePackages)
 
-	if req.ServiceType == ServiceTypeRest || req.ServiceType == ServiceTypeBoth {
+	if req.ServiceType == ServiceTypeRest {
 		packages = append(packages, CHI, HTTPUTIL)
-	}
-
-	if req.ServiceType == ServiceTypeGrpc || req.ServiceType == ServiceTypeBoth {
+	} else {
 		packages = append(packages, GRPC, GRPCUTIL, ERRORSPB)
 	}
 
@@ -69,6 +67,12 @@ func runGoTidy(dir string) {
 		cmd.Dir = dir
 		cmd.Run()
 	}()
+}
+
+func runGoFmt(req CreateNewProjectRequest) error {
+	cmd := exec.Command("go", "fmt", "./...")
+	cmd.Dir = req.RootDirPath
+	return cmd.Run()
 }
 
 func createGoMod(req CreateNewProjectRequest) error {
@@ -148,6 +152,8 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, renderBootstrap)
 	runner.Do(req, renderConfig)
 	runner.Do(req, renderDi)
+	runner.Do(req, renderHealth)
+	runner.Do(req, renderRouter)
 
 	if req.DBLibrary == DBLibrarySqlc {
 		runner.Do(req, renderSqlcConfig)

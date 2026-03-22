@@ -20,6 +20,7 @@ func Run() error {
 	runner.Do(*req, createGoMod)
 	runner.Do(*req, installGoPackages)
 	runner.Do(*req, generateCodeFromRequest)
+	runner.Do(*req, runGoFmt)
 
 	if runner.Error != nil {
 		printer.Error(runner.Error.Error())

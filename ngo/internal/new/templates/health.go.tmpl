@@ -1,0 +1,14 @@
+package health
+
+{{- if .IsRest}}
+
+import (
+    "net/http"
+    "github.com/nayefradwi/nayef_go_common/httputil"
+)
+
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+    jw := httputil.NewJsonResponseWriter(w)
+    jw.WriteSuccessMessage("Healthy", nil)
+}
+{{- end}}

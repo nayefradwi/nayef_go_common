@@ -26,6 +26,15 @@ func RegisterServices(ctx context.Context, config config.Config) *Di {
     return &di
 }
 
+func (d *Di) Dispose() {
+    {{- if .ShouldAddDb}}
+    d.Pool.Close()
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    d.Redis.Close()
+    {{- end}}
+}
+
 {{- if .ShouldAddDb}}
 func (d *Di) connectToDb(ctx context.Context, connectionUrl string) {
     d.Pool = pgutil.ConnectToPostgres(ctx, connectionUrl)

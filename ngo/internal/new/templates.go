@@ -91,3 +91,21 @@ func renderDi(req CreateNewProjectRequest) error {
 	return renderToFile("di.go.tmpl", filepath, input)
 
 }
+
+func renderHealth(req CreateNewProjectRequest) error {
+	filepath := filepath.Join(req.RootDirPath, INTERNAL, HEALTH, HANDLER+"."+GO)
+	input := HealthTemplateInput{IsRest: req.ServiceType == ServiceTypeRest}
+	return renderToFile("health.go.tmpl", filepath, input)
+}
+
+func renderRouter(req CreateNewProjectRequest) error {
+	filepath := filepath.Join(req.RootDirPath, CMD, API, ROUTER+"."+GO)
+	input := RouterTemplateInput{
+		IsRest:        req.ServiceType == ServiceTypeRest,
+		GoModule:      req.GoModule,
+		HasPagination: slices.Contains(req.Features, FeaturePagination),
+	}
+
+	return renderToFile("router.go.tmpl", filepath, input)
+
+}

@@ -5,7 +5,6 @@ type ServiceType string
 const (
 	ServiceTypeRest ServiceType = "REST"
 	ServiceTypeGrpc ServiceType = "gRPC"
-	ServiceTypeBoth ServiceType = "Both"
 )
 
 type AuthType string
@@ -35,6 +34,7 @@ const (
 var AllFeatures = []Feature{
 	FeatureLocking,
 	FeatureOtp,
+	FeaturePagination,
 }
 
 var AllInfraTypes = []InfraType{
@@ -73,6 +73,16 @@ type DiTemplateInput struct {
 	Imports        []string
 	ShouldAddDb    bool
 	ShouldAddRedis bool
+}
+
+type HealthTemplateInput struct {
+	IsRest bool
+}
+
+type RouterTemplateInput struct {
+	IsRest        bool
+	GoModule      string
+	HasPagination bool
 }
 
 type File struct {

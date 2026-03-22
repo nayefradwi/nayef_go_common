@@ -278,3 +278,21 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 ```
 
 **IMPORTANT: if acquiring any lock in a multi-lock call fails, all already-acquired locks are automatically released**
+
+## Todos
+
+### CLI
+- [x] Create new command form
+- [x] Bootstraping an empty project
+- [x] Set up config, di, env, and the common stuff
+- [x] REST: add common handler like health check
+- [x] REST: set up empty router and run server
+- [ ] REST: Support adding initial feature packages
+- [ ] Add hot reload config template using something like air
+- [ ] gRPC: set up initial config for protobuf code gen (might use buf)
+- [ ] gRPC: utilize tools that will add server reflections and improve dev experience
+- [ ] generate dockerfile
+- [ ] set up locking if redis is specified
+- [ ] set up integration test helpers for redis and postgres
+- [ ] set up local deployment using docker-compose
+- [ ] ...
