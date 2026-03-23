@@ -39,14 +39,16 @@ import (
 	"context"
 )
 
-type Di struct{}
+type Di struct {
+}
 
 func RegisterServices(ctx context.Context, config config.Config) *Di {
 	di := Di{}
 	return &di
 }
 
-func (d *Di) Dispose() {}
+func (d *Di) Dispose() {
+}
 `
 	assertGoCodeEqual(t, expected, readDiFile(t, root))
 }
