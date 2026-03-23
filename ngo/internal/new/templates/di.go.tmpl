@@ -34,15 +34,15 @@ func (d *Di) Dispose() {
     d.Redis.Close()
     {{- end}}
 }
-
 {{- if .ShouldAddDb}}
+
 func (d *Di) connectToDb(ctx context.Context, connectionUrl string) {
     d.Pool = pgutil.ConnectToPostgres(ctx, connectionUrl)
 }
-{{end}}
-
+{{- end}}
 {{- if .ShouldAddRedis}}
+
 func (d *Di) connectToRedis(ctx context.Context, connectionUrl string) {
     d.Redis = redisutil.ConnectToRedis(ctx, connectionUrl)
 }
-{{end}}
+{{- end}}
