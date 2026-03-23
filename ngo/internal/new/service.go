@@ -57,6 +57,11 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 		packages = append(packages, featureToPackage[feature])
 	}
 
+	directories.Directories = append(directories.Directories,
+		Dir{Name: BUILD},
+		Dir{Name: DEPLOYMENTS, Directories: []Dir{{Name: LOCAL}}},
+	)
+
 	req.HeadDir = directories
 	req.Packages = packages
 }
@@ -154,6 +159,10 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, renderDi)
 	runner.Do(req, renderHealth)
 	runner.Do(req, renderRouter)
+
+	runner.Do(req, renderDockerfile)
+	runner.Do(req, renderDockerCompose)
+	runner.Do(req, renderLocalEnv)
 
 	if req.DBLibrary == DBLibrarySqlc {
 		runner.Do(req, renderSqlcConfig)

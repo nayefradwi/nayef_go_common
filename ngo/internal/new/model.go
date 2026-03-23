@@ -75,6 +75,13 @@ type DiTemplateInput struct {
 	ShouldAddRedis bool
 }
 
+type DockerComposeTemplateInput struct {
+	Name            string
+	ShouldAddDb     bool
+	ShouldAddRedis  bool
+	ShouldAddSecret bool
+}
+
 type HealthTemplateInput struct {
 	IsRest bool
 }
