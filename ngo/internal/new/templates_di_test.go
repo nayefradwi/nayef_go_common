@@ -1,20 +1,42 @@
 package new
 
 import (
+	"bytes"
+	"go/format"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// normalizeGoCode parses src as a Go source file and re-formats it with
+// go/format, producing a canonical representation that is insensitive to
+// whitespace, indentation, and blank-line differences.
+func normalizeGoCode(t *testing.T, src string) string {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	require.NoError(t, err, "failed to parse Go source:\n%s", src)
+	var buf bytes.Buffer
+	require.NoError(t, format.Node(&buf, fset, f))
+	return buf.String()
+}
+
+// assertGoCodeEqual compares two Go source strings after normalizing both
+// through go/format, so formatting differences do not cause false failures.
+func assertGoCodeEqual(t *testing.T, expected, actual string) {
+	t.Helper()
+	assert.Equal(t, normalizeGoCode(t, expected), normalizeGoCode(t, actual))
+}
+
 func setupDiDir(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	diDir := filepath.Join(root, INTERNAL, DI)
-	require.NoError(t, os.MkdirAll(diDir, 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, INTERNAL, DI), 0o755))
 	return root
 }
 
@@ -34,22 +56,24 @@ func TestRenderDi_NoDbNoRedis(t *testing.T) {
 		DiImports:      []string{"context"},
 	}
 
-	err := renderDi(req)
-	require.NoError(t, err)
+	require.NoError(t, renderDi(req))
 
-	content := readDiFile(t, root)
-	assert.Contains(t, content, "package di")
-	assert.Contains(t, content, "type Di struct {")
-	assert.Contains(t, content, "func RegisterServices(")
-	assert.Contains(t, content, "func (d *Di) Dispose() {")
+	expected := `package di
 
-	// No db or redis fields/methods
-	assert.NotContains(t, content, "Pool *pgxpool.Pool")
-	assert.NotContains(t, content, "Redis *redis.Client")
-	assert.NotContains(t, content, "connectToDb")
-	assert.NotContains(t, content, "connectToRedis")
-	assert.NotContains(t, content, "d.Pool.Close()")
-	assert.NotContains(t, content, "d.Redis.Close()")
+import (
+	"context"
+)
+
+type Di struct{}
+
+func RegisterServices(ctx context.Context, config config.Config) *Di {
+	di := Di{}
+	return &di
+}
+
+func (d *Di) Dispose() {}
+`
+	assertGoCodeEqual(t, expected, readDiFile(t, root))
 }
 
 func TestRenderDi_WithDbOnly(t *testing.T) {
@@ -61,20 +85,34 @@ func TestRenderDi_WithDbOnly(t *testing.T) {
 		DiImports:      []string{"context", "github.com/jackc/pgx/v5/pgxpool"},
 	}
 
-	err := renderDi(req)
-	require.NoError(t, err)
+	require.NoError(t, renderDi(req))
 
-	content := readDiFile(t, root)
-	assert.Contains(t, content, "Pool *pgxpool.Pool")
-	assert.Contains(t, content, "di.connectToDb(ctx, config.DatabaseUrl)")
-	assert.Contains(t, content, "d.Pool.Close()")
-	assert.Contains(t, content, "func (d *Di) connectToDb(ctx context.Context, connectionUrl string)")
-	assert.Contains(t, content, "pgutil.ConnectToPostgres(ctx, connectionUrl)")
+	expected := `package di
 
-	// No redis-related content
-	assert.NotContains(t, content, "Redis *redis.Client")
-	assert.NotContains(t, content, "connectToRedis")
-	assert.NotContains(t, content, "d.Redis.Close()")
+import (
+	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Di struct {
+	Pool *pgxpool.Pool
+}
+
+func RegisterServices(ctx context.Context, config config.Config) *Di {
+	di := Di{}
+	di.connectToDb(ctx, config.DatabaseUrl)
+	return &di
+}
+
+func (d *Di) Dispose() {
+	d.Pool.Close()
+}
+
+func (d *Di) connectToDb(ctx context.Context, connectionUrl string) {
+	d.Pool = pgutil.ConnectToPostgres(ctx, connectionUrl)
+}
+`
+	assertGoCodeEqual(t, expected, readDiFile(t, root))
 }
 
 func TestRenderDi_WithRedisOnly(t *testing.T) {
@@ -86,20 +124,34 @@ func TestRenderDi_WithRedisOnly(t *testing.T) {
 		DiImports:      []string{"context", "github.com/redis/go-redis/v9"},
 	}
 
-	err := renderDi(req)
-	require.NoError(t, err)
+	require.NoError(t, renderDi(req))
 
-	content := readDiFile(t, root)
-	assert.Contains(t, content, "Redis *redis.Client")
-	assert.Contains(t, content, "di.connectToRedis(ctx, config.RedisUrl)")
-	assert.Contains(t, content, "d.Redis.Close()")
-	assert.Contains(t, content, "func (d *Di) connectToRedis(ctx context.Context, connectionUrl string)")
-	assert.Contains(t, content, "redisutil.ConnectToRedis(ctx, connectionUrl)")
+	expected := `package di
 
-	// No db-related content
-	assert.NotContains(t, content, "Pool *pgxpool.Pool")
-	assert.NotContains(t, content, "connectToDb")
-	assert.NotContains(t, content, "d.Pool.Close()")
+import (
+	"context"
+	"github.com/redis/go-redis/v9"
+)
+
+type Di struct {
+	Redis *redis.Client
+}
+
+func RegisterServices(ctx context.Context, config config.Config) *Di {
+	di := Di{}
+	di.connectToRedis(ctx, config.RedisUrl)
+	return &di
+}
+
+func (d *Di) Dispose() {
+	d.Redis.Close()
+}
+
+func (d *Di) connectToRedis(ctx context.Context, connectionUrl string) {
+	d.Redis = redisutil.ConnectToRedis(ctx, connectionUrl)
+}
+`
+	assertGoCodeEqual(t, expected, readDiFile(t, root))
 }
 
 func TestRenderDi_WithDbAndRedis(t *testing.T) {
@@ -115,92 +167,40 @@ func TestRenderDi_WithDbAndRedis(t *testing.T) {
 		},
 	}
 
-	err := renderDi(req)
-	require.NoError(t, err)
+	require.NoError(t, renderDi(req))
 
-	content := readDiFile(t, root)
-	// Both db and redis present
-	assert.Contains(t, content, "Pool *pgxpool.Pool")
-	assert.Contains(t, content, "Redis *redis.Client")
-	assert.Contains(t, content, "di.connectToDb(ctx, config.DatabaseUrl)")
-	assert.Contains(t, content, "di.connectToRedis(ctx, config.RedisUrl)")
-	assert.Contains(t, content, "d.Pool.Close()")
-	assert.Contains(t, content, "d.Redis.Close()")
-	assert.Contains(t, content, "func (d *Di) connectToDb(ctx context.Context, connectionUrl string)")
-	assert.Contains(t, content, "func (d *Di) connectToRedis(ctx context.Context, connectionUrl string)")
+	expected := `package di
+
+import (
+	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+type Di struct {
+	Pool  *pgxpool.Pool
+	Redis *redis.Client
 }
 
-func TestRenderDi_ImportsRendered(t *testing.T) {
-	root := setupDiDir(t)
-	imports := []string{
-		"context",
-		"github.com/jackc/pgx/v5/pgxpool",
-		"github.com/nayefradwi/nayef_go_common/pgutil",
-	}
-	req := CreateNewProjectRequest{
-		RootDirPath:    root,
-		ShouldAddDb:    true,
-		ShouldAddRedis: false,
-		DiImports:      imports,
-	}
-
-	err := renderDi(req)
-	require.NoError(t, err)
-
-	content := readDiFile(t, root)
-	for _, imp := range imports {
-		assert.Contains(t, content, `"`+imp+`"`, "expected import %q to be present", imp)
-	}
+func RegisterServices(ctx context.Context, config config.Config) *Di {
+	di := Di{}
+	di.connectToDb(ctx, config.DatabaseUrl)
+	di.connectToRedis(ctx, config.RedisUrl)
+	return &di
 }
 
-func TestRenderDi_EmptyImports(t *testing.T) {
-	root := setupDiDir(t)
-	req := CreateNewProjectRequest{
-		RootDirPath:    root,
-		ShouldAddDb:    false,
-		ShouldAddRedis: false,
-		DiImports:      []string{},
-	}
-
-	err := renderDi(req)
-	require.NoError(t, err)
-
-	content := readDiFile(t, root)
-	// import block should be present but empty
-	assert.Contains(t, content, "import (")
-	assert.Contains(t, content, ")")
+func (d *Di) Dispose() {
+	d.Pool.Close()
+	d.Redis.Close()
 }
 
-func TestRenderDi_FileCreatedAtCorrectPath(t *testing.T) {
-	root := setupDiDir(t)
-	req := CreateNewProjectRequest{
-		RootDirPath:    root,
-		ShouldAddDb:    false,
-		ShouldAddRedis: false,
-		DiImports:      []string{},
-	}
-
-	err := renderDi(req)
-	require.NoError(t, err)
-
-	assert.FileExists(t, filepath.Join(root, INTERNAL, DI, DI+"."+GO))
+func (d *Di) connectToDb(ctx context.Context, connectionUrl string) {
+	d.Pool = pgutil.ConnectToPostgres(ctx, connectionUrl)
 }
 
-func TestRenderDi_RegisterServicesReturnsPointer(t *testing.T) {
-	root := setupDiDir(t)
-	req := CreateNewProjectRequest{
-		RootDirPath:    root,
-		ShouldAddDb:    false,
-		ShouldAddRedis: false,
-		DiImports:      []string{"context"},
-	}
-
-	err := renderDi(req)
-	require.NoError(t, err)
-
-	content := readDiFile(t, root)
-	assert.True(t,
-		strings.Contains(content, "return &di"),
-		"RegisterServices should return a pointer to Di",
-	)
+func (d *Di) connectToRedis(ctx context.Context, connectionUrl string) {
+	d.Redis = redisutil.ConnectToRedis(ctx, connectionUrl)
+}
+`
+	assertGoCodeEqual(t, expected, readDiFile(t, root))
 }
