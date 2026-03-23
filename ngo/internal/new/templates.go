@@ -4,7 +4,6 @@ import (
 	"embed"
 	"os"
 	"path/filepath"
-	"slices"
 	"text/template"
 )
 
@@ -43,13 +42,7 @@ func renderSqlcConfig(req CreateNewProjectRequest) error {
 
 func renderEnv(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, ENV)
-	input := EnvTemplateInput{
-		ShouldAddDb:     slices.Contains(req.InfraTypes, InfraTypePostgres),
-		ShouldAddRedis:  slices.Contains(req.InfraTypes, InfraTypeRedis),
-		ShouldAddSecret: req.AuthType != AuthTypeNone,
-	}
-
-	return renderToFile(".env.tmpl", filepath, input)
+	return renderToFile(".env.tmpl", filepath, req)
 }
 
 func renderGitIgnore(req CreateNewProjectRequest) error {
@@ -59,36 +52,12 @@ func renderGitIgnore(req CreateNewProjectRequest) error {
 
 func renderConfig(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, INTERNAL, CONFIG, CONFIG+"."+GO)
-	input := EnvTemplateInput{
-		ShouldAddDb:     slices.Contains(req.InfraTypes, InfraTypePostgres),
-		ShouldAddRedis:  slices.Contains(req.InfraTypes, InfraTypeRedis),
-		ShouldAddSecret: req.AuthType != AuthTypeNone,
-	}
-
-	return renderToFile("config.go.tmpl", filepath, input)
+	return renderToFile("config.go.tmpl", filepath, req)
 }
 
 func renderDi(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, INTERNAL, DI, DI+"."+GO)
-	shouldAddDb := slices.Contains(req.InfraTypes, InfraTypePostgres)
-	shouldAddRedis := slices.Contains(req.InfraTypes, InfraTypeRedis)
-
-	imports := []string{"context", req.GoModule + "/" + INTERNAL + "/" + CONFIG}
-	if shouldAddDb {
-		imports = append(imports, PGUTIL, PGX+"/"+"pgxpool")
-	}
-
-	if shouldAddRedis {
-		imports = append(imports, REDISUTIL, REDIS)
-	}
-
-	input := DiTemplateInput{
-		Imports:        imports,
-		ShouldAddDb:    shouldAddDb,
-		ShouldAddRedis: shouldAddRedis,
-	}
-
-	return renderToFile("di.go.tmpl", filepath, input)
+	return renderToFile("di.go.tmpl", filepath, req)
 
 }
 
@@ -99,37 +68,21 @@ func renderDockerfile(req CreateNewProjectRequest) error {
 
 func renderDockerCompose(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, DOCKER_COMPOSE+"."+YAML)
-	input := DockerComposeTemplateInput{
-		Name:            req.Name,
-		ShouldAddDb:     slices.Contains(req.InfraTypes, InfraTypePostgres),
-		ShouldAddRedis:  slices.Contains(req.InfraTypes, InfraTypeRedis),
-		ShouldAddSecret: req.AuthType != AuthTypeNone,
-	}
-	return renderToFile("docker-compose.yaml.tmpl", filePath, input)
+	return renderToFile("docker-compose.yaml.tmpl", filePath, req)
 }
 
 func renderLocalEnv(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, ENV)
-	input := EnvTemplateInput{
-		ShouldAddSecret: req.AuthType != AuthTypeNone,
-	}
-	return renderToFile("local.env.tmpl", filePath, input)
+	return renderToFile("local.env.tmpl", filePath, req)
 }
 
 func renderHealth(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, INTERNAL, HEALTH, HANDLER+"."+GO)
-	input := HealthTemplateInput{IsRest: req.ServiceType == ServiceTypeRest}
-	return renderToFile("health.go.tmpl", filepath, input)
+	return renderToFile("health.go.tmpl", filepath, req)
 }
 
 func renderRouter(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, CMD, API, ROUTER+"."+GO)
-	input := RouterTemplateInput{
-		IsRest:        req.ServiceType == ServiceTypeRest,
-		GoModule:      req.GoModule,
-		HasPagination: slices.Contains(req.Features, FeaturePagination),
-	}
-
-	return renderToFile("router.go.tmpl", filepath, input)
+	return renderToFile("router.go.tmpl", filepath, req)
 
 }

@@ -64,6 +64,22 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	req.HeadDir = directories
 	req.Packages = packages
+	req.ShouldAddDb = slices.Contains(req.InfraTypes, InfraTypePostgres)
+	req.ShouldAddRedis = slices.Contains(req.InfraTypes, InfraTypeRedis)
+	req.ShouldAddSecret = req.AuthType != AuthTypeNone
+	req.IsRest = req.ServiceType == ServiceTypeRest
+	req.HasPagination = slices.Contains(req.Features, FeaturePagination)
+
+	imports := []string{"context", req.GoModule + "/" + INTERNAL + "/" + CONFIG}
+	if req.ShouldAddDb {
+		imports = append(imports, PGUTIL, PGX+"/"+"pgxpool")
+	}
+
+	if req.ShouldAddRedis {
+		imports = append(imports, REDISUTIL, REDIS)
+	}
+
+	req.DiImports = imports
 }
 
 func runGoTidy(dir string) {

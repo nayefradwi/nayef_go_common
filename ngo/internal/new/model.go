@@ -31,17 +31,6 @@ const (
 	FeaturePagination Feature = "Pagination"
 )
 
-var AllFeatures = []Feature{
-	FeatureLocking,
-	FeatureOtp,
-	FeaturePagination,
-}
-
-var AllInfraTypes = []InfraType{
-	InfraTypePostgres,
-	InfraTypeRedis,
-}
-
 type DBLibrary string
 
 const (
@@ -50,46 +39,23 @@ const (
 )
 
 type CreateNewProjectRequest struct {
-	Name           string
-	ServiceType    ServiceType
-	AuthType       AuthType
-	WithValidation bool
-	Features       []Feature
-	InfraTypes     []InfraType
-	DBLibrary      DBLibrary
-	HeadDir        Dir
-	Packages       []string
-	RootDirPath    string
-	GoModule       string
-}
-
-type EnvTemplateInput struct {
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
-}
-
-type DiTemplateInput struct {
-	Imports        []string
-	ShouldAddDb    bool
-	ShouldAddRedis bool
-}
-
-type DockerComposeTemplateInput struct {
 	Name            string
+	ServiceType     ServiceType
+	AuthType        AuthType
+	WithValidation  bool
+	Features        []Feature
+	InfraTypes      []InfraType
+	DBLibrary       DBLibrary
+	HeadDir         Dir
+	Packages        []string
+	RootDirPath     string
+	GoModule        string
 	ShouldAddDb     bool
 	ShouldAddRedis  bool
 	ShouldAddSecret bool
-}
-
-type HealthTemplateInput struct {
-	IsRest bool
-}
-
-type RouterTemplateInput struct {
-	IsRest        bool
-	GoModule      string
-	HasPagination bool
+	IsRest          bool
+	HasPagination   bool
+	DiImports       []string
 }
 
 type File struct {
