@@ -179,6 +179,7 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, renderDockerfile)
 	runner.Do(req, renderDockerCompose)
 	runner.Do(req, renderLocalEnv)
+	runner.Do(req, renderAirToml)
 
 	if req.DBLibrary == DBLibrarySqlc {
 		runner.Do(req, renderSqlcConfig)

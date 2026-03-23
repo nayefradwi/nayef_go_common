@@ -31,6 +31,8 @@ const (
 	GITIGNORE  = ".gitignore"
 	README     = "README.md"
 	DOCKERFILE = "Dockerfile"
+	AIR_TOML   = "air"
+	TOML       = "toml"
 )
 
 const (

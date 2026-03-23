@@ -84,5 +84,9 @@ func renderHealth(req CreateNewProjectRequest) error {
 func renderRouter(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, CMD, API, ROUTER+"."+GO)
 	return renderToFile("router.go.tmpl", filepath, req)
+}
 
+func renderAirToml(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, AIR_TOML+"."+TOML)
+	return renderToFile("air.toml.tmpl", filePath, req)
 }
