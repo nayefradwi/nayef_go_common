@@ -291,8 +291,8 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 - [ ] Add hot reload config template using something like air
 - [ ] gRPC: set up initial config for protobuf code gen (might use buf)
 - [ ] gRPC: utilize tools that will add server reflections and improve dev experience
-- [ ] generate dockerfile
+- [x] generate dockerfile
 - [ ] set up locking if redis is specified
 - [ ] set up integration test helpers for redis and postgres
-- [ ] set up local deployment using docker-compose
+- [x] set up local deployment using docker-compose
 - [ ] ...
