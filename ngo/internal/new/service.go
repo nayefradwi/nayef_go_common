@@ -46,10 +46,10 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	if slices.Contains(req.InfraTypes, InfraTypePostgres) {
 		packages = append(packages, PGX, PGUTIL)
-		directories.AddSubDir([]string{INFRA}, Dir{Name: MIGRATIONS})
+		directories.AddSubDir([]string{INTERNAL, INFRA}, Dir{Name: MIGRATIONS})
 		if req.DBLibrary == DBLibrarySqlc {
 			directories.AddSubDir([]string{}, Dir{Name: CONFIG, Files: []File{{Name: SQLC, Extension: YAML}}})
-			directories.AddSubDir([]string{INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
+			directories.AddSubDir([]string{INTERNAL, INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
 		}
 	}
 
