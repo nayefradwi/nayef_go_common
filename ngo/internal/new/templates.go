@@ -92,6 +92,30 @@ func renderDi(req CreateNewProjectRequest) error {
 
 }
 
+func renderDockerfile(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, BUILD, DOCKERFILE)
+	return renderToFile("Dockerfile.tmpl", filePath, req)
+}
+
+func renderDockerCompose(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, DOCKER_COMPOSE+"."+YAML)
+	input := DockerComposeTemplateInput{
+		Name:            req.Name,
+		ShouldAddDb:     slices.Contains(req.InfraTypes, InfraTypePostgres),
+		ShouldAddRedis:  slices.Contains(req.InfraTypes, InfraTypeRedis),
+		ShouldAddSecret: req.AuthType != AuthTypeNone,
+	}
+	return renderToFile("docker-compose.yaml.tmpl", filePath, input)
+}
+
+func renderLocalEnv(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, ENV)
+	input := EnvTemplateInput{
+		ShouldAddSecret: req.AuthType != AuthTypeNone,
+	}
+	return renderToFile("local.env.tmpl", filePath, input)
+}
+
 func renderHealth(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, INTERNAL, HEALTH, HANDLER+"."+GO)
 	input := HealthTemplateInput{IsRest: req.ServiceType == ServiceTypeRest}

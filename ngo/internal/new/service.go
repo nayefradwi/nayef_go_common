@@ -46,16 +46,21 @@ func populateRequestDetails(req *CreateNewProjectRequest) {
 
 	if slices.Contains(req.InfraTypes, InfraTypePostgres) {
 		packages = append(packages, PGX, PGUTIL)
-		directories.AddSubDir([]string{INFRA}, Dir{Name: MIGRATIONS})
+		directories.AddSubDir([]string{INTERNAL, INFRA}, Dir{Name: MIGRATIONS})
 		if req.DBLibrary == DBLibrarySqlc {
 			directories.AddSubDir([]string{}, Dir{Name: CONFIG, Files: []File{{Name: SQLC, Extension: YAML}}})
-			directories.AddSubDir([]string{INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
+			directories.AddSubDir([]string{INTERNAL, INFRA}, Dir{Name: SQLC, Directories: []Dir{{Name: QUERIES}}})
 		}
 	}
 
 	for _, feature := range req.Features {
 		packages = append(packages, featureToPackage[feature])
 	}
+
+	directories.Directories = append(directories.Directories,
+		Dir{Name: BUILD},
+		Dir{Name: DEPLOYMENTS, Directories: []Dir{{Name: LOCAL}}},
+	)
 
 	req.HeadDir = directories
 	req.Packages = packages
@@ -154,6 +159,10 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, renderDi)
 	runner.Do(req, renderHealth)
 	runner.Do(req, renderRouter)
+
+	runner.Do(req, renderDockerfile)
+	runner.Do(req, renderDockerCompose)
+	runner.Do(req, renderLocalEnv)
 
 	if req.DBLibrary == DBLibrarySqlc {
 		runner.Do(req, renderSqlcConfig)
