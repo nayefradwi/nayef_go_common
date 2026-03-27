@@ -6,8 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// --- Dir.Clone() ---
-
 func TestDir_Clone_Empty(t *testing.T) {
 	original := Dir{}
 	clone := original.Clone()
@@ -26,7 +24,6 @@ func TestDir_Clone_WithFiles(t *testing.T) {
 	assert.Equal(t, original.Name, clone.Name)
 	assert.Equal(t, original.Files, clone.Files)
 
-	// Mutate clone's Files — original must be unaffected
 	clone.Files[0].Name = "changed"
 	assert.Equal(t, "main", original.Files[0].Name)
 }
@@ -45,7 +42,6 @@ func TestDir_Clone_WithSubDirs(t *testing.T) {
 	assert.Equal(t, original.Directories[0].Name, clone.Directories[0].Name)
 	assert.Equal(t, original.Directories[1].Name, clone.Directories[1].Name)
 
-	// Mutate clone's subdirectory — original must be unaffected
 	clone.Directories[0].Name = "changed"
 	assert.Equal(t, "internal", original.Directories[0].Name)
 }
@@ -67,12 +63,9 @@ func TestDir_Clone_DeepMutation(t *testing.T) {
 	assert.Equal(t, "internal", clone.Directories[0].Name)
 	assert.Equal(t, "infra", clone.Directories[0].Directories[0].Name)
 
-	// Mutate deeply nested dir in clone — original must be unaffected
 	clone.Directories[0].Directories[0].Name = "changed"
 	assert.Equal(t, "infra", original.Directories[0].Directories[0].Name)
 }
-
-// --- Dir.AddSubDir() ---
 
 func TestDir_AddSubDir_EmptyPath(t *testing.T) {
 	root := Dir{Name: "root"}
@@ -112,7 +105,6 @@ func TestDir_AddSubDir_NoMatchingChild(t *testing.T) {
 		Directories: []Dir{{Name: "internal"}},
 	}
 	node := Dir{Name: "orphan"}
-	// Path does not match any child — should be a no-op
 	root.AddSubDir([]string{"nonexistent"}, node)
 	assert.Equal(t, []Dir{{Name: "internal"}}, root.Directories)
 }
