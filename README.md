@@ -281,6 +281,14 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 
 ## Todos
 
+### Modules
+- [ ] Storage: abstraction over file system based and s3
+- [ ] Tracing: Open telemetry with LGTM stack and slog? will it be helpful?
+- [ ] testuitl?
+- [ ] emails?
+- [ ] payments?
+- [ ] ...
+
 ### CLI
 - [x] Create new command form
 - [x] Bootstraping an empty project
