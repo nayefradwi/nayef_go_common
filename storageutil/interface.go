@@ -5,6 +5,18 @@ import (
 	"time"
 )
 
+type ProviderPutOptions interface {
+	Opts()
+}
+
+type CollectionManager interface {
+	Create(ctx context.Context, key string) (Collection, error)
+	List(ctx context.Context) ([]Collection, error)
+	Delete(ctx context.Context, key string) error
+	Get(ctx context.Context, key string) (Collection, error)
+	GetObjectManager(ctx context.Context, key string) (ObjectManager, error)
+}
+
 type ObjectManager interface {
 	Put(ctx context.Context, params PutObjectParams) (ObjectMeta, error)
 	Delete(ctx context.Context, key string) error
@@ -21,12 +33,4 @@ type Presigner interface {
 
 type URLResolver interface {
 	ResolveURL(ctx context.Context, key string) (string, error)
-}
-
-type CollectionManager interface {
-	Create(ctx context.Context, key string) (Collection, error)
-	List(ctx context.Context) ([]Collection, error)
-	Delete(ctx context.Context, key string) error
-	Get(ctx context.Context, key string) (Collection, error)
-	GetObjectManager(ctx context.Context, key string) (ObjectManager, error)
 }

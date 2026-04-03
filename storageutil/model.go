@@ -13,26 +13,11 @@ type ObjectMeta struct {
 }
 
 type PutObjectParams struct {
-	ObjectMeta
-	Body io.Reader
-}
-
-func NewPutObjectParams(
-	key string,
-	body io.Reader,
-	size int64,
-	contentType string,
-	metadata map[string]string,
-) PutObjectParams {
-	return PutObjectParams{
-		ObjectMeta: ObjectMeta{
-			Key:         key,
-			Size:        size,
-			ContentType: contentType,
-			Metadata:    metadata,
-		},
-		Body: body,
-	}
+	Key         string
+	ContentType string
+	Metadata    map[string]string
+	Body        io.Reader
+	Opts        ProviderPutOptions
 }
 
 type Collection struct {

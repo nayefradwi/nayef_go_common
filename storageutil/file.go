@@ -88,6 +88,15 @@ type FileObjectManager struct {
 	Collection Collection
 }
 
+func NewFileObjectManagerFromPath(root string, key string) (ObjectManager, error) {
+	collection, err := NewFileCollectionManager(root)
+	if err != nil {
+		return nil, err
+	}
+
+	return collection.GetObjectManager(context.Background(), key)
+}
+
 func NewFileObjectManager(collection Collection) ObjectManager {
 	return &FileObjectManager{Collection: collection}
 }
