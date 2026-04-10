@@ -19,7 +19,11 @@ const (
 	DEPLOYMENTS    = "deployments"
 	LOCAL          = "local"
 	STAGING        = "staging"
+	PRODUCTION     = "production"
 	DOCKER_COMPOSE = "docker-compose"
+	TERRAFORM      = "terraform"
+	MODULES        = "modules"
+	VPS            = "vps"
 	SERVICE        = "service"
 	REQUESTS       = "requests"
 	RESPONSES      = "responses"
@@ -51,6 +55,12 @@ const (
 	TMPL_SQLC               = "sqlc.yaml.tmpl"
 	TMPL_DOCKER_COMPOSE     = "docker-compose.yaml.tmpl"
 	TMPL_VPS_DOCKER_COMPOSE = "vps-docker-compose.yaml.tmpl"
+	TMPL_TF_VPS_MAIN      = "tf-vps-module-main.tf.tmpl"
+	TMPL_TF_VPS_VARIABLES = "tf-vps-module-variables.tf.tmpl"
+	TMPL_TF_VPS_OUTPUTS   = "tf-vps-module-outputs.tf.tmpl"
+	TMPL_TF_ENV_MAIN      = "tf-env-main.tf.tmpl"
+	TMPL_TF_ENV_VARIABLES = "tf-env-variables.tf.tmpl"
+	TMPL_TF_ENV_TFVARS    = "tf-env-tfvars.tmpl"
 )
 
 const (

@@ -5,19 +5,27 @@ type VpsDockerComposeView struct {
 	ShouldAddDb     bool
 	ShouldAddRedis  bool
 	ShouldAddSecret bool
-	ShouldAddCaddy  bool
-	Domain          string
 	Environment     string
 }
 
-func newVpsDockerComposeView(req CreateNewProjectRequest, deployment DeploymentType, environment string) VpsDockerComposeView {
+type TerraformView struct {
+	Name        string
+	Environment string
+}
+
+func newTerraformView(req CreateNewProjectRequest, environment string) TerraformView {
+	return TerraformView{
+		Name:        req.Name,
+		Environment: environment,
+	}
+}
+
+func newVpsDockerComposeView(req CreateNewProjectRequest, environment string) VpsDockerComposeView {
 	return VpsDockerComposeView{
 		Name:            req.Name,
 		ShouldAddDb:     req.HasPostgres(),
 		ShouldAddRedis:  req.HasRedis(),
 		ShouldAddSecret: req.HasAuth(),
-		ShouldAddCaddy:  deployment == DeploymentTypeVps,
-		Domain:          req.Name,
 		Environment:     environment,
 	}
 }

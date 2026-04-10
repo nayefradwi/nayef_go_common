@@ -1,0 +1,22 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {}
+
+module "vps" {
+  source = "../modules/vps"
+
+  environment    = "{{ .Environment }}"
+  ssh_public_key = var.ssh_public_key
+  instance_type  = var.instance_type
+}
+
+output "server_ip" {
+  value = module.vps.server_ip
+}
