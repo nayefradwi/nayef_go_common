@@ -12,15 +12,12 @@ func Run() error {
 		return err
 	}
 
-	populateRequestDetails(req)
-	defer runGoTidy(req.RootDirPath)
-
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-	runner.Do(*req, populateProjectStructure)
 	runner.Do(*req, createGoMod)
 	runner.Do(*req, installGoPackages)
 	runner.Do(*req, generateCodeFromRequest)
 	runner.Do(*req, runGoFmt)
+	runner.Do(*req, runGoTidy)
 
 	if runner.Error != nil {
 		printer.Error(runner.Error.Error())
