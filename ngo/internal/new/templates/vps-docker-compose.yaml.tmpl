@@ -1,23 +1,21 @@
-name: {{ .Name }}local
+name: {{ .Name }}
 services:
   {{ .Name }}:
     build:
       context: ../../
       dockerfile: build/Dockerfile
-    ports:
-      - "4000:4000"
     env_file:
       - .env
     environment:
-      - ENVIRONMENT=development
-      - ADDRESS=:4000
+      - ENVIRONMENT={{ .Environment }}
+      - ADDRESS=${ADDRESS}
 {{- if .ShouldAddDb}}
-      - GOOSE_DBSTRING=postgres://postgres:postgres@postgres:5432/{{.Name}}?sslmode=disable
+      - GOOSE_DBSTRING=${GOOSE_DBSTRING}
       - GOOSE_DRIVER=postgres
       - GOOSE_MIGRATION_DIR=./internal/infra/migrations
 {{- end}}
 {{- if .ShouldAddRedis}}
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL}
 {{- end}}
 {{- if .ShouldAddSecret}}
       - JWT_SECRET=${JWT_SECRET}
@@ -37,12 +35,10 @@ services:
 
   {{ .Name }}_postgres:
     image: postgres:17-alpine
-    ports:
-      - "5433:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB={{.Name}}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - {{ .Name }}pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -55,8 +51,6 @@ services:
 
   {{ .Name }}_redis:
     image: redis:8-alpine
-    ports:
-      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

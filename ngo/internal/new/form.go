@@ -2,6 +2,8 @@ package new
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 
@@ -9,7 +11,17 @@ import (
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
 )
 
-var projectNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
+var projectNameRegex = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
+
+func deploymentOptions(provider ProviderType) []huh.Option[DeploymentType] {
+	opts := []huh.Option[DeploymentType]{
+		huh.NewOption(string(DeploymentTypeManual), DeploymentTypeManual),
+	}
+	for _, dt := range providerToDeploymentType[provider] {
+		opts = append(opts, huh.NewOption(string(dt), dt))
+	}
+	return opts
+}
 
 func RunForm() (*CreateNewProjectRequest, error) {
 	req := &CreateNewProjectRequest{DBLibrary: DBLibraryNone}
@@ -19,11 +31,11 @@ func RunForm() (*CreateNewProjectRequest, error) {
 			huh.
 				NewInput().
 				Title("Project Name").
-				Placeholder("my-service").
-				Description("Must start with a letter, then letters/digits/underscores/hyphens").
+				Placeholder("myservice").
+				Description("Go package name: lowercase letters and digits only, no separators").
 				Validate(func(s string) error {
 					if !projectNameRegex.MatchString(s) {
-						return fmt.Errorf("project name must start with a letter and contain only letters, digits, underscores, or hyphens")
+						return fmt.Errorf("project name must be lowercase letters and digits only (Go package naming convention)")
 					}
 					return nil
 				}).
@@ -86,6 +98,36 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				).
 				Value(&req.Features),
 		),
+		huh.NewGroup(
+			huh.
+				NewSelect[ProviderType]().
+				Title("Cloud Provider").
+				Options(
+					huh.NewOption(string(ProviderTypeAWS), ProviderTypeAWS),
+				).Value(&req.ProviderType),
+		),
+		huh.NewGroup(
+			huh.
+				NewSelect[DeploymentType]().
+				Title("Staging Deployment Type").
+				OptionsFunc(func() []huh.Option[DeploymentType] {
+					return deploymentOptions(req.ProviderType)
+				}, &req.ProviderType).
+				Value(&req.StagingDeploymentType),
+		).WithHideFunc(func() bool {
+			return req.ProviderType == ""
+		}),
+		huh.NewGroup(
+			huh.
+				NewSelect[DeploymentType]().
+				Title("Production Deployment Type").
+				OptionsFunc(func() []huh.Option[DeploymentType] {
+					return deploymentOptions(req.ProviderType)
+				}, &req.ProviderType).
+				Value(&req.ProductionDeploymentType),
+		).WithHideFunc(func() bool {
+			return req.ProviderType == ""
+		}),
 	)
 
 	if err := form.Run(); err != nil {
@@ -93,5 +135,18 @@ func RunForm() (*CreateNewProjectRequest, error) {
 		return nil, err
 	}
 
-	return req, nil
+	return setRequestPathDetails(req)
+}
+
+func setRequestPathDetails(req *CreateNewProjectRequest) (*CreateNewProjectRequest, error) {
+	wd, _ := os.Getwd()
+	req.RootDirPath = filepath.Join(wd, req.Name)
+
+	path := os.Getenv("GO_MOD_PATH")
+	if path == "" {
+		path = DEFAULT_MOD_PATH
+	}
+
+	req.GoModule = path + "/" + req.Name
+	return req, os.MkdirAll(req.RootDirPath, 0755)
 }

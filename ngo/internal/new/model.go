@@ -1,5 +1,7 @@
 package new
 
+import "slices"
+
 type ServiceType string
 
 const (
@@ -38,95 +40,55 @@ const (
 	DBLibraryNone DBLibrary = "Something Else"
 )
 
-type CreateNewProjectRequest struct {
-	Name            string
-	ServiceType     ServiceType
-	AuthType        AuthType
-	WithValidation  bool
-	Features        []Feature
-	InfraTypes      []InfraType
-	DBLibrary       DBLibrary
-	HeadDir         Dir
-	Packages        []string
-	RootDirPath     string
-	GoModule        string
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
-	IsRest          bool
-	HasPagination   bool
-	DiImports       []string
-}
+type ProviderType string
 
-type File struct {
-	Name      string
-	Extension string
-}
-
-type Dir struct {
-	Name        string
-	Directories []Dir
-	Files       []File
-}
-
-func (d Dir) Clone() Dir {
-	c := Dir{Name: d.Name, Files: make([]File, len(d.Files))}
-	copy(c.Files, d.Files)
-	c.Directories = make([]Dir, len(d.Directories))
-	for i, sub := range d.Directories {
-		c.Directories[i] = sub.Clone()
-	}
-	return c
-}
-
-func (d *Dir) AddSubDir(path []string, node Dir) {
-	if len(path) == 0 {
-		d.Directories = append(d.Directories, node)
-		return
-	}
-
-	for i := range d.Directories {
-		if d.Directories[i].Name == path[0] {
-			d.Directories[i].AddSubDir(path[1:], node)
-			return
-		}
-	}
-}
-
-var (
-	baseDirectories = Dir{
-		Directories: []Dir{
-			{
-				Name: CMD,
-				Directories: []Dir{
-					{
-						Name: API,
-						Files: []File{
-							{Name: BOOTSTRAP, Extension: GO},
-							{Name: ROUTER, Extension: GO},
-							{Name: MAIN, Extension: GO},
-						},
-					},
-				},
-			},
-			{
-				Name: INTERNAL,
-				Directories: []Dir{
-					{Name: CONFIG, Files: []File{{Name: CONFIG, Extension: GO}}},
-					{Name: DI, Files: []File{{Name: DI, Extension: GO}}},
-					{Name: HEALTH, Files: []File{{Name: HANDLER, Extension: GO}}},
-					{Name: INFRA},
-				},
-			},
-		},
-	}
-
-	basePackages = []string{
-		GODOTENV,
-		COMMON_ERRORS,
-		TESTIFY,
-	}
+const (
+	ProviderTypeAWS ProviderType = "AWS"
 )
+
+type DeploymentType string
+
+const (
+	DeploymentTypeManual       DeploymentType = "None"
+	DeploymentTypeDokploy      DeploymentType = "Dokploy"
+	DeploymentTypeVps          DeploymentType = "VPS"
+	DeploymentTypeManagedInfra DeploymentType = "Managed"
+)
+
+type CreateNewProjectRequest struct {
+	Name                     string
+	ServiceType              ServiceType
+	AuthType                 AuthType
+	WithValidation           bool
+	Features                 []Feature
+	InfraTypes               []InfraType
+	DBLibrary                DBLibrary
+	ProviderType             ProviderType
+	StagingDeploymentType    DeploymentType
+	ProductionDeploymentType DeploymentType
+	RootDirPath              string
+	GoModule                 string
+}
+
+func (r CreateNewProjectRequest) HasPostgres() bool {
+	return slices.Contains(r.InfraTypes, InfraTypePostgres)
+}
+
+func (r CreateNewProjectRequest) HasRedis() bool {
+	return slices.Contains(r.InfraTypes, InfraTypeRedis)
+}
+
+func (r CreateNewProjectRequest) HasAuth() bool {
+	return r.AuthType != AuthTypeNone
+}
+
+func (r CreateNewProjectRequest) HasFeature(f Feature) bool {
+	return slices.Contains(r.Features, f)
+}
+
+var providerToDeploymentType = map[ProviderType][]DeploymentType{
+	ProviderTypeAWS: {DeploymentTypeDokploy, DeploymentTypeVps, DeploymentTypeManagedInfra},
+}
 
 var featureToPackage = map[Feature]string{
 	FeatureLocking:    LOCKING,
