@@ -4,8 +4,6 @@ services:
     build:
       context: ../../
       dockerfile: build/Dockerfile
-    env_file:
-      - .env
     environment:
       - ENVIRONMENT={{ .Environment }}
       - ADDRESS=${ADDRESS}

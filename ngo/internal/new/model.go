@@ -51,7 +51,6 @@ type DeploymentType string
 const (
 	DeploymentTypeManual       DeploymentType = "None"
 	DeploymentTypeDokploy      DeploymentType = "Dokploy"
-	DeploymentTypeVps          DeploymentType = "VPS"
 	DeploymentTypeManagedInfra DeploymentType = "Managed"
 )
 
@@ -86,8 +85,12 @@ func (r CreateNewProjectRequest) HasFeature(f Feature) bool {
 	return slices.Contains(r.Features, f)
 }
 
+func (r CreateNewProjectRequest) NeedsInfra(dt DeploymentType) bool {
+	return dt == DeploymentTypeDokploy
+}
+
 var providerToDeploymentType = map[ProviderType][]DeploymentType{
-	ProviderTypeAWS: {DeploymentTypeDokploy, DeploymentTypeVps, DeploymentTypeManagedInfra},
+	ProviderTypeAWS: {DeploymentTypeDokploy, DeploymentTypeManagedInfra},
 }
 
 var featureToPackage = map[Feature]string{

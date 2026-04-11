@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+
+	"github.com/nayefradwi/nayef_go_common/errors"
 )
 
 //go:embed templates/*
@@ -41,12 +43,17 @@ func renderBootstrap(req CreateNewProjectRequest) error {
 }
 
 func renderSqlcConfig(req CreateNewProjectRequest) error {
-	filePath := filepath.Join(req.RootDirPath, CONFIG, SQLC+"."+YAML)
-	infraPath := filepath.Join(req.RootDirPath, INTERNAL, INFRA, QUERIES)
-	if err := os.MkdirAll(infraPath, 0755); err != nil {
+	sqlcPath := filepath.Join(req.RootDirPath, INTERNAL, INFRA, SQLC, QUERIES)
+	if err := os.MkdirAll(sqlcPath, 0755); err != nil {
 		return err
 	}
 
+	migrationsPath := filepath.Join(req.RootDirPath, INTERNAL, INFRA, MIGRATIONS)
+	if err := os.MkdirAll(migrationsPath, 0755); err != nil {
+		return err
+	}
+
+	filePath := filepath.Join(req.RootDirPath, CONFIG, SQLC+"."+YAML)
 	return renderToFile(TMPL_SQLC, filePath, "")
 }
 
@@ -78,7 +85,7 @@ func renderDockerfile(req CreateNewProjectRequest) error {
 	return renderToFile(TMPL_DOCKERFILE, filePath, req)
 }
 
-func renderDockerCompose(req CreateNewProjectRequest) error {
+func renderLocalDockerCompose(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, DOCKER_COMPOSE+"."+YAML)
 	view := newLocalDockerComposeView(req)
 	return renderToFile(TMPL_DOCKER_COMPOSE, filePath, view)
@@ -109,6 +116,51 @@ func renderAirToml(req CreateNewProjectRequest) error {
 
 func renderStagingDockerCompose(req CreateNewProjectRequest) error {
 	filepath := filepath.Join(req.RootDirPath, DEPLOYMENTS, STAGING, DOCKER_COMPOSE+"."+YAML)
-	view := newVpsDockerComposeView(req, req.StagingDeploymentType, STAGING)
+	view := newVpsDockerComposeView(req, STAGING)
 	return renderToFile(TMPL_VPS_DOCKER_COMPOSE, filepath, view)
+}
+
+func renderProductionDockerCompose(req CreateNewProjectRequest) error {
+	filepath := filepath.Join(req.RootDirPath, DEPLOYMENTS, PRODUCTION, DOCKER_COMPOSE+"."+YAML)
+	view := newVpsDockerComposeView(req, PRODUCTION)
+	return renderToFile(TMPL_VPS_DOCKER_COMPOSE, filepath, view)
+}
+
+func renderTerraformVpsModule(req CreateNewProjectRequest) error {
+	moduleDir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, MODULES, VPS)
+	runner := errors.ResultRunnerWithParam[TerraformView]{}
+	view := TerraformView{Name: req.Name}
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_VPS_MAIN, filepath.Join(moduleDir, "main.tf"), v)
+	})
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_VPS_VARIABLES, filepath.Join(moduleDir, "variables.tf"), v)
+	})
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_VPS_OUTPUTS, filepath.Join(moduleDir, "outputs.tf"), v)
+	})
+	return runner.Error
+}
+
+func renderTerraformEnv(req CreateNewProjectRequest, environment string) error {
+	envDir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, environment)
+	view := newTerraformView(req, environment)
+	runner := errors.ResultRunnerWithParam[TerraformView]{}
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_ENV_MAIN, filepath.Join(envDir, "main.tf"), v)
+	})
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_ENV_VARIABLES, filepath.Join(envDir, "variables.tf"), v)
+	})
+	runner.Do(view, func(v TerraformView) error {
+		return renderToFile(TMPL_TF_ENV_TFVARS, filepath.Join(envDir, "terraform.tfvars.example"), v)
+	})
+	return runner.Error
+}
+
+func renderTerraformModules(req CreateNewProjectRequest) error {
+	if !req.NeedsInfra(req.StagingDeploymentType) && !req.NeedsInfra(req.ProductionDeploymentType) {
+		return nil
+	}
+	return renderTerraformVpsModule(req)
 }

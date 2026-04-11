@@ -1,0 +1,68 @@
+locals {
+  project_name = "{{ .Name }}"
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+}
+
+resource "aws_key_pair" "{{ .Name }}" {
+  key_name   = "${local.project_name}-${var.environment}"
+  public_key = var.ssh_public_key
+}
+
+resource "aws_security_group" "{{ .Name }}" {
+  name        = "${local.project_name}-${var.environment}"
+  description = "${local.project_name} ${var.environment} security group"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "{{ .Name }}" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.{{ .Name }}.key_name
+  vpc_security_group_ids = [aws_security_group.{{ .Name }}.id]
+
+  tags = {
+    Name        = local.project_name
+    Environment = var.environment
+  }
+}

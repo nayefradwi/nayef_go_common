@@ -18,6 +18,8 @@ func Run() error {
 	runner.Do(*req, generateCodeFromRequest)
 	runner.Do(*req, runGoFmt)
 	runner.Do(*req, runGoTidy)
+	runner.Do(*req, generateSSHKeys)
+	runner.Do(*req, provisionInfrastructure)
 
 	if runner.Error != nil {
 		printer.Error(runner.Error.Error())
