@@ -13,6 +13,9 @@ type Di struct {
     {{- if .ShouldAddRedis}}
     Redis *redis.Client
     {{- end}}
+    {{- if .ShouldAddLocking}}
+    Locker locking.ILocker
+    {{- end}}
 }
 
 func RegisterServices(ctx context.Context, config config.Config) *Di {
@@ -22,6 +25,12 @@ func RegisterServices(ctx context.Context, config config.Config) *Di {
     {{- end}}
     {{- if .ShouldAddRedis}}
     di.connectToRedis(ctx, config.RedisUrl)
+    {{- end}}
+    {{- if and .ShouldAddLocking .ShouldAddRedis }}
+    di.Locker = locking.NewDistributedLockerFromClient(di.Redis)
+    {{- end}}
+    {{- if and .ShouldAddLocking (not .ShouldAddRedis)}}
+    di.Locker = locking.NewInMemoryLocker()
     {{- end}}
     return &di
 }

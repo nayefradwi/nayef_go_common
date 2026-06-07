@@ -67,10 +67,11 @@ func newConfigView(req CreateNewProjectRequest) ConfigView {
 }
 
 type DiView struct {
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
-	Imports         []string
+	ShouldAddDb      bool
+	ShouldAddRedis   bool
+	ShouldAddSecret  bool
+	ShouldAddLocking bool
+	Imports          []string
 }
 
 func newDiView(req CreateNewProjectRequest) DiView {
@@ -82,11 +83,17 @@ func newDiView(req CreateNewProjectRequest) DiView {
 	if req.HasRedis() {
 		imports = append(imports, REDISUTIL, REDIS)
 	}
+
+	if req.HasFeature(FeatureLocking) {
+		imports = append(imports, LOCKING)
+	}
+
 	return DiView{
-		Imports:         imports,
-		ShouldAddDb:     req.HasPostgres(),
-		ShouldAddRedis:  req.HasRedis(),
-		ShouldAddSecret: req.HasAuth(),
+		Imports:          imports,
+		ShouldAddDb:      req.HasPostgres(),
+		ShouldAddRedis:   req.HasRedis(),
+		ShouldAddSecret:  req.HasAuth(),
+		ShouldAddLocking: req.HasFeature(FeatureLocking),
 	}
 }
 

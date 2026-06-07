@@ -1,7 +1,6 @@
 package new
 
 import (
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -182,19 +181,6 @@ func generateSSHKeys(req CreateNewProjectRequest) error {
 	}
 	stop(err)
 	return err
-}
-
-func printTerraformOutputs(environment string, jsonOutput []byte) {
-	var outputs map[string]struct {
-		Value string `json:"value"`
-	}
-	if err := json.Unmarshal(jsonOutput, &outputs); err != nil {
-		return
-	}
-	printer.Success(fmt.Sprintf("%s infrastructure provisioned", environment))
-	for key, output := range outputs {
-		printer.Info(fmt.Sprintf("  %s: %s", key, output.Value))
-	}
 }
 
 func generateCodeFromRequest(req CreateNewProjectRequest) error {
