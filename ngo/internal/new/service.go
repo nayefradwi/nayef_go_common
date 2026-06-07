@@ -3,10 +3,8 @@ package new
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/log"
@@ -197,58 +195,6 @@ func printTerraformOutputs(environment string, jsonOutput []byte) {
 	for key, output := range outputs {
 		printer.Info(fmt.Sprintf("  %s: %s", key, output.Value))
 	}
-}
-
-func runTerraformForEnv(req CreateNewProjectRequest, environment string) error {
-	dir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, environment)
-
-	pubKeyBytes, err := os.ReadFile(filepath.Join(dir, "id_rsa.pem.pub"))
-	if err != nil {
-		return fmt.Errorf("failed to read SSH public key: %w", err)
-	}
-	sshVar := fmt.Sprintf("ssh_public_key=%s", strings.TrimSpace(string(pubKeyBytes)))
-
-	stop := printer.Spin(fmt.Sprintf("Terraform init (%s)", environment))
-	cmd := exec.Command("terraform", "init")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	stop(err)
-	if err != nil {
-		return fmt.Errorf("terraform init (%s) failed: %s %w", environment, string(out), err)
-	}
-
-	stop = printer.Spin(fmt.Sprintf("Terraform apply (%s)", environment))
-	cmd = exec.Command("terraform", "apply", "-auto-approve", "-var", sshVar)
-	cmd.Dir = dir
-	out, err = cmd.CombinedOutput()
-	stop(err)
-	if err != nil {
-		return fmt.Errorf("terraform apply (%s) failed: %s %w", environment, string(out), err)
-	}
-
-	cmd = exec.Command("terraform", "output", "-json")
-	cmd.Dir = dir
-	out, err = cmd.Output()
-	if err != nil {
-		return fmt.Errorf("terraform output (%s) failed: %w", environment, err)
-	}
-	printTerraformOutputs(environment, out)
-	return nil
-}
-
-func provisionInfrastructure(req CreateNewProjectRequest) error {
-	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-	if req.NeedsInfra(req.StagingDeploymentType) {
-		runner.Do(req, func(r CreateNewProjectRequest) error {
-			return runTerraformForEnv(r, STAGING)
-		})
-	}
-	if req.NeedsInfra(req.ProductionDeploymentType) {
-		runner.Do(req, func(r CreateNewProjectRequest) error {
-			return runTerraformForEnv(r, PRODUCTION)
-		})
-	}
-	return runner.Error
 }
 
 func generateCodeFromRequest(req CreateNewProjectRequest) error {
