@@ -1,5 +1,5 @@
 package add
 
-func generateServiceClass(_ CreateFeatureRequest) error {
-	return nil
+func generateServiceClass(req CreateFeatureRequest) error {
+	return renderService(req)
 }

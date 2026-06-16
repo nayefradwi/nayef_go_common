@@ -6,5 +6,7 @@ type CreateFeatureRequest struct {
 	common.TakesAuthType
 	common.TakesFeatures
 	common.TakesInfraTypes
-	Name string
+	Name        string
+	GoModule    string
+	RootDirPath string
 }

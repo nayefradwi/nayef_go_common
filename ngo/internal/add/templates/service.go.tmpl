@@ -1,0 +1,57 @@
+package {{.Package}}
+{{if .Imports}}
+import (
+    {{- range .Imports}}
+    "{{.}}"
+    {{- end}}
+)
+{{end}}
+type {{.Name}}Service struct {
+    {{- if .ShouldAddDb}}
+    pool *pgxpool.Pool
+    q    *db.Queries
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    redis *redis.Client
+    {{- end}}
+    {{- if .ShouldAddLocking}}
+    locker locking.ILocker
+    {{- end}}
+    {{- if .ShouldAddOtp}}
+    otp otp.IOtpService
+    {{- end}}
+}
+
+func New{{.Name}}Service(
+    {{- if .ShouldAddDb}}
+    pool *pgxpool.Pool,
+    q *db.Queries,
+    {{- end}}
+    {{- if .ShouldAddRedis}}
+    redisClient *redis.Client,
+    {{- end}}
+    {{- if .ShouldAddLocking}}
+    locker locking.ILocker,
+    {{- end}}
+    {{- if .ShouldAddOtp}}
+    otpService otp.IOtpService,
+    {{- end}}
+) *{{.Name}}Service {
+    return &{{.Name}}Service{
+        {{- if .ShouldAddDb}}
+        pool: pool,
+        q:    q,
+        {{- end}}
+        {{- if .ShouldAddRedis}}
+        redis: redisClient,
+        {{- end}}
+        {{- if .ShouldAddLocking}}
+        locker: locker,
+        {{- end}}
+        {{- if .ShouldAddOtp}}
+        otp: otpService,
+        {{- end}}
+    }
+}
+
+// TODO: add service methods
