@@ -1,17 +1,14 @@
 package new
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 
 	"github.com/charmbracelet/huh"
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
 )
-
-var projectNameRegex = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
 
 func deploymentOptions(provider ProviderType) []huh.Option[DeploymentType] {
 	opts := []huh.Option[DeploymentType]{
@@ -28,18 +25,7 @@ func RunForm() (*CreateNewProjectRequest, error) {
 
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.
-				NewInput().
-				Title("Project Name").
-				Placeholder("myservice").
-				Description("Go package name: lowercase letters and digits only, no separators").
-				Validate(func(s string) error {
-					if !projectNameRegex.MatchString(s) {
-						return fmt.Errorf("project name must be lowercase letters and digits only (Go package naming convention)")
-					}
-					return nil
-				}).
-				Value(&req.Name),
+			common.NameInput(&req.Name),
 		),
 		huh.NewGroup(
 			huh.
@@ -50,17 +36,7 @@ func RunForm() (*CreateNewProjectRequest, error) {
 					huh.NewOption(string(ServiceTypeGrpc), ServiceTypeGrpc),
 				).Value(&req.ServiceType),
 		),
-		huh.NewGroup(
-			huh.
-				NewMultiSelect[InfraType]().
-				Title("Infra required").
-				Description("based on this common modules will be imported").
-				Options(
-					huh.NewOption(string(InfraTypePostgres), InfraTypePostgres),
-					huh.NewOption(string(InfraTypeRedis), InfraTypeRedis),
-				).
-				Value(&req.InfraTypes),
-		),
+		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes)),
 		huh.NewGroup(
 			huh.
 				NewSelect[DBLibrary]().
@@ -72,32 +48,10 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				).
 				Value(&req.DBLibrary),
 		).WithHideFunc(func() bool {
-			return !slices.Contains(req.InfraTypes, InfraTypePostgres)
+			return !slices.Contains(req.InfraTypes, common.InfraTypePostgres)
 		}),
-		huh.NewGroup(
-			huh.
-				NewSelect[AuthType]().
-				Title("Auth Type").
-				Description("Choose the level of 'revokness', or None to skip").
-				Options(
-					huh.NewOption(string(AuthTypeJWT), AuthTypeJWT),
-					huh.NewOption(string(AuthTypeRefresh), AuthTypeRefresh),
-					huh.NewOption(string(AuthTypeOpaque), AuthTypeOpaque),
-					huh.NewOption(string(AuthTypeNone), AuthTypeNone),
-				).Value(&req.AuthType),
-		),
-		huh.NewGroup(
-			huh.
-				NewMultiSelect[Feature]().
-				Title("Additional Features").
-				Description("based on this common modules will be imported").
-				Options(
-					huh.NewOption(string(FeatureLocking), FeatureLocking),
-					huh.NewOption(string(FeatureOtp), FeatureOtp),
-					huh.NewOption(string(FeaturePagination), FeaturePagination),
-				).
-				Value(&req.Features),
-		),
+		huh.NewGroup(common.AuthInput(&req.AuthType)),
+		huh.NewGroup(common.FeatureInput(&req.Features)),
 		huh.NewGroup(
 			huh.
 				NewSelect[ProviderType]().

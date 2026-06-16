@@ -46,7 +46,7 @@ func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 		packages = append(packages, GRPC, GRPCUTIL, ERRORSPB)
 	}
 
-	if req.AuthType != AuthTypeNone {
+	if req.HasAuth() {
 		packages = append(packages, AUTH)
 	}
 

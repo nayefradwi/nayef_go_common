@@ -1,5 +1,7 @@
 package new
 
+import "github.com/nayefradwi/nayef_go_common/ngo/internal/common"
+
 type VpsDockerComposeView struct {
 	Name            string
 	ShouldAddDb     bool
@@ -84,7 +86,7 @@ func newDiView(req CreateNewProjectRequest) DiView {
 		imports = append(imports, REDISUTIL, REDIS)
 	}
 
-	if req.HasFeature(FeatureLocking) {
+	if req.HasFeature(common.FeatureLocking) {
 		imports = append(imports, LOCKING)
 	}
 
@@ -93,7 +95,7 @@ func newDiView(req CreateNewProjectRequest) DiView {
 		ShouldAddDb:      req.HasPostgres(),
 		ShouldAddRedis:   req.HasRedis(),
 		ShouldAddSecret:  req.HasAuth(),
-		ShouldAddLocking: req.HasFeature(FeatureLocking),
+		ShouldAddLocking: req.HasFeature(common.FeatureLocking),
 	}
 }
 
@@ -138,7 +140,7 @@ type RouterView struct {
 func newRouterView(req CreateNewProjectRequest) RouterView {
 	return RouterView{
 		IsRest:        req.ServiceType == ServiceTypeRest,
-		HasPagination: req.HasFeature(FeaturePagination),
+		HasPagination: req.HasFeature(common.FeaturePagination),
 		GoModule:      req.GoModule,
 	}
 }
