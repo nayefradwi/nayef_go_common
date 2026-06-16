@@ -38,6 +38,10 @@ const (
 	DOCKERFILE     = "Dockerfile"
 	AIR_TOML       = "air"
 	TOML           = "toml"
+	GITHUB         = ".github"
+	WORKFLOWS      = "workflows"
+	CI             = "ci"
+	YML            = "yml"
 )
 
 const (
@@ -61,6 +65,7 @@ const (
 	TMPL_TF_ENV_MAIN      = "tf-env-main.tf.tmpl"
 	TMPL_TF_ENV_VARIABLES = "tf-env-variables.tf.tmpl"
 	TMPL_TF_ENV_TFVARS    = "tf-env-tfvars.tmpl"
+	TMPL_GITHUB_CI        = "ci.yml.tmpl"
 )
 
 const (

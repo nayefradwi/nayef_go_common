@@ -164,3 +164,8 @@ func renderTerraformModules(req CreateNewProjectRequest) error {
 	}
 	return renderTerraformVpsModule(req)
 }
+
+func renderGithubCI(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, GITHUB, WORKFLOWS, CI+"."+YML)
+	return renderToFile(TMPL_GITHUB_CI, filePath, req)
+}

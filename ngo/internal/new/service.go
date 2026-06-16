@@ -153,6 +153,12 @@ func generateDeploymentsFromRequest(req CreateNewProjectRequest) error {
 	return runner.Error
 }
 
+func generateGithubFromRequest(req CreateNewProjectRequest) error {
+	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
+	runner.Do(req, renderGithubCI)
+	return runner.Error
+}
+
 func generateConfigFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	if req.DBLibrary == DBLibrarySqlc {
@@ -190,6 +196,7 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, generateCmdFromRequest)
 	runner.Do(req, generateDeploymentsFromRequest)
 	runner.Do(req, generateConfigFromRequest)
+	runner.Do(req, generateGithubFromRequest)
 
 	if runner.Error != nil {
 		return runner.Error
