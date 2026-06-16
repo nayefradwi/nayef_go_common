@@ -46,7 +46,7 @@ func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 		packages = append(packages, GRPC, GRPCUTIL, ERRORSPB)
 	}
 
-	if req.AuthType != AuthTypeNone {
+	if req.HasAuth() {
 		packages = append(packages, AUTH)
 	}
 
@@ -161,7 +161,7 @@ func generateGithubFromRequest(req CreateNewProjectRequest) error {
 
 func generateConfigFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-	if req.DBLibrary == DBLibrarySqlc {
+	if req.HasPostgres() {
 		runner.Do(req, renderSqlcConfig)
 	}
 
