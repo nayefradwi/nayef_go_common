@@ -161,7 +161,7 @@ func generateGithubFromRequest(req CreateNewProjectRequest) error {
 
 func generateConfigFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-	if req.DBLibrary == DBLibrarySqlc {
+	if req.HasPostgres() {
 		runner.Do(req, renderSqlcConfig)
 	}
 

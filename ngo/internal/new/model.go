@@ -11,13 +11,6 @@ const (
 	ServiceTypeGrpc ServiceType = "gRPC"
 )
 
-type DBLibrary string
-
-const (
-	DBLibrarySqlc DBLibrary = "sqlc"
-	DBLibraryNone DBLibrary = "Something Else"
-)
-
 type ProviderType string
 
 const (
@@ -39,7 +32,6 @@ type CreateNewProjectRequest struct {
 	Name                     string
 	ServiceType              ServiceType
 	WithValidation           bool
-	DBLibrary                DBLibrary
 	ProviderType             ProviderType
 	StagingDeploymentType    DeploymentType
 	ProductionDeploymentType DeploymentType

@@ -3,7 +3,6 @@ package new
 import (
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/charmbracelet/huh"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
@@ -21,7 +20,7 @@ func deploymentOptions(provider ProviderType) []huh.Option[DeploymentType] {
 }
 
 func RunForm() (*CreateNewProjectRequest, error) {
-	req := &CreateNewProjectRequest{DBLibrary: DBLibraryNone}
+	req := &CreateNewProjectRequest{}
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -37,19 +36,6 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				).Value(&req.ServiceType),
 		),
 		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes)),
-		huh.NewGroup(
-			huh.
-				NewSelect[DBLibrary]().
-				Title("DB Library").
-				Description("Choose the query library for PostgreSQL").
-				Options(
-					huh.NewOption(string(DBLibrarySqlc), DBLibrarySqlc),
-					huh.NewOption(string(DBLibraryNone), DBLibraryNone),
-				).
-				Value(&req.DBLibrary),
-		).WithHideFunc(func() bool {
-			return !slices.Contains(req.InfraTypes, common.InfraTypePostgres)
-		}),
 		huh.NewGroup(common.AuthInput(&req.AuthType)),
 		huh.NewGroup(common.FeatureInput(&req.Features)),
 		huh.NewGroup(
