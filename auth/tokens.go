@@ -47,7 +47,7 @@ func GetToken(ctx context.Context) Token {
 	t, ok := ctx.Value(TokenKey{}).(Token)
 	if !ok {
 		return Token{
-			Claims: make(map[string]interface{}),
+			Claims: make(map[string]any),
 		}
 	}
 

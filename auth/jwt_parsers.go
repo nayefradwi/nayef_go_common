@@ -8,8 +8,8 @@ import (
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
-func defaultHMACParser(secretKey string) func(token *jwt.Token) (interface{}, error) {
-	return func(token *jwt.Token) (interface{}, error) {
+func defaultHMACParser(secretKey string) func(token *jwt.Token) (any, error) {
+	return func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, UnauthorizedError("Invalid token")
 		}
@@ -17,8 +17,8 @@ func defaultHMACParser(secretKey string) func(token *jwt.Token) (interface{}, er
 	}
 }
 
-func defaultRSAParser(publicKey *rsa.PublicKey) func(token *jwt.Token) (interface{}, error) {
-	return func(token *jwt.Token) (interface{}, error) {
+func defaultRSAParser(publicKey *rsa.PublicKey) func(token *jwt.Token) (any, error) {
+	return func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, UnauthorizedError("Invalid token")
 		}
@@ -26,8 +26,8 @@ func defaultRSAParser(publicKey *rsa.PublicKey) func(token *jwt.Token) (interfac
 	}
 }
 
-func defaultECDSAParser(publicKey *ecdsa.PublicKey) func(token *jwt.Token) (interface{}, error) {
-	return func(token *jwt.Token) (interface{}, error) {
+func defaultECDSAParser(publicKey *ecdsa.PublicKey) func(token *jwt.Token) (any, error) {
+	return func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, UnauthorizedError("Invalid token")
 		}
