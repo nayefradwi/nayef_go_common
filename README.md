@@ -295,12 +295,12 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 - [x] Set up config, di, env, and the common stuff
 - [x] REST: add common handler like health check
 - [x] REST: set up empty router and run server
-- [ ] REST: Support adding initial feature packages
-- [ ] Add hot reload config template using something like air
+- [x] REST: Support adding initial feature packages
+- [x] Add hot reload config template using something like air
 - [ ] gRPC: set up initial config for protobuf code gen (might use buf)
 - [ ] gRPC: utilize tools that will add server reflections and improve dev experience
 - [x] generate dockerfile
-- [ ] set up locking if redis is specified
+- [x] set up locking if redis is specified
 - [ ] set up integration test helpers for redis and postgres
 - [x] set up local deployment using docker-compose
 - [ ] ...

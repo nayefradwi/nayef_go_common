@@ -151,7 +151,7 @@ func TestOtpJsonSerialization(t *testing.T) {
 	data, err := json.Marshal(otp)
 	require.NoError(t, err)
 
-	var fields map[string]interface{}
+	var fields map[string]any
 	require.NoError(t, json.Unmarshal(data, &fields))
 
 	assert.Contains(t, fields, "owner_id")
