@@ -53,7 +53,7 @@ func renderSqlcConfig(req CreateNewProjectRequest) error {
 		return err
 	}
 
-	filePath := filepath.Join(req.RootDirPath, CONFIG, SQLC+"."+YAML)
+	filePath := filepath.Join(req.RootDirPath, SQLC+"."+YAML)
 	return renderToFile(TMPL_SQLC, filePath, "")
 }
 
