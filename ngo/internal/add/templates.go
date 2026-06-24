@@ -33,3 +33,9 @@ func renderService(req CreateFeatureRequest) error {
 	filePath := filepath.Join(req.RootDirPath, INTERNAL, req.Name, SERVICE+"."+GO)
 	return renderToFile(TMPL_SERVICE, filePath, newServiceView(req))
 }
+
+func renderHandler(req CreateFeatureRequest) error {
+	filePath := filepath.Join(req.RootDirPath, INTERNAL, req.Name, HANDLER+"."+GO)
+	return renderToFile(TMPL_HANDLER, filePath, newHandlerView(req))
+
+}

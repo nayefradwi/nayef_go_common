@@ -1,0 +1,27 @@
+package {{.Package}}
+
+import (
+    "net/http"
+
+    "github.com/go-chi/chi/v5"
+)
+
+
+type {{.Name}}Handler struct {
+    svc {{.Name}}Service
+}
+
+func New{{.Name}}Handler(svc {{.Name}}Service) {{.Name}}Handler {
+    return {{.Name}}Handler{
+        svc: svc,
+    }
+}
+
+func (h {{.Name}}Handler) Routes() chi.Router {
+    r := chi.NewRouter()
+    r.get("/", example)
+    return r
+}
+
+
+func (h {{.Name}}Handler) example(w http.ResponseWriter, r *http.Request) {}

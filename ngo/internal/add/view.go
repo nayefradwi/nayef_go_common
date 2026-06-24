@@ -46,3 +46,15 @@ func newServiceView(req CreateFeatureRequest) ServiceView {
 		ShouldAddOtp:     req.HasFeature(common.FeatureOtp),
 	}
 }
+
+type HandlerView struct {
+	Name    string
+	Package string
+}
+
+func newHandlerView(req CreateFeatureRequest) HandlerView {
+	return HandlerView{
+		Name:    strings.ToUpper(req.Name[:1]) + req.Name[1:],
+		Package: req.Name,
+	}
+}
