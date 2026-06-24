@@ -3,11 +3,13 @@ package add
 const (
 	INTERNAL = "internal"
 	SERVICE  = "service"
+	HANDLER  = "handler"
 	GO       = "go"
 )
 
 const (
 	TMPL_SERVICE = "service.go.tmpl"
+	TMPL_HANDLER = "handler.go.tmpl"
 )
 
 const (
