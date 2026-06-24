@@ -36,8 +36,8 @@ func New{{.Name}}Service(
     {{- if .ShouldAddOtp}}
     otpService otp.IOtpService,
     {{- end}}
-) *{{.Name}}Service {
-    return &{{.Name}}Service{
+) {{.Name}}Service {
+    return {{.Name}}Service{
         {{- if .ShouldAddDb}}
         pool: pool,
         q:    q,

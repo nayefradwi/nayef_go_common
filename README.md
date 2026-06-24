@@ -303,4 +303,6 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 - [x] set up locking if redis is specified
 - [ ] set up integration test helpers for redis and postgres
 - [x] set up local deployment using docker-compose
+- [ ] ADD: auto create handler with service injected
+- [ ] ADD: set up empty method to return chi router from handler
 - [ ] ...
