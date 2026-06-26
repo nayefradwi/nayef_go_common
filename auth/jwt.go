@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
@@ -29,13 +30,18 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 		return Token{}, UnauthorizedError("Invalid token")
 	}
 
-	owner, _ := claims[ownerClaimKey].(string)
+	ownerStr, _ := claims[ownerClaimKey].(string)
 	issuedAt, _ := claims[issuedAtClaimKey].(float64)
 	expiresAt, _ := claims[expiryClaimKey].(float64)
 	tokenType, _ := claims[tokenTypeClaimKey].(float64)
 
 	if t.Config.TokenType != 0 && int(tokenType) != t.Config.TokenType {
 		return Token{}, UnauthorizedError("invalid token type")
+	}
+
+	owner, err := uuid.Parse(ownerStr)
+	if err != nil {
+		return Token{}, UnauthorizedError("invalid owner claim")
 	}
 
 	return Token{
@@ -48,14 +54,14 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 	}, nil
 }
 
-func (t JwtTokenProvider) SignClaims(owner string, claims map[string]any) (string, error) {
+func (t JwtTokenProvider) SignClaims(owner uuid.UUID, claims map[string]any) (string, error) {
 	issuer, issuedAt := t.Config.Issuer, time.Now().UTC()
 	expiresAt := issuedAt.Add(t.Config.ExpiresIn)
 	newClaims := maps.Clone(claims)
 	newClaims[issuerClaimKey] = issuer
 	newClaims[issuedAtClaimKey] = issuedAt.Unix()
 	newClaims[expiryClaimKey] = expiresAt.Unix()
-	newClaims[ownerClaimKey] = owner
+	newClaims[ownerClaimKey] = owner.String()
 	if t.Config.TokenType != 0 {
 		newClaims[tokenTypeClaimKey] = t.Config.TokenType
 	}

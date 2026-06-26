@@ -3,6 +3,7 @@ package auth
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/httputil"
 )
@@ -57,7 +58,13 @@ func (m JwtReferenceTokenAuthenticationMiddleware) UseAuthentication(f http.Hand
 			return
 		}
 
-		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(tokenId)
+		id, err := uuid.Parse(tokenId)
+		if err != nil {
+			jw.WriteError(errors.UnauthorizedError("Invalid token"))
+			return
+		}
+
+		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(id)
 		if err != nil {
 			jw.WriteError(errors.UnauthorizedError("Invalid token"))
 			return

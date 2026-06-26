@@ -40,7 +40,7 @@ func TestSetSecretKey_UpdatesParserAndSigner(t *testing.T) {
 	cfg := mustConfig(t)
 	provider := NewJwtTokenProvider(cfg)
 
-	token, err := provider.SignClaims("owner1", map[string]any{})
+	token, err := provider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,15 +17,15 @@ func NewJwtRefreshTokenWithRevokeProvider(tokenProvider IRefreshTokenProvider, t
 	}
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) GenerateId() (string, error) {
+func (t JwtRefreshTokenWithRevokeProvider) GenerateId() (uuid.UUID, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return "", InternalError("failed to generate token id: " + err.Error())
+		return uuid.Nil, InternalError("failed to generate token id: " + err.Error())
 	}
-	return id.String(), nil
+	return id, nil
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error) {
+func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
 	tokenPair, err := t.TokenProvider.GenerateToken(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
@@ -45,7 +45,7 @@ func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId string, claims 
 		return EmptyTokenDTO(), err
 	}
 
-	return NewTokenDTOWithRefresh(tokenPair.AccessToken, refreshToken.Id), nil
+	return NewTokenDTOWithRefresh(tokenPair.AccessToken, refreshToken.Id.String()), nil
 }
 
 func (t JwtRefreshTokenWithRevokeProvider) GetAccessToken(accessToken string) (Token, error) {
@@ -60,10 +60,10 @@ func (t JwtRefreshTokenWithRevokeProvider) GetAccessTokenProvider() ITokenProvid
 	return t.TokenProvider.GetAccessTokenProvider()
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(reference string) error {
+func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(reference uuid.UUID) error {
 	return t.TokenStore.DeleteToken(reference)
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ownerId string) error {
+func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ownerId uuid.UUID) error {
 	return t.TokenStore.DeleteAllTokensByOwner(ownerId)
 }

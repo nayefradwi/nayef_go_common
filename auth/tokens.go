@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -22,9 +24,9 @@ const (
 type TokenKey struct{}
 
 type Token struct {
-	Id        string
+	Id        uuid.UUID
 	Value     string
-	OwnerId   string
+	OwnerId   uuid.UUID
 	ExpiresAt time.Time
 	IssuedAt  time.Time
 	Claims    map[string]any
@@ -35,7 +37,7 @@ func (t Token) IsExpired() bool {
 	return time.Now().UTC().After(t.ExpiresAt)
 }
 
-func (t Token) IsOwner(owner string) bool {
+func (t Token) IsOwner(owner uuid.UUID) bool {
 	return t.OwnerId == owner
 }
 

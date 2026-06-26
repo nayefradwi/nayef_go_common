@@ -15,7 +15,7 @@ func TestSignClaims_DoesNotMutateInput(t *testing.T) {
 	provider := NewJwtTokenProvider(cfg)
 
 	claims := map[string]any{"role": "admin"}
-	_, err := provider.SignClaims("owner1", claims)
+	_, err := provider.SignClaims(testOwner, claims)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestTokenType_Enforcement(t *testing.T) {
 	accessProvider := NewJwtTokenProvider(accessCfg)
 	refreshProvider := NewJwtTokenProvider(refreshCfg)
 
-	accessToken, err := accessProvider.SignClaims("owner1", map[string]any{})
+	accessToken, err := accessProvider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestTokenType_NotEnforced_WhenZero(t *testing.T) {
 	typedProvider := NewJwtTokenProvider(cfg.SetTokenType(AccessTokenType))
 	untypedProvider := NewJwtTokenProvider(cfg)
 
-	token, err := typedProvider.SignClaims("owner1", map[string]any{})
+	token, err := typedProvider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestAudience_Enforcement(t *testing.T) {
 	cfgWithAud := cfg.SetAudience("service-a")
 
 	provider := NewJwtTokenProvider(cfgWithAud)
-	token, err := provider.SignClaims("owner1", map[string]any{})
+	token, err := provider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestRSASigningMethod_SignAndParse(t *testing.T) {
 	}
 
 	provider := NewJwtTokenProvider(rsaCfg)
-	token, err := provider.SignClaims("owner1", map[string]any{"role": "admin"})
+	token, err := provider.SignClaims(testOwner, map[string]any{"role": "admin"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,8 +116,8 @@ func TestRSASigningMethod_SignAndParse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse RSA token: %v", err)
 	}
-	if parsed.OwnerId != "owner1" {
-		t.Fatalf("expected owner 'owner1', got %q", parsed.OwnerId)
+	if parsed.OwnerId != testOwner {
+		t.Fatalf("expected owner %v, got %v", testOwner, parsed.OwnerId)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestECDSASigningMethod_SignAndParse(t *testing.T) {
 	}
 
 	provider := NewJwtTokenProvider(ecCfg)
-	token, err := provider.SignClaims("owner1", map[string]any{})
+	token, err := provider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestECDSASigningMethod_SignAndParse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse ECDSA token: %v", err)
 	}
-	if parsed.OwnerId != "owner1" {
-		t.Fatalf("expected owner 'owner1', got %q", parsed.OwnerId)
+	if parsed.OwnerId != testOwner {
+		t.Fatalf("expected owner %v, got %v", testOwner, parsed.OwnerId)
 	}
 }
