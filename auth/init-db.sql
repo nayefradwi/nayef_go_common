@@ -1,7 +1,7 @@
 CREATE TABLE tokens (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     value TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
+    owner_id UUID NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     issued_at TIMESTAMPTZ NOT NULL,
     claims JSONB,

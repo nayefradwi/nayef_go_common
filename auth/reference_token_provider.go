@@ -17,15 +17,15 @@ func NewJwtReferenceTokenProvider(tokenProvider IRefreshTokenProvider, tokenStor
 	}
 }
 
-func (t JwtReferenceTokenProvider) GenerateId() (string, error) {
+func (t JwtReferenceTokenProvider) GenerateId() (uuid.UUID, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return "", InternalError("failed to generate token id: " + err.Error())
+		return uuid.Nil, InternalError("failed to generate token id: " + err.Error())
 	}
-	return id.String(), nil
+	return id, nil
 }
 
-func (t JwtReferenceTokenProvider) GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error) {
+func (t JwtReferenceTokenProvider) GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
 	tokenPair, err := t.tokenProvider.GenerateToken(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
@@ -56,18 +56,18 @@ func (t JwtReferenceTokenProvider) GenerateToken(ownerId string, claims map[stri
 		return EmptyTokenDTO(), err
 	}
 
-	return NewTokenDTOWithRefresh(accessTokenId, refreshTokenId), nil
+	return NewTokenDTOWithRefresh(accessTokenId.String(), refreshTokenId.String()), nil
 }
 
-func (t JwtReferenceTokenProvider) GetAccessToken(id string) (Token, error) {
+func (t JwtReferenceTokenProvider) GetAccessToken(id uuid.UUID) (Token, error) {
 	return t.getToken(id, AccessTokenType)
 }
 
-func (t JwtReferenceTokenProvider) GetRefreshToken(id string) (Token, error) {
+func (t JwtReferenceTokenProvider) GetRefreshToken(id uuid.UUID) (Token, error) {
 	return t.getToken(id, RefreshTokenType)
 }
 
-func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (Token, error) {
+func (t JwtReferenceTokenProvider) getToken(id uuid.UUID, tokenType int) (Token, error) {
 	token, err := t.tokenStore.GetTokenByReference(id, tokenType)
 	if err != nil {
 		return Token{}, UnauthorizedError("Token not found")
@@ -75,11 +75,11 @@ func (t JwtReferenceTokenProvider) getToken(id string, tokenType int) (Token, er
 	return token, nil
 }
 
-func (t JwtReferenceTokenProvider) RevokeToken(id string) error {
+func (t JwtReferenceTokenProvider) RevokeToken(id uuid.UUID) error {
 	return t.tokenStore.DeleteToken(id)
 }
 
-func (t JwtReferenceTokenProvider) RevokeOwner(ownerId string) error {
+func (t JwtReferenceTokenProvider) RevokeOwner(ownerId uuid.UUID) error {
 	return t.tokenStore.DeleteAllTokensByOwner(ownerId)
 }
 

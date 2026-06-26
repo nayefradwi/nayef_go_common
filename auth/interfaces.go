@@ -1,21 +1,23 @@
 package auth
 
+import "github.com/google/uuid"
+
 type ITokenProvider interface {
 	GetClaims(token string) (Token, error)
-	SignClaims(owner string, claims map[string]any) (string, error)
+	SignClaims(owner uuid.UUID, claims map[string]any) (string, error)
 }
 
 type ITokenStore interface {
 	StoreToken(token Token) error
 	StoreTokens(tokens ...Token) error
-	GetTokenByReference(reference string, tokenType int) (Token, error)
-	GetTokenByOwner(ownerId string, tokenType int) (Token, error)
-	DeleteToken(reference string) error
-	DeleteAllTokensByOwner(ownerId string) error
+	GetTokenByReference(reference uuid.UUID, tokenType int) (Token, error)
+	GetTokenByOwner(ownerId uuid.UUID, tokenType int) (Token, error)
+	DeleteToken(reference uuid.UUID) error
+	DeleteAllTokensByOwner(ownerId uuid.UUID) error
 }
 
 type IRefreshTokenProvider interface {
-	GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error)
+	GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error)
 	GetAccessToken(accessToken string) (Token, error)
 	GetRefreshToken(refreshToken string) (Token, error)
 	GetAccessTokenProvider() ITokenProvider
@@ -23,17 +25,17 @@ type IRefreshTokenProvider interface {
 
 type IRefreshTokenProviderWithRevoke interface {
 	IRefreshTokenProvider
-	GenerateId() (string, error)
-	RevokeToken(reference string) error
-	RevokeOwner(ownerId string) error
+	GenerateId() (uuid.UUID, error)
+	RevokeToken(reference uuid.UUID) error
+	RevokeOwner(ownerId uuid.UUID) error
 }
 
 type IReferenceTokenProvider interface {
-	GenerateId() (string, error)
-	GenerateToken(ownerId string, claims map[string]any) (TokenDTO, error)
-	GetAccessToken(id string) (Token, error)
-	GetRefreshToken(id string) (Token, error)
-	RevokeToken(id string) error
-	RevokeOwner(ownerId string) error
+	GenerateId() (uuid.UUID, error)
+	GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error)
+	GetAccessToken(id uuid.UUID) (Token, error)
+	GetRefreshToken(id uuid.UUID) (Token, error)
+	RevokeToken(id uuid.UUID) error
+	RevokeOwner(ownerId uuid.UUID) error
 	GetAccessTokenProvider() ITokenProvider
 }

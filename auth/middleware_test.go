@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 type stubTokenProvider struct {
@@ -16,7 +18,7 @@ func (s stubTokenProvider) GetClaims(_ string) (Token, error) {
 	return s.token, s.err
 }
 
-func (s stubTokenProvider) SignClaims(_ string, _ map[string]any) (string, error) {
+func (s stubTokenProvider) SignClaims(_ uuid.UUID, _ map[string]any) (string, error) {
 	return "", nil
 }
 
@@ -25,15 +27,17 @@ type stubReferenceTokenProvider struct {
 	err   error
 }
 
-func (s stubReferenceTokenProvider) GenerateId() (string, error) { return "", nil }
-func (s stubReferenceTokenProvider) GenerateToken(_ string, _ map[string]any) (TokenDTO, error) {
+func (s stubReferenceTokenProvider) GenerateId() (uuid.UUID, error) { return uuid.Nil, nil }
+func (s stubReferenceTokenProvider) GenerateToken(_ uuid.UUID, _ map[string]any) (TokenDTO, error) {
 	return TokenDTO{}, nil
 }
-func (s stubReferenceTokenProvider) GetAccessToken(_ string) (Token, error)  { return s.token, s.err }
-func (s stubReferenceTokenProvider) GetRefreshToken(_ string) (Token, error) { return s.token, s.err }
-func (s stubReferenceTokenProvider) RevokeToken(_ string) error              { return nil }
-func (s stubReferenceTokenProvider) RevokeOwner(_ string) error              { return nil }
-func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider  { return nil }
+func (s stubReferenceTokenProvider) GetAccessToken(_ uuid.UUID) (Token, error) { return s.token, s.err }
+func (s stubReferenceTokenProvider) GetRefreshToken(_ uuid.UUID) (Token, error) {
+	return s.token, s.err
+}
+func (s stubReferenceTokenProvider) RevokeToken(_ uuid.UUID) error          { return nil }
+func (s stubReferenceTokenProvider) RevokeOwner(_ uuid.UUID) error          { return nil }
+func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider { return nil }
 
 func nextHandler(t *testing.T, called *bool) http.Handler {
 	t.Helper()
@@ -48,7 +52,7 @@ func nextHandler(t *testing.T, called *bool) http.Handler {
 func TestJwtAuthenticationMiddleware_ValidToken(t *testing.T) {
 	cfg := mustConfig(t)
 	provider := NewJwtTokenProvider(cfg)
-	tokenStr, err := provider.SignClaims("owner1", map[string]any{})
+	tokenStr, err := provider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +113,7 @@ func TestJwtAuthenticationMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
-	expectedToken := Token{OwnerId: "user42", Claims: map[string]any{}}
+	expectedToken := Token{OwnerId: testOwner, Claims: map[string]any{}}
 	stub := stubTokenProvider{token: expectedToken}
 	m := NewJwtAuthenticationMiddleware(stub)
 
@@ -125,20 +129,20 @@ func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
 	m.UseAuthentication(capture).ServeHTTP(w, req)
 
 	if gotToken.OwnerId != expectedToken.OwnerId {
-		t.Errorf("expected owner %q, got %q", expectedToken.OwnerId, gotToken.OwnerId)
+		t.Errorf("expected owner %v, got %v", expectedToken.OwnerId, gotToken.OwnerId)
 	}
 }
 
 // --- JwtReferenceTokenAuthenticationMiddleware ---
 
 func TestJwtReferenceTokenAuthenticationMiddleware_ValidToken(t *testing.T) {
-	stub := stubReferenceTokenProvider{token: Token{OwnerId: "user1", Claims: map[string]any{}}}
+	stub := stubReferenceTokenProvider{token: Token{OwnerId: testOwner, Claims: map[string]any{}}}
 	called := false
 	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer some-ref-id")
+	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -190,7 +194,7 @@ func TestJwtReferenceTokenAuthenticationMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) {
-	expectedToken := Token{OwnerId: "ref-owner", Claims: map[string]any{}}
+	expectedToken := Token{OwnerId: testOwner, Claims: map[string]any{}}
 	stub := stubReferenceTokenProvider{token: expectedToken}
 	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
 
@@ -200,12 +204,12 @@ func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) 
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer some-ref-id")
+	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
 	w := httptest.NewRecorder()
 
 	m.UseAuthentication(capture).ServeHTTP(w, req)
 
 	if gotToken.OwnerId != expectedToken.OwnerId {
-		t.Errorf("expected owner %q, got %q", expectedToken.OwnerId, gotToken.OwnerId)
+		t.Errorf("expected owner %v, got %v", expectedToken.OwnerId, gotToken.OwnerId)
 	}
 }
