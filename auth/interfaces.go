@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+)
 
 type ITokenProvider interface {
 	GetClaims(token string) (Token, error)
@@ -14,6 +17,7 @@ type ITokenStore interface {
 	GetTokenByOwner(ownerId uuid.UUID, tokenType int) (Token, error)
 	DeleteToken(reference uuid.UUID) error
 	DeleteAllTokensByOwner(ownerId uuid.UUID) error
+	WithTx(tx pgx.Tx) ITokenStore
 }
 
 type IRefreshTokenProvider interface {
@@ -28,6 +32,7 @@ type IRefreshTokenProviderWithRevoke interface {
 	GenerateId() (uuid.UUID, error)
 	RevokeToken(reference uuid.UUID) error
 	RevokeOwner(ownerId uuid.UUID) error
+	WithTx(tx pgx.Tx) IRefreshTokenProviderWithRevoke
 }
 
 type IReferenceTokenProvider interface {
@@ -38,4 +43,5 @@ type IReferenceTokenProvider interface {
 	RevokeToken(id uuid.UUID) error
 	RevokeOwner(ownerId uuid.UUID) error
 	GetAccessTokenProvider() ITokenProvider
+	WithTx(tx pgx.Tx) IReferenceTokenProvider
 }

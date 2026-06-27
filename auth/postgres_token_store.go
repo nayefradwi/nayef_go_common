@@ -7,16 +7,43 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
-type PostgresTokenStore struct {
-	pool *pgxpool.Pool
+type dbExecutor interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-func NewPostgresTokenStore(pool *pgxpool.Pool) ITokenStore {
-	return PostgresTokenStore{pool: pool}
+type PostgresTokenStore struct {
+	db     dbExecutor
+	config PostgresTokenStoreConfig
+}
+
+type PostgresTokenStoreConfig struct {
+	TableName string
+}
+
+var DefaultPostgresTokenStoreConfig = PostgresTokenStoreConfig{
+	TableName: "tokens",
+}
+
+func NewPostgresTokenStore(pool *pgxpool.Pool, configs ...PostgresTokenStoreConfig) ITokenStore {
+	config := DefaultPostgresTokenStoreConfig
+	if len(configs) > 0 {
+		config = configs[0]
+	}
+
+	return PostgresTokenStore{db: pool, config: config}
+}
+
+func (s PostgresTokenStore) WithTx(tx pgx.Tx) ITokenStore {
+	s.db = tx
+	return s
 }
 
 func (s PostgresTokenStore) StoreToken(token Token) error {
@@ -42,8 +69,8 @@ func (s PostgresTokenStore) StoreTokens(tokens ...Token) error {
 		args = append(args, token.Id.String(), token.Value, token.OwnerId.String(), token.ExpiresAt, token.IssuedAt, claimsJSON, token.Type)
 	}
 
-	sql := `INSERT INTO tokens (id, value, owner_id, expires_at, issued_at, claims, type) VALUES ` + strings.Join(rows, ", ")
-	if _, err := s.pool.Exec(context.Background(), sql, args...); err != nil {
+	sql := `INSERT INTO ` + s.config.TableName + ` (id, value, owner_id, expires_at, issued_at, claims, type) VALUES ` + strings.Join(rows, ", ")
+	if _, err := s.db.Exec(context.Background(), sql, args...); err != nil {
 		return InternalError("failed to store tokens: " + err.Error())
 	}
 
@@ -51,23 +78,23 @@ func (s PostgresTokenStore) StoreTokens(tokens ...Token) error {
 }
 
 func (s PostgresTokenStore) GetTokenByReference(reference uuid.UUID, tokenType int) (Token, error) {
-	row := s.pool.QueryRow(context.Background(),
+	row := s.db.QueryRow(context.Background(),
 		`SELECT id::text, value, owner_id::text, expires_at, issued_at, claims, type
-		 FROM tokens WHERE id = $1 AND type = $2`, reference.String(), tokenType,
+		 FROM `+s.config.TableName+` WHERE id = $1 AND type = $2`, reference.String(), tokenType,
 	)
 	return scanPgxToken(row)
 }
 
 func (s PostgresTokenStore) GetTokenByOwner(ownerId uuid.UUID, tokenType int) (Token, error) {
-	row := s.pool.QueryRow(context.Background(),
+	row := s.db.QueryRow(context.Background(),
 		`SELECT id::text, value, owner_id::text, expires_at, issued_at, claims, type
-		 FROM tokens WHERE owner_id = $1 AND type = $2`, ownerId.String(), tokenType,
+		 FROM `+s.config.TableName+` WHERE owner_id = $1 AND type = $2`, ownerId.String(), tokenType,
 	)
 	return scanPgxToken(row)
 }
 
 func (s PostgresTokenStore) DeleteToken(reference uuid.UUID) error {
-	_, err := s.pool.Exec(context.Background(), `DELETE FROM tokens WHERE id = $1`, reference.String())
+	_, err := s.db.Exec(context.Background(), `DELETE FROM `+s.config.TableName+` WHERE id = $1`, reference.String())
 	if err != nil {
 		return InternalError("failed to delete token: " + err.Error())
 	}
@@ -75,7 +102,7 @@ func (s PostgresTokenStore) DeleteToken(reference uuid.UUID) error {
 }
 
 func (s PostgresTokenStore) DeleteAllTokensByOwner(ownerId uuid.UUID) error {
-	_, err := s.pool.Exec(context.Background(), `DELETE FROM tokens WHERE owner_id = $1`, ownerId.String())
+	_, err := s.db.Exec(context.Background(), `DELETE FROM `+s.config.TableName+` WHERE owner_id = $1`, ownerId.String())
 	if err != nil {
 		return InternalError("failed to delete tokens by owner: " + err.Error())
 	}
