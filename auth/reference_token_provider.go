@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
@@ -85,4 +86,9 @@ func (t JwtReferenceTokenProvider) RevokeOwner(ownerId uuid.UUID) error {
 
 func (t JwtReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider {
 	return t.tokenProvider.GetAccessTokenProvider()
+}
+
+func (t JwtReferenceTokenProvider) WithTx(tx pgx.Tx) IReferenceTokenProvider {
+	t.tokenStore = t.tokenStore.WithTx(tx)
+	return t
 }

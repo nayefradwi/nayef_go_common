@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type stubTokenProvider struct {
@@ -38,6 +39,7 @@ func (s stubReferenceTokenProvider) GetRefreshToken(_ uuid.UUID) (Token, error) 
 func (s stubReferenceTokenProvider) RevokeToken(_ uuid.UUID) error          { return nil }
 func (s stubReferenceTokenProvider) RevokeOwner(_ uuid.UUID) error          { return nil }
 func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider { return nil }
+func (s stubReferenceTokenProvider) WithTx(_ pgx.Tx) IReferenceTokenProvider { return s }
 
 func nextHandler(t *testing.T, called *bool) http.Handler {
 	t.Helper()
