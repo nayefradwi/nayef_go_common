@@ -129,7 +129,8 @@ type ResultErrorPb struct {
 	state         protoimpl.MessageState         `protogen:"open.v1"`
 	Message       string                         `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	Code          string                         `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Errors        map[string]*ErrorDetailsPbList `protobuf:"bytes,3,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Status        int32                          `protobuf:"varint,3,opt,name=status,proto3" json:"status,omitempty"`
+	Errors        map[string]*ErrorDetailsPbList `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -178,6 +179,13 @@ func (x *ResultErrorPb) GetCode() string {
 	return ""
 }
 
+func (x *ResultErrorPb) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
 func (x *ResultErrorPb) GetErrors() map[string]*ErrorDetailsPbList {
 	if x != nil {
 		return x.Errors
@@ -195,11 +203,12 @@ const file_proto_errorspb_v1_errors_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x14\n" +
 	"\x05field\x18\x03 \x01(\tR\x05field\"M\n" +
 	"\x12ErrorDetailsPbList\x127\n" +
-	"\x05items\x18\x01 \x03(\v2!.proto.errorspb.v1.ErrorDetailsPbR\x05items\"\xe5\x01\n" +
+	"\x05items\x18\x01 \x03(\v2!.proto.errorspb.v1.ErrorDetailsPbR\x05items\"\xfd\x01\n" +
 	"\rResultErrorPb\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\x12D\n" +
-	"\x06errors\x18\x03 \x03(\v2,.proto.errorspb.v1.ResultErrorPb.ErrorsEntryR\x06errors\x1a`\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\x05R\x06status\x12D\n" +
+	"\x06errors\x18\x04 \x03(\v2,.proto.errorspb.v1.ResultErrorPb.ErrorsEntryR\x06errors\x1a`\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.proto.errorspb.v1.ErrorDetailsPbListR\x05value:\x028\x01B\fZ\n" +
