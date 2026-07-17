@@ -85,6 +85,10 @@ func (jw JsonResponseWriter) WriteError(err error) {
 }
 
 func getStatusCodeFromResultError(err *ResultError) int {
+	if err.Status >= 400 && err.Status <= 505 {
+		return err.Status
+	}
+
 	switch err.Code {
 	case CodeBadRequest:
 		return http.StatusBadRequest
