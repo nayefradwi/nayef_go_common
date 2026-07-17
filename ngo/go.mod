@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/nayefradwi/nayef_go_common/errors v1.0.2
+	github.com/nayefradwi/nayef_go_common/errors v1.0.5
 	github.com/spf13/cobra v1.10.2
 )
 
