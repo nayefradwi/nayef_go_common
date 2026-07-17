@@ -121,6 +121,46 @@ func TestWriteError_CustomResultError(t *testing.T) {
 	}
 }
 
+// --- WriteError: status derived from err.Status ---
+
+func TestWriteError_UsesResultErrorStatus(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := NewResultError("teapot", CodeBadRequest).WithStatus(http.StatusTeapot)
+	newWriter(rec).WriteError(&err)
+
+	require.Equal(t, http.StatusTeapot, rec.Code)
+}
+
+func TestWriteError_StatusOverridesCodeMapping(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := NotFoundError("missing").WithStatus(http.StatusGone)
+	newWriter(rec).WriteError(&err)
+
+	require.Equal(t, http.StatusGone, rec.Code)
+}
+
+func TestWriteError_OutOfRangeStatusFallsBackToCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := NewResultError("bad", CodeNotFound).WithStatus(999)
+	newWriter(rec).WriteError(&err)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestWriteError_ZeroStatusFallsBackToCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteError(&ResultError{Message: "boom", Code: CodeForbidden})
+
+	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestWriteError_UnknownCodeDefaultsToBadRequest(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteError(&ResultError{Message: "weird", Code: "SOMETHING_ELSE"})
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
 // --- WriteError: custom error status override ---
 
 func TestWriteError_CustomErrorStatus(t *testing.T) {

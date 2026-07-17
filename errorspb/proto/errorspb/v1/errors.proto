@@ -17,5 +17,6 @@ message ErrorDetailsPbList {
 message ResultErrorPb {
   string message = 1;
   string code = 2;
-  map<string, ErrorDetailsPbList> errors = 3;
+  int32 status = 3;
+  map<string, ErrorDetailsPbList> errors = 4;
 }
