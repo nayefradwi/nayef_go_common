@@ -1,5 +1,7 @@
 package errors
 
+import "net/http"
+
 const (
 	CodeNotFound     = "NOT_FOUND"
 	CodeBadRequest   = "BAD_REQUEST"
@@ -12,31 +14,31 @@ const (
 )
 
 func BadRequestError(message string) *ResultError {
-	return NewResultError(message, CodeBadRequest)
+	return NewResultErrorWithStatus(message, CodeBadRequest, http.StatusBadRequest)
 }
 
 func UnauthorizedError(message string) *ResultError {
-	return NewResultError(message, CodeUnauthorized)
+	return NewResultErrorWithStatus(message, CodeUnauthorized, http.StatusUnauthorized)
 }
 
 func ForbiddenError(message string) *ResultError {
-	return NewResultError(message, CodeForbidden)
+	return NewResultErrorWithStatus(message, CodeForbidden, http.StatusForbidden)
 }
 
 func NotFoundError(message string) *ResultError {
-	return NewResultError(message, CodeNotFound)
+	return NewResultErrorWithStatus(message, CodeNotFound, http.StatusNotFound)
 }
 
 func InternalError(message string) *ResultError {
-	return NewResultError(message, CodeInternal)
+	return NewResultErrorWithStatus(message, CodeInternal, http.StatusInternalServerError)
 }
 
 func InvalidInputError(message string) *ResultError {
-	return NewResultError(message, CodeInvalidInput)
+	return NewResultErrorWithStatus(message, CodeInvalidInput, http.StatusUnprocessableEntity)
 }
 
 func UnknownError(message string) *ResultError {
-	return NewResultError(message, CodeUnknown)
+	return NewResultErrorWithStatus(message, CodeUnknown, http.StatusInternalServerError)
 }
 
 func NewValidationError(details ...ErrorDetails) *ResultError {

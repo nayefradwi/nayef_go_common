@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -74,37 +75,59 @@ func TestWithErrors_Empty(t *testing.T) {
 
 func TestFactoryBadRequest(t *testing.T) {
 	err := BadRequestError("bad")
-	assertFactory(t, err, "bad", CodeBadRequest)
+	assertFactory(t, err, "bad", CodeBadRequest, http.StatusBadRequest)
 }
 
 func TestFactoryUnauthorized(t *testing.T) {
 	err := UnauthorizedError("no auth")
-	assertFactory(t, err, "no auth", CodeUnauthorized)
+	assertFactory(t, err, "no auth", CodeUnauthorized, http.StatusUnauthorized)
 }
 
 func TestFactoryForbidden(t *testing.T) {
 	err := ForbiddenError("denied")
-	assertFactory(t, err, "denied", CodeForbidden)
+	assertFactory(t, err, "denied", CodeForbidden, http.StatusForbidden)
 }
 
 func TestFactoryNotFound(t *testing.T) {
 	err := NotFoundError("missing")
-	assertFactory(t, err, "missing", CodeNotFound)
+	assertFactory(t, err, "missing", CodeNotFound, http.StatusNotFound)
 }
 
 func TestFactoryInternal(t *testing.T) {
 	err := InternalError("broke")
-	assertFactory(t, err, "broke", CodeInternal)
+	assertFactory(t, err, "broke", CodeInternal, http.StatusInternalServerError)
 }
 
 func TestFactoryInvalidInput(t *testing.T) {
 	err := InvalidInputError("wrong")
-	assertFactory(t, err, "wrong", CodeInvalidInput)
+	assertFactory(t, err, "wrong", CodeInvalidInput, http.StatusUnprocessableEntity)
 }
 
 func TestFactoryUnknown(t *testing.T) {
 	err := UnknownError("???")
-	assertFactory(t, err, "???", CodeUnknown)
+	assertFactory(t, err, "???", CodeUnknown, http.StatusInternalServerError)
+}
+
+func TestWithStatus(t *testing.T) {
+	original := NewResultError("msg", CodeBadRequest)
+	changed := original.WithStatus(http.StatusTeapot)
+	require.Equal(t, http.StatusTeapot, changed.Status)
+	require.Equal(t, 0, original.Status)
+}
+
+func TestNewResultErrorWithStatus(t *testing.T) {
+	err := NewResultErrorWithStatus("nope", CodeForbidden, http.StatusForbidden,
+		Field("token", "EXPIRED", "token expired"),
+	)
+	require.Equal(t, "nope", err.Message)
+	require.Equal(t, CodeForbidden, err.Code)
+	require.Equal(t, http.StatusForbidden, err.Status)
+	require.Len(t, err.Errors["token"], 1)
+}
+
+func TestNewResultError_NoStatus(t *testing.T) {
+	err := NewResultError("no status", CodeInternal)
+	require.Equal(t, 0, err.Status)
 }
 
 func TestNewValidationError(t *testing.T) {
@@ -123,9 +146,10 @@ func TestNewValidationError_Empty(t *testing.T) {
 	require.Len(t, err.Errors, 0)
 }
 
-func assertFactory(t *testing.T, err *ResultError, expectedMsg, expectedCode string) {
+func assertFactory(t *testing.T, err *ResultError, expectedMsg, expectedCode string, expectedStatus int) {
 	t.Helper()
 	require.Equal(t, expectedMsg, err.Message)
 	require.Equal(t, expectedCode, err.Code)
+	require.Equal(t, expectedStatus, err.Status)
 	require.Len(t, err.Errors, 0)
 }

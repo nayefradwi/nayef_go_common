@@ -11,6 +11,7 @@ type ErrorDetails struct {
 type ResultError struct {
 	Message string                    `json:"message"`
 	Code    string                    `json:"code"`
+	Status  int                       `json:"status"`
 	Errors  map[string][]ErrorDetails `json:"errors,omitempty,omitzero"`
 }
 
@@ -23,6 +24,11 @@ func (e ResultError) WithCode(code string) ResultError {
 	return e
 }
 
+func (e ResultError) WithStatus(status int) ResultError {
+	e.Status = status
+	return e
+}
+
 func (e ResultError) WithErrors(details ...ErrorDetails) ResultError {
 	errs := make(map[string][]ErrorDetails)
 	for _, d := range details {
@@ -32,7 +38,11 @@ func (e ResultError) WithErrors(details ...ErrorDetails) ResultError {
 	return e
 }
 
-func NewResultError(message string, code string, details ...ErrorDetails) *ResultError {
+func NewResultError(
+	message string,
+	code string,
+	details ...ErrorDetails,
+) *ResultError {
 	errs := make(map[string][]ErrorDetails)
 	for _, d := range details {
 		errs[d.Field] = append(errs[d.Field], d)
@@ -41,5 +51,23 @@ func NewResultError(message string, code string, details ...ErrorDetails) *Resul
 		Message: message,
 		Code:    code,
 		Errors:  errs,
+	}
+}
+
+func NewResultErrorWithStatus(
+	message string,
+	code string,
+	status int,
+	details ...ErrorDetails,
+) *ResultError {
+	errs := make(map[string][]ErrorDetails)
+	for _, d := range details {
+		errs[d.Field] = append(errs[d.Field], d)
+	}
+	return &ResultError{
+		Message: message,
+		Code:    code,
+		Errors:  errs,
+		Status:  status,
 	}
 }
