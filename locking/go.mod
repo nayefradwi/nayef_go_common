@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/go-redsync/redsync/v4 v4.16.0
-	github.com/nayefradwi/nayef_go_common/errors v1.0.5
+	github.com/nayefradwi/nayef_go_common/errors v1.0.6
 	github.com/nayefradwi/nayef_go_common/redisutil v0.1.2
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/stretchr/testify v1.11.1

@@ -3,7 +3,7 @@ module github.com/nayefradwi/nayef_go_common/grpcutil
 go 1.26.0
 
 require (
-	github.com/nayefradwi/nayef_go_common/errors v1.0.5
+	github.com/nayefradwi/nayef_go_common/errors v1.0.6
 	github.com/nayefradwi/nayef_go_common/errorspb v1.0.3
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.80.0

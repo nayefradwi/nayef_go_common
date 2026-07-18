@@ -126,7 +126,7 @@ func TestWriteError_CustomResultError(t *testing.T) {
 func TestWriteError_UsesResultErrorStatus(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := NewResultError("teapot", CodeBadRequest).WithStatus(http.StatusTeapot)
-	newWriter(rec).WriteError(&err)
+	newWriter(rec).WriteError(err)
 
 	require.Equal(t, http.StatusTeapot, rec.Code)
 }
@@ -134,7 +134,7 @@ func TestWriteError_UsesResultErrorStatus(t *testing.T) {
 func TestWriteError_StatusOverridesCodeMapping(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := NotFoundError("missing").WithStatus(http.StatusGone)
-	newWriter(rec).WriteError(&err)
+	newWriter(rec).WriteError(err)
 
 	require.Equal(t, http.StatusGone, rec.Code)
 }
@@ -142,7 +142,7 @@ func TestWriteError_StatusOverridesCodeMapping(t *testing.T) {
 func TestWriteError_OutOfRangeStatusFallsBackToCode(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := NewResultError("bad", CodeNotFound).WithStatus(999)
-	newWriter(rec).WriteError(&err)
+	newWriter(rec).WriteError(err)
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
 }
