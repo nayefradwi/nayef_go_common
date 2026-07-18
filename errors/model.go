@@ -19,23 +19,27 @@ func (e ResultError) Error() string {
 	return e.Message
 }
 
-func (e ResultError) WithCode(code string) ResultError {
-	e.Code = code
-	return e
+func (e *ResultError) WithCode(code string) *ResultError {
+	c := *e
+	c.Code = code
+	return &c
 }
 
-func (e ResultError) WithStatus(status int) ResultError {
-	e.Status = status
-	return e
+func (e *ResultError) WithStatus(status int) *ResultError {
+	c := *e
+	c.Status = status
+	return &c
 }
 
-func (e ResultError) WithErrors(details ...ErrorDetails) ResultError {
+func (e *ResultError) WithErrors(details ...ErrorDetails) *ResultError {
 	errs := make(map[string][]ErrorDetails)
 	for _, d := range details {
 		errs[d.Field] = append(errs[d.Field], d)
 	}
-	e.Errors = errs
-	return e
+
+	c := *e
+	c.Errors = errs
+	return &c
 }
 
 func NewResultError(
