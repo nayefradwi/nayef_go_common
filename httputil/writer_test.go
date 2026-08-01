@@ -2,6 +2,8 @@ package httputil
 
 import (
 	"encoding/json"
+	goerrors "errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -193,4 +195,62 @@ func TestWriteError_ResponseBodyContainsMessage(t *testing.T) {
 	got := decodeBody[ResultError](t, rec)
 	require.Equal(t, "item not found", got.Message)
 	require.Equal(t, CodeNotFound, got.Code)
+}
+
+// --- WriteError: internal details stay out of the response ---
+
+func TestWriteError_PlainErrorDoesNotLeakMessage(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteError(goerrors.New("pq: password authentication failed for user \"admin\""))
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	require.NotContains(t, rec.Body.String(), "password")
+	require.Equal(t, CodeInternal, decodeBody[ResultError](t, rec).Code)
+}
+
+func TestWriteError_WrappedResultErrorKeepsItsMessage(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteError(fmt.Errorf("loading user: %w", NotFoundError("item not found")))
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.Equal(t, "item not found", decodeBody[ResultError](t, rec).Message)
+}
+
+// The listener still receives the original error so the detail is logged even
+// though it is not sent to the client.
+func TestWriteError_ListenerReceivesOriginalError(t *testing.T) {
+	rec := httptest.NewRecorder()
+	original := goerrors.New("connection refused")
+
+	var got error
+	NewJsonResponseWriter(rec).
+		WithErrorListener(func(err error) { got = err }).
+		WriteError(original)
+
+	require.Equal(t, original, got)
+}
+
+// --- Content-Type ---
+
+func TestContentType_SetOnDirectWriteError(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteError(NotFoundError("item not found"))
+
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+}
+
+func TestContentType_SetOnWriteData(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newWriter(rec).WriteData(testPayload{Name: "hello"})
+
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+}
+
+func TestSetHeader_OverridesDefaultContentType(t *testing.T) {
+	rec := httptest.NewRecorder()
+	jw := newWriter(rec)
+	jw.SetHeader("Content-Type", "text/csv")
+	jw.WriteData("name,value")
+
+	require.Equal(t, "text/csv", rec.Header().Get("Content-Type"))
 }

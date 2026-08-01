@@ -28,6 +28,38 @@ func TestSignClaims_DoesNotMutateInput(t *testing.T) {
 	}
 }
 
+func TestSignClaims_NilClaims(t *testing.T) {
+	cfg := mustConfig(t)
+	provider := NewJwtTokenProvider(cfg)
+
+	signed, err := provider.SignClaims(testOwner, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := provider.GetClaims(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.OwnerId != testOwner {
+		t.Fatalf("expected owner %v, got %v", testOwner, token.OwnerId)
+	}
+}
+
+func TestSignClaims_EmptyClaims(t *testing.T) {
+	cfg := mustConfig(t)
+	provider := NewJwtTokenProvider(cfg)
+
+	signed, err := provider.SignClaims(testOwner, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := provider.GetClaims(signed); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTokenType_Enforcement(t *testing.T) {
 	cfg := mustConfig(t)
 

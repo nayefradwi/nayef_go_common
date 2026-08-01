@@ -11,7 +11,12 @@ func ConnectToPostgres(ctx context.Context, url string) *pgxpool.Pool {
 	slog.Info("connecting to postgres")
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to connect to postgres", "error", err.Error())
+		slog.ErrorContext(ctx, "failed to create pgx pool", "error", err.Error())
+		panic(err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		slog.ErrorContext(ctx, "failed to connect to postgres database", "error", err.Error())
 		panic(err)
 	}
 

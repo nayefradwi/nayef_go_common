@@ -2,13 +2,16 @@ package grpcutil
 
 import (
 	"errors"
+	"log/slog"
 
 	. "github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/errorspb"
 )
 
 var (
-	GlobalWriterOnErrorListener OnErrorListener = func(err error) {}
+	GlobalWriterOnErrorListener OnErrorListener = func(err error) {
+		slog.Error("GlobalWriterOnErrorListener", "error", err.Error())
+	}
 )
 
 type GrpcResponseWriter[T any] struct {
@@ -33,7 +36,7 @@ func (gw GrpcResponseWriter[T]) WriteError(err error) error {
 
 	var resultErr *ResultError
 	if !errors.As(err, &resultErr) {
-		resultErr = InternalError(err.Error())
+		resultErr = InternalError("internal server error")
 	}
 
 	return errorspb.FromResultError(resultErr)

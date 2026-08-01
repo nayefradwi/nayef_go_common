@@ -33,6 +33,36 @@ func TestWriteError_PlainError_WrappedAsInternal(t *testing.T) {
 	require.Equal(t, CodeInternal, pbErr.Code)
 }
 
+func TestWriteError_PlainErrorDoesNotLeakMessage(t *testing.T) {
+	err := newWriter[any]().WriteError(fmt.Errorf("pq: password authentication failed for user %q", "admin"))
+
+	pbErr, ok := err.(*errorspb.ResultErrorPb)
+	require.True(t, ok)
+	require.NotContains(t, pbErr.Message, "password")
+}
+
+func TestWriteError_WrappedResultErrorKeepsItsMessage(t *testing.T) {
+	err := newWriter[any]().WriteError(fmt.Errorf("loading user: %w", NotFoundError("user not found")))
+
+	pbErr, ok := err.(*errorspb.ResultErrorPb)
+	require.True(t, ok)
+	require.Equal(t, CodeNotFound, pbErr.Code)
+	require.Equal(t, "user not found", pbErr.Message)
+}
+
+// The listener still receives the original error so the detail is logged even
+// though it is not sent to the client.
+func TestWriteError_ListenerReceivesOriginalError(t *testing.T) {
+	original := fmt.Errorf("connection refused")
+
+	var got error
+	NewGrpcResponseWriter[any]().
+		WithErrorListener(func(err error) { got = err }).
+		WriteError(original)
+
+	require.Equal(t, original, got)
+}
+
 // --- WriteError: table-driven over all ResultError codes ---
 
 func TestWriteError_ResultError(t *testing.T) {

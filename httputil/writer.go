@@ -27,6 +27,7 @@ type JsonResponseWriter struct {
 }
 
 func NewJsonResponseWriter(w http.ResponseWriter) JsonResponseWriter {
+	w.Header().Set("Content-Type", "application/json")
 	return JsonResponseWriter{Writer: w, SuccessStatus: http.StatusOK, ErrorListener: GlobalJsonWriterOnErrorListener}
 }
 
@@ -49,8 +50,11 @@ func (jw JsonResponseWriter) SetHttpStatusCode(statusCode int) {
 	jw.Writer.WriteHeader(statusCode)
 }
 
+func (jw JsonResponseWriter) SetHeader(header, value string) {
+	jw.Writer.Header().Set(header, value)
+}
+
 func (jw JsonResponseWriter) WriteJsonResponse(data any, err error) {
-	jw.Writer.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		jw.WriteError(err)
 	} else {
@@ -72,7 +76,7 @@ func (jw JsonResponseWriter) WriteError(err error) {
 	jw.ErrorListener(err)
 	var resultError *ResultError
 	if !errors.As(err, &resultError) {
-		resultError = InternalError(err.Error())
+		resultError = InternalError("internal server error")
 	}
 
 	statusCode := jw.ErrorStatus
