@@ -105,6 +105,23 @@ func TestNewOffsetPage_SinglePage(t *testing.T) {
 	require.Equal(t, 1, page.NumberOfPages)
 }
 
+// NewOffsetPage can be called directly, bypassing the clamping that
+// NewOffsetPageQuery does, so a zero page size must not divide by zero.
+func TestNewOffsetPage_ZeroPageSize_DoesNotPanic(t *testing.T) {
+	require.NotPanics(t, func() {
+		page := NewOffsetPage(1, 0, 5, []int{})
+		require.Equal(t, 5, page.NumberOfPages)
+	})
+}
+
+func TestNewOffsetPage_ZeroPageSize_NoItems(t *testing.T) {
+	require.NotPanics(t, func() {
+		page := NewOffsetPage(1, 0, 0, []int{})
+		require.Equal(t, 0, page.NumberOfPages)
+		require.False(t, page.HasNext)
+	})
+}
+
 func TestNewOffsetPage_ItemsPopulated(t *testing.T) {
 	items := []string{"a", "b"}
 	page := NewOffsetPage(1, 2, 3, items)

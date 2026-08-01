@@ -55,6 +55,10 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 }
 
 func (t JwtTokenProvider) SignClaims(owner uuid.UUID, claims map[string]any) (string, error) {
+	if claims == nil {
+		claims = map[string]any{}
+	}
+
 	issuer, issuedAt := t.Config.Issuer, time.Now().UTC()
 	expiresAt := issuedAt.Add(t.Config.ExpiresIn)
 	newClaims := maps.Clone(claims)

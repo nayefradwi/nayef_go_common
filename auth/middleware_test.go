@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -40,6 +41,22 @@ func (s stubReferenceTokenProvider) RevokeToken(_ uuid.UUID) error          { re
 func (s stubReferenceTokenProvider) RevokeOwner(_ uuid.UUID) error          { return nil }
 func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider { return nil }
 func (s stubReferenceTokenProvider) WithTx(_ pgx.Tx) IReferenceTokenProvider { return s }
+
+func unexpiredToken() Token {
+	return Token{
+		OwnerId:   testOwner,
+		Claims:    map[string]any{},
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}
+}
+
+func expiredToken() Token {
+	return Token{
+		OwnerId:   testOwner,
+		Claims:    map[string]any{},
+		ExpiresAt: time.Now().UTC().Add(-time.Hour),
+	}
+}
 
 func nextHandler(t *testing.T, called *bool) http.Handler {
 	t.Helper()
@@ -115,7 +132,7 @@ func TestJwtAuthenticationMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
-	expectedToken := Token{OwnerId: testOwner, Claims: map[string]any{}}
+	expectedToken := unexpiredToken()
 	stub := stubTokenProvider{token: expectedToken}
 	m := NewJwtAuthenticationMiddleware(stub)
 
@@ -135,10 +152,52 @@ func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
 	}
 }
 
+func TestJwtAuthenticationMiddleware_ExpiredToken(t *testing.T) {
+	stub := stubTokenProvider{token: expiredToken()}
+	called := false
+	m := NewJwtAuthenticationMiddleware(stub)
+	handler := m.UseAuthentication(nextHandler(t, &called))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer sometoken")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if called {
+		t.Error("expected next handler NOT to be called")
+	}
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
+// A token whose ExpiresAt is the zero value (a JWT carrying no exp claim) is
+// treated as expired rather than as never-expiring.
+func TestJwtAuthenticationMiddleware_ZeroExpiryIsRejected(t *testing.T) {
+	stub := stubTokenProvider{token: Token{OwnerId: testOwner, Claims: map[string]any{}}}
+	called := false
+	m := NewJwtAuthenticationMiddleware(stub)
+	handler := m.UseAuthentication(nextHandler(t, &called))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer sometoken")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if called {
+		t.Error("expected next handler NOT to be called")
+	}
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
 // --- JwtReferenceTokenAuthenticationMiddleware ---
 
 func TestJwtReferenceTokenAuthenticationMiddleware_ValidToken(t *testing.T) {
-	stub := stubReferenceTokenProvider{token: Token{OwnerId: testOwner, Claims: map[string]any{}}}
+	stub := stubReferenceTokenProvider{token: unexpiredToken()}
 	called := false
 	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
@@ -195,8 +254,28 @@ func TestJwtReferenceTokenAuthenticationMiddleware_InvalidToken(t *testing.T) {
 	}
 }
 
+func TestJwtReferenceTokenAuthenticationMiddleware_ExpiredToken(t *testing.T) {
+	stub := stubReferenceTokenProvider{token: expiredToken()}
+	called := false
+	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
+	handler := m.UseAuthentication(nextHandler(t, &called))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if called {
+		t.Error("expected next handler NOT to be called")
+	}
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", w.Code)
+	}
+}
+
 func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) {
-	expectedToken := Token{OwnerId: testOwner, Claims: map[string]any{}}
+	expectedToken := unexpiredToken()
 	stub := stubReferenceTokenProvider{token: expectedToken}
 	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
 

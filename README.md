@@ -35,9 +35,9 @@ Each module targets a specific area of boilerplate that I am trying to avoid re-
 - errorspb: A mapping layer for the core errors to protobuf for microservices / grpc based APIs
 - httputil: utility methods for parsing json objects and writing responses
 - grpcutil: similar to httputil but focuses on grpc and protobufs
-- pgutil: utility methods for postgres (right now only has connection)
+- pgutil: utility methods for postgres (connection, transactions, and constraint violation checks)
 - redisutil: similar to pgutil but for redis
-- pagination: helper methods and models for generic pagination, currently only supports limit and offset, cursor based is pending
+- pagination: helper methods and models for generic pagination, supports both limit and offset and cursor based
 - validation: no reflection based validators following a style similar to fluentvalidation in C#
 - auth: Implementation of jwt, hashing (wrapper on bcrypt), and introducing providers to implement jwt, refresh, and opaque tokens
 - otp: OTP helper methods along with a redis based implementation for generating codes
@@ -129,9 +129,9 @@ this is an example using grpc:
 
 ### pgutil and redisutil
 
-These only provide simpler connection logic to postgres and redis by:
+These provide simpler connection logic to postgres and redis by:
 1. setting up a client connection (pool in case of postgres)
-2. test the connection (ping in the case of redis)
+2. test the connection (ping)
 3. panics on error given that these connections are typically a must for API operations
 
 it basically helps avoiding to rewrite these couple of lines into something like:

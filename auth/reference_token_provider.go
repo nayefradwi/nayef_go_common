@@ -73,6 +73,9 @@ func (t JwtReferenceTokenProvider) getToken(id uuid.UUID, tokenType int) (Token,
 	if err != nil {
 		return Token{}, UnauthorizedError("Token not found")
 	}
+	if token.IsExpired() {
+		return Token{}, UnauthorizedError("Token expired")
+	}
 	return token, nil
 }
 

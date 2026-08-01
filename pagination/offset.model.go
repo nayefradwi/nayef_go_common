@@ -11,6 +11,10 @@ type OffsetPage[T any] struct {
 }
 
 func NewOffsetPage[T any](page, pageSize, totalItems int, items []T) OffsetPage[T] {
+	if pageSize == 0 {
+		pageSize = 1
+	}
+
 	numberOfPages := totalItems / pageSize
 	if totalItems%pageSize != 0 {
 		numberOfPages++

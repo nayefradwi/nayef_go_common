@@ -38,7 +38,7 @@ func (m JwtAuthenticationMiddleware) UseAuthentication(f http.Handler) http.Hand
 		}
 
 		accessToken, err := m.TokenProvider.GetClaims(token)
-		if err != nil {
+		if err != nil || accessToken.IsExpired() {
 			jw.WriteError(errors.UnauthorizedError("Invalid token"))
 			return
 		}
@@ -65,7 +65,7 @@ func (m JwtReferenceTokenAuthenticationMiddleware) UseAuthentication(f http.Hand
 		}
 
 		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(id)
-		if err != nil {
+		if err != nil || accessToken.IsExpired() {
 			jw.WriteError(errors.UnauthorizedError("Invalid token"))
 			return
 		}

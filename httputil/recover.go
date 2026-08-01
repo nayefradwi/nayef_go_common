@@ -1,6 +1,7 @@
 package httputil
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -15,8 +16,15 @@ func Recover(f http.Handler) http.Handler {
 
 func recoverError(w http.ResponseWriter) {
 	recovered := recover()
-	if err, ok := recovered.(error); ok {
-		jw := NewJsonResponseWriter(w)
-		jw.WriteError(err)
+	if recovered == nil {
+		return
 	}
+
+	jw := NewJsonResponseWriter(w)
+	err, ok := recovered.(error)
+	if !ok || err == nil {
+		err = fmt.Errorf("%v", recovered)
+	}
+
+	jw.WriteError(err)
 }
