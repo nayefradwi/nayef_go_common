@@ -19,7 +19,7 @@ func New{{.Name}}Handler(svc {{.Name}}Service) {{.Name}}Handler {
 
 func (h {{.Name}}Handler) Routes() chi.Router {
     r := chi.NewRouter()
-    r.get("/", example)
+    r.Get("/", h.example)
     return r
 }
 

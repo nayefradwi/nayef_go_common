@@ -38,7 +38,6 @@ func newRouter(address string, di *di.Di) router {
 
 func (ar router) setup() {
 	ar.mux.Use(middleware.Logger)
-    ar.mux.Use(middleware.Logger)
 	ar.mux.Use(middleware.RequestID)
 	ar.mux.Use(middleware.StripSlashes)
     {{- if .HasPagination}}
