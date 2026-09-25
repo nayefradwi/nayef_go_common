@@ -1,6 +1,6 @@
 module github.com/nayefradwi/nayef_go_common/redisutil
 
-go 1.25.0
+go 1.27.0
 
 require github.com/redis/go-redis/v9 v9.18.0
 
