@@ -1,12 +1,12 @@
 module github.com/nayefradwi/nayef_go_common/ngo
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/nayefradwi/nayef_go_common/errors v1.0.6
+	github.com/nayefradwi/nayef_go_common/errors v1.0.7
 	github.com/spf13/cobra v1.10.2
 )
 

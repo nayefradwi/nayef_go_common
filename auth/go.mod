@@ -1,13 +1,13 @@
 module github.com/nayefradwi/nayef_go_common/auth
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/nayefradwi/nayef_go_common/errors v1.0.6
-	github.com/nayefradwi/nayef_go_common/httputil v1.0.2
+	github.com/nayefradwi/nayef_go_common/errors v1.0.7
+	github.com/nayefradwi/nayef_go_common/httputil v1.0.6
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
 	golang.org/x/crypto v0.49.0
