@@ -210,7 +210,7 @@ func TestWriteError_PlainErrorDoesNotLeakMessage(t *testing.T) {
 
 func TestWriteError_WrappedResultErrorKeepsItsMessage(t *testing.T) {
 	rec := httptest.NewRecorder()
-	newWriter(rec).WriteError(fmt.Errorf("loading user: %w", NotFoundError("item not found")))
+	newWriter(rec).WriteError(fmt.Errorf("loading user: %w", error(NotFoundError("item not found"))))
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.Equal(t, "item not found", decodeBody[ResultError](t, rec).Message)
