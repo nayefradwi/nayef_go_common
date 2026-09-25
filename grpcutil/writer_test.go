@@ -42,7 +42,7 @@ func TestWriteError_PlainErrorDoesNotLeakMessage(t *testing.T) {
 }
 
 func TestWriteError_WrappedResultErrorKeepsItsMessage(t *testing.T) {
-	err := newWriter[any]().WriteError(fmt.Errorf("loading user: %w", NotFoundError("user not found")))
+	err := newWriter[any]().WriteError(fmt.Errorf("loading user: %w", error(NotFoundError("user not found"))))
 
 	pbErr, ok := err.(*errorspb.ResultErrorPb)
 	require.True(t, ok)
