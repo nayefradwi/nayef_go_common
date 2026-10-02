@@ -1,17 +1,17 @@
-name: CI errorspb
+name: CI connectutil
 
 on:
   push:
     branches:
       - main
     paths:
-      - "errorspb/**"
+      - "connectutil/**"
   pull_request:
     paths:
-      - "errorspb/**"
+      - "connectutil/**"
 
 jobs:
   ci:
     uses: ./.github/workflows/ci-go-module.yml
     with:
-      module_path: errorspb
+      module_path: connectutil

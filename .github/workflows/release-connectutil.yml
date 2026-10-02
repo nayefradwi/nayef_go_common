@@ -1,11 +1,11 @@
-name: Release grpcutil
+name: Release connectutil
 
 on:
   push:
     branches:
       - main
     paths:
-      - "grpcutil/**"
+      - "connectutil/**"
 
 permissions:
   contents: write
@@ -14,6 +14,6 @@ jobs:
   release:
     uses: ./.github/workflows/deploy-go-module.yml
     with:
-      module_path: grpcutil
+      module_path: connectutil
       bump_type: patch
     secrets: inherit
