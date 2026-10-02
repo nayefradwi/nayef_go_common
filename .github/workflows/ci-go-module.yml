@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       module_path:
-        description: "Path to the Go module relative to repo root (e.g. errors, errorspb, httputil)"
+        description: "Path to the Go module relative to repo root (e.g. errors, connectutil, httputil)"
         required: true
         type: string
 
