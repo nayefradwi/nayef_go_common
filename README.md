@@ -32,9 +32,8 @@ go install github.com/nayefradwi/nayef_go_common/ngo@latest
 
 Each module targets a specific area of boilerplate that I am trying to avoid re-writing. Overview of the modules:
 - errors: A custom error that includes status, code, message and field validations for better errors
-- errorspb: A mapping layer for the core errors to protobuf for microservices / grpc based APIs
 - httputil: utility methods for parsing json objects and writing responses
-- grpcutil: similar to httputil but focuses on grpc and protobufs
+- connectutil: connectRPC interceptors mapping core errors to Google error details, client and server side
 - pgutil: utility methods for postgres (connection, transactions, and constraint violation checks)
 - redisutil: similar to pgutil but for redis
 - pagination: helper methods and models for generic pagination, supports both limit and offset and cursor based
@@ -43,9 +42,9 @@ Each module targets a specific area of boilerplate that I am trying to avoid re-
 - otp: OTP helper methods along with a redis based implementation for generating codes
 - locking: A locking interface along with an abstraction on redsync to reduce boilerplate code
 
-### errors & errorspb
+### errors
 
-errors and errorspb modules allow me to not create a custom error for every project I build as well as allows consistency
+The errors module allows me to not create a custom error for every project I build as well as allows consistency
 across different modules to have the same error structure. This structure gives the frontend control on how to deal
 with errors coming from the backend as well as a clear message for tracking purposes.
 
@@ -72,7 +71,7 @@ or using pre-existing codes like unauthorized:
 err := errors.UnauthorizedError("Invalid jwt token")
 ```
 
-### httputil & grpcutil
+### httputil & connectutil
 
 This module is used to avoid handling JSON responses always by either introducing a middleware like this:
 
@@ -118,11 +117,15 @@ or with different custom codes:
     jw.WriteJsonResponse(result, err)
 ```
 
-this is an example using grpc:
+for connectRPC, handlers return core errors and the interceptors do the mapping:
 ```go
-	gWriter := grpc.NewGrpcResponseWriter[protov1.ExampleDTO]()
-    result, err := somethingThatCouldFail()
-    return gWriter.WriteResponse(result, err) // this will do mapping to errorspb in case there is an error
+    // server: *ResultError goes out as Google error details, anything else is masked as INTERNAL_ERROR
+    path, handler := examplev1connect.NewExampleServiceHandler(svc,
+        connect.WithInterceptors(connectutil.ServerErrors()))
+
+    // client: errors come back as *ResultError
+    client := examplev1connect.NewExampleServiceClient(http.DefaultClient, url,
+        connect.WithInterceptors(connectutil.ClientErrors()))
 ```
 
 **IMPORTANT: In error flows / cases the writer will always write the same structure as the core errors package**
