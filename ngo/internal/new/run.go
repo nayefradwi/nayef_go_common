@@ -12,17 +12,24 @@ func Run() error {
 		return err
 	}
 
-	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-	runner.Do(*req, createGoMod)
-	runner.Do(*req, installGoPackages)
-	runner.Do(*req, generateCodeFromRequest)
-	runner.Do(*req, runGoFmt)
-	runner.Do(*req, runGoTidy)
-	runner.Do(*req, generateSSHKeys)
-
-	if runner.Error != nil {
-		printer.Error(runner.Error.Error())
+	err = scaffold(*req)
+	if err != nil {
+		printer.Error(err.Error())
 	}
 
+	return err
+}
+
+func scaffold(req CreateNewProjectRequest) error {
+	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
+	runner.Do(req, checkBufInstalled)
+	runner.Do(req, createGoMod)
+	runner.Do(req, installGoPackages)
+	runner.Do(req, installGoTools)
+	runner.Do(req, generateCodeFromRequest)
+	runner.Do(req, runBufGenerate)
+	runner.Do(req, runGoFmt)
+	runner.Do(req, runGoTidy)
+	runner.Do(req, generateSSHKeys)
 	return runner.Error
 }

@@ -45,6 +45,56 @@ func (ar router) setup() {
     {{- end}}
 	ar.mux.Get("/health", health.HealthCheck)
 }
+{{- else}}
+import (
+	"context"
+	"log/slog"
+	"net/http"
+
+	"connectrpc.com/connect"
+	"github.com/nayefradwi/nayef_go_common/connectutil"
+	"{{.GoModule}}/gen/{{.Name}}/v1/{{.Name}}v1connect"
+	"{{.GoModule}}/internal/di"
+	"{{.GoModule}}/internal/health"
+	"{{.GoModule}}/internal/{{.Name}}"
+)
+
+type router struct {
+	mux    *http.ServeMux
+	server *http.Server
+	di     *di.Di
+}
+
+func newRouter(address string, di *di.Di) router {
+	mux := http.NewServeMux()
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
+	r := router{
+		mux: mux,
+		di:  di,
+		server: &http.Server{
+			Addr:      address,
+			Handler:   mux,
+			Protocols: protocols,
+		},
+	}
+
+	r.setup()
+	return r
+}
+
+func (ar router) setup() {
+	opts := connect.WithHandlerOptions(
+		connect.WithInterceptors(connectutil.ServerErrors()),
+		connect.WithRecover(connectutil.Recover()),
+	)
+
+	ar.mux.Handle(health.Handler())
+	ar.mux.Handle({{.Name}}v1connect.New{{.ServiceName}}ServiceHandler({{.Name}}.NewHandler(), opts))
+}
+{{- end}}
 
 func (ar router) connect(cancel context.CancelFunc) {
 	slog.Info("staring server on address", "address", ar.server.Addr)
@@ -61,5 +111,3 @@ func (ar router) disconnect(ctx context.Context) {
 		panic(err)
 	}
 }
-
-{{- end}}

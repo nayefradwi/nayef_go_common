@@ -39,6 +39,10 @@ type CreateNewProjectRequest struct {
 	GoModule                 string
 }
 
+func (r CreateNewProjectRequest) IsGrpc() bool {
+	return r.ServiceType == ServiceTypeGrpc
+}
+
 func (r CreateNewProjectRequest) NeedsInfra(dt DeploymentType) bool {
 	return dt == DeploymentTypeDokploy
 }

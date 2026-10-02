@@ -1,6 +1,10 @@
 package new
 
-import "github.com/nayefradwi/nayef_go_common/ngo/internal/common"
+import (
+	"strings"
+
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
+)
 
 type VpsDockerComposeView struct {
 	Name            string
@@ -116,11 +120,19 @@ func newLocalDockerComposeView(req CreateNewProjectRequest) LocalDockerComposeVi
 }
 
 type HealthView struct {
-	IsRest bool
+	IsRest      bool
+	Name        string
+	ServiceName string
+	GoModule    string
 }
 
 func newHealthView(req CreateNewProjectRequest) HealthView {
-	return HealthView{IsRest: req.ServiceType == ServiceTypeRest}
+	return HealthView{
+		IsRest:      req.ServiceType == ServiceTypeRest,
+		Name:        req.Name,
+		ServiceName: serviceName(req.Name),
+		GoModule:    req.GoModule,
+	}
 }
 
 type LocalEnvView struct {
@@ -135,6 +147,8 @@ type RouterView struct {
 	IsRest        bool
 	HasPagination bool
 	GoModule      string
+	Name          string
+	ServiceName   string
 }
 
 func newRouterView(req CreateNewProjectRequest) RouterView {
@@ -142,5 +156,25 @@ func newRouterView(req CreateNewProjectRequest) RouterView {
 		IsRest:        req.ServiceType == ServiceTypeRest,
 		HasPagination: req.HasFeature(common.FeaturePagination),
 		GoModule:      req.GoModule,
+		Name:          req.Name,
+		ServiceName:   serviceName(req.Name),
 	}
+}
+
+type ProtoView struct {
+	Name        string
+	ServiceName string
+	GoModule    string
+}
+
+func newProtoView(req CreateNewProjectRequest) ProtoView {
+	return ProtoView{
+		Name:        req.Name,
+		ServiceName: serviceName(req.Name),
+		GoModule:    req.GoModule,
+	}
+}
+
+func serviceName(name string) string {
+	return strings.ToUpper(name[:1]) + name[1:]
 }

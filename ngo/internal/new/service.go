@@ -43,7 +43,7 @@ func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 	if req.ServiceType == ServiceTypeRest {
 		packages = append(packages, CHI, HTTPUTIL)
 	} else {
-		packages = append(packages, GRPC, GRPCUTIL, ERRORSPB)
+		packages = append(packages, CONNECT, CONNECTUTIL, GRPCHEALTH)
 	}
 
 	if req.HasAuth() {
@@ -84,6 +84,67 @@ func installGoPackages(req CreateNewProjectRequest) error {
 
 	return nil
 }
+func checkBufInstalled(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	if _, err := exec.LookPath("buf"); err != nil {
+		return fmt.Errorf("gRPC projects need the buf CLI on PATH, see https://buf.build/docs/cli/installation: %w", err)
+	}
+
+	return nil
+}
+
+func installGoTools(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	stop := printer.Spin("Installing protobuf tools")
+	cmd := exec.Command("go", "get", "-tool", PROTOC_GEN_GO, PROTOC_GEN_CONNECT_GO)
+	cmd.Dir = req.RootDirPath
+
+	err := cmd.Run()
+	stop(err)
+	if err != nil {
+		return fmt.Errorf("failed to get protobuf tools %w", err)
+	}
+
+	return nil
+}
+
+func runBufGenerate(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	stop := printer.Spin("Generating protobuf code")
+	cmd := exec.Command("buf", "generate")
+	cmd.Dir = req.RootDirPath
+
+	out, err := cmd.CombinedOutput()
+	stop(err)
+	if err != nil {
+		return fmt.Errorf("failed to run buf generate %w: %s", err, out)
+	}
+
+	return nil
+}
+
+func generateProtoFromRequest(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
+	runner.Do(req, renderBufConfig)
+	runner.Do(req, renderBufGenConfig)
+	runner.Do(req, renderProto)
+	runner.Do(req, renderServiceHandler)
+	return runner.Error
+}
+
 func generateRootFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	runner.Do(req, renderGitIgnore)
@@ -197,6 +258,7 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, generateDeploymentsFromRequest)
 	runner.Do(req, generateConfigFromRequest)
 	runner.Do(req, generateGithubFromRequest)
+	runner.Do(req, generateProtoFromRequest)
 
 	if runner.Error != nil {
 		return runner.Error

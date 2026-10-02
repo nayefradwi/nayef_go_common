@@ -169,3 +169,23 @@ func renderGithubCI(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, GITHUB, WORKFLOWS, CI+"."+YML)
 	return renderToFile(TMPL_GITHUB_CI, filePath, req)
 }
+
+func renderBufConfig(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, "buf."+YAML)
+	return renderToFile(TMPL_BUF, filePath, "")
+}
+
+func renderBufGenConfig(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, "buf.gen."+YAML)
+	return renderToFile(TMPL_BUF_GEN, filePath, newProtoView(req))
+}
+
+func renderProto(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, PROTO, req.Name, V1, req.Name+"."+PROTO)
+	return renderToFile(TMPL_PROTO, filePath, newProtoView(req))
+}
+
+func renderServiceHandler(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, INTERNAL, req.Name, HANDLER+"."+GO)
+	return renderToFile(TMPL_SERVICE_HANDLER, filePath, newProtoView(req))
+}
