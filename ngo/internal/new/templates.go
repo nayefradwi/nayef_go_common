@@ -81,8 +81,13 @@ func renderDi(req CreateNewProjectRequest) error {
 }
 
 func renderDockerfile(req CreateNewProjectRequest) error {
+	goVersion, err := readGoVersion(req.RootDirPath)
+	if err != nil {
+		return err
+	}
+
 	filePath := filepath.Join(req.RootDirPath, BUILD, DOCKERFILE)
-	return renderToFile(TMPL_DOCKERFILE, filePath, req)
+	return renderToFile(TMPL_DOCKERFILE, filePath, newDockerfileView(req, goVersion))
 }
 
 func renderLocalDockerCompose(req CreateNewProjectRequest) error {
@@ -111,7 +116,7 @@ func renderRouter(req CreateNewProjectRequest) error {
 
 func renderAirToml(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, AIR_TOML+"."+TOML)
-	return renderToFile(TMPL_AIR_TOML, filePath, "")
+	return renderToFile(TMPL_AIR_TOML, filePath, req)
 }
 
 func renderStagingDockerCompose(req CreateNewProjectRequest) error {
@@ -168,4 +173,24 @@ func renderTerraformModules(req CreateNewProjectRequest) error {
 func renderGithubCI(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, GITHUB, WORKFLOWS, CI+"."+YML)
 	return renderToFile(TMPL_GITHUB_CI, filePath, req)
+}
+
+func renderBufConfig(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, "buf."+YAML)
+	return renderToFile(TMPL_BUF, filePath, "")
+}
+
+func renderBufGenConfig(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, "buf.gen."+YAML)
+	return renderToFile(TMPL_BUF_GEN, filePath, newProtoView(req))
+}
+
+func renderProto(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, PROTO, req.Name, V1, req.Name+"."+PROTO)
+	return renderToFile(TMPL_PROTO, filePath, newProtoView(req))
+}
+
+func renderServiceHandler(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, INTERNAL, req.Name, HANDLER+"."+GO)
+	return renderToFile(TMPL_SERVICE_HANDLER, filePath, newProtoView(req))
 }

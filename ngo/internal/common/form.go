@@ -33,27 +33,20 @@ func AuthInput(value *AuthType) *huh.Select[AuthType] {
 		).Value(value)
 }
 
-func InfraTypeInput(value *[]InfraType) *huh.MultiSelect[InfraType] {
+func InfraTypeInput(value *[]InfraType, options []InfraType) *huh.MultiSelect[InfraType] {
 	return huh.
 		NewMultiSelect[InfraType]().
 		Title("Infra required").
 		Description("based on this common modules will be imported").
-		Options(
-			huh.NewOption(string(InfraTypePostgres), InfraTypePostgres),
-			huh.NewOption(string(InfraTypeRedis), InfraTypeRedis),
-		).
+		Options(huh.NewOptions(options...)...).
 		Value(value)
 }
 
-func FeatureInput(value *[]Feature) *huh.MultiSelect[Feature] {
+func FeatureInput(value *[]Feature, options []Feature) *huh.MultiSelect[Feature] {
 	return huh.
 		NewMultiSelect[Feature]().
 		Title("Additional Features").
 		Description("based on this common modules will be imported").
-		Options(
-			huh.NewOption(string(FeatureLocking), FeatureLocking),
-			huh.NewOption(string(FeatureOtp), FeatureOtp),
-			huh.NewOption(string(FeaturePagination), FeaturePagination),
-		).
+		Options(huh.NewOptions(options...)...).
 		Value(value)
 }

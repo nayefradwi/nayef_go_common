@@ -1,0 +1,24 @@
+package {{.Package}}
+
+import (
+    "context"
+
+    {{.Package}}v1 "{{.GoModule}}/gen/{{.Package}}/v1"
+    "{{.GoModule}}/gen/{{.Package}}/v1/{{.Package}}v1connect"
+)
+
+var _ {{.Package}}v1connect.{{.Name}}ServiceHandler = {{.Name}}Handler{}
+
+type {{.Name}}Handler struct {
+    svc {{.Name}}Service
+}
+
+func New{{.Name}}Handler(svc {{.Name}}Service) {{.Name}}Handler {
+    return {{.Name}}Handler{
+        svc: svc,
+    }
+}
+
+func (h {{.Name}}Handler) Ping(ctx context.Context, req *{{.Package}}v1.PingRequest) (*{{.Package}}v1.PingResponse, error) {
+    return &{{.Package}}v1.PingResponse{}, nil
+}

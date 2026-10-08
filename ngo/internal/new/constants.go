@@ -42,6 +42,9 @@ const (
 	WORKFLOWS      = "workflows"
 	CI             = "ci"
 	YML            = "yml"
+	PROTO          = "proto"
+	GEN            = "gen"
+	V1             = "v1"
 )
 
 const (
@@ -59,13 +62,17 @@ const (
 	TMPL_SQLC               = "sqlc.yaml.tmpl"
 	TMPL_DOCKER_COMPOSE     = "docker-compose.yaml.tmpl"
 	TMPL_VPS_DOCKER_COMPOSE = "vps-docker-compose.yaml.tmpl"
-	TMPL_TF_VPS_MAIN      = "tf-vps-module-main.tf.tmpl"
-	TMPL_TF_VPS_VARIABLES = "tf-vps-module-variables.tf.tmpl"
-	TMPL_TF_VPS_OUTPUTS   = "tf-vps-module-outputs.tf.tmpl"
-	TMPL_TF_ENV_MAIN      = "tf-env-main.tf.tmpl"
-	TMPL_TF_ENV_VARIABLES = "tf-env-variables.tf.tmpl"
-	TMPL_TF_ENV_TFVARS    = "tf-env-tfvars.tmpl"
-	TMPL_GITHUB_CI        = "ci.yml.tmpl"
+	TMPL_TF_VPS_MAIN        = "tf-vps-module-main.tf.tmpl"
+	TMPL_TF_VPS_VARIABLES   = "tf-vps-module-variables.tf.tmpl"
+	TMPL_TF_VPS_OUTPUTS     = "tf-vps-module-outputs.tf.tmpl"
+	TMPL_TF_ENV_MAIN        = "tf-env-main.tf.tmpl"
+	TMPL_TF_ENV_VARIABLES   = "tf-env-variables.tf.tmpl"
+	TMPL_TF_ENV_TFVARS      = "tf-env-tfvars.tmpl"
+	TMPL_GITHUB_CI          = "ci.yml.tmpl"
+	TMPL_BUF                = "buf.yaml.tmpl"
+	TMPL_BUF_GEN            = "buf.gen.yaml.tmpl"
+	TMPL_PROTO              = "service.proto.tmpl"
+	TMPL_SERVICE_HANDLER    = "service_handler.go.tmpl"
 )
 
 const (
@@ -75,16 +82,21 @@ const (
 	PGX              = "github.com/jackc/pgx/v5"
 	REDIS            = "github.com/redis/go-redis/v9"
 	GODOTENV         = "github.com/joho/godotenv"
-	GRPC             = "google.golang.org/grpc"
+	CONNECT          = "connectrpc.com/connect"
+	GRPCHEALTH       = "connectrpc.com/grpchealth"
 	PGUTIL           = "github.com/nayefradwi/nayef_go_common/pgutil"
 	AUTH             = "github.com/nayefradwi/nayef_go_common/auth"
 	REDISUTIL        = "github.com/nayefradwi/nayef_go_common/redisutil"
 	HTTPUTIL         = "github.com/nayefradwi/nayef_go_common/httputil"
-	GRPCUTIL         = "github.com/nayefradwi/nayef_go_common/grpcutil"
+	CONNECTUTIL      = "github.com/nayefradwi/nayef_go_common/connectutil"
 	VALIDATION       = "github.com/nayefradwi/nayef_go_common/validation"
 	PAGINATION       = "github.com/nayefradwi/nayef_go_common/pagination"
 	OTP              = "github.com/nayefradwi/nayef_go_common/otp"
 	LOCKING          = "github.com/nayefradwi/nayef_go_common/locking"
 	COMMON_ERRORS    = "github.com/nayefradwi/nayef_go_common/errors"
-	ERRORSPB         = "github.com/nayefradwi/nayef_go_common/errorspb"
+)
+
+const (
+	PROTOC_GEN_GO         = "google.golang.org/protobuf/cmd/protoc-gen-go"
+	PROTOC_GEN_CONNECT_GO = "connectrpc.com/connect/cmd/protoc-gen-connect-go"
 )

@@ -36,6 +36,19 @@ func renderService(req CreateFeatureRequest) error {
 
 func renderHandler(req CreateFeatureRequest) error {
 	filePath := filepath.Join(req.RootDirPath, INTERNAL, req.Name, HANDLER+"."+GO)
-	return renderToFile(TMPL_HANDLER, filePath, newHandlerView(req))
+	tmpl := TMPL_HANDLER
+	if req.IsGrpc() {
+		tmpl = TMPL_GRPC_HANDLER
+	}
 
+	return renderToFile(tmpl, filePath, newHandlerView(req))
+}
+
+func renderProto(req CreateFeatureRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	filePath := filepath.Join(req.RootDirPath, PROTO, req.Name, V1, req.Name+"."+PROTO)
+	return renderToFile(TMPL_PROTO, filePath, newHandlerView(req))
 }

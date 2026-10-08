@@ -11,4 +11,17 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
     jw := httputil.NewJsonResponseWriter(w)
     jw.WriteSuccessMessage("Healthy", nil)
 }
+{{- else}}
+
+import (
+    "net/http"
+
+    "connectrpc.com/grpchealth"
+    "{{.GoModule}}/gen/{{.Name}}/v1/{{.Name}}v1connect"
+)
+
+func Handler() (string, http.Handler) {
+    checker := grpchealth.NewStaticChecker({{.Name}}v1connect.{{.ServiceName}}ServiceName)
+    return grpchealth.NewHandler(checker)
+}
 {{- end}}

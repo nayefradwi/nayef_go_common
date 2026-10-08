@@ -29,3 +29,16 @@ jobs:
 
       - name: Build
         run: go build ./...
+{{- if .IsGrpc}}
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Buf lint
+        run: buf lint
+
+      - name: Generated code up to date
+        run: buf generate && git diff --exit-code
+{{- end}}

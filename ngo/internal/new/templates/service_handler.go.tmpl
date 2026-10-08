@@ -1,0 +1,20 @@
+package {{.Name}}
+
+import (
+    "context"
+
+    {{.Name}}v1 "{{.GoModule}}/gen/{{.Name}}/v1"
+    "{{.GoModule}}/gen/{{.Name}}/v1/{{.Name}}v1connect"
+)
+
+var _ {{.Name}}v1connect.{{.ServiceName}}ServiceHandler = (*Handler)(nil)
+
+type Handler struct{}
+
+func NewHandler() *Handler {
+    return &Handler{}
+}
+
+func (h *Handler) Ping(ctx context.Context, req *{{.Name}}v1.PingRequest) (*{{.Name}}v1.PingResponse, error) {
+    return &{{.Name}}v1.PingResponse{}, nil
+}

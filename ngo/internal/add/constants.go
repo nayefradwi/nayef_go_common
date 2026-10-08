@@ -5,11 +5,15 @@ const (
 	SERVICE  = "service"
 	HANDLER  = "handler"
 	GO       = "go"
+	PROTO    = "proto"
+	V1       = "v1"
 )
 
 const (
-	TMPL_SERVICE = "service.go.tmpl"
-	TMPL_HANDLER = "handler.go.tmpl"
+	TMPL_SERVICE      = "service.go.tmpl"
+	TMPL_HANDLER      = "handler.go.tmpl"
+	TMPL_GRPC_HANDLER = "grpc_handler.go.tmpl"
+	TMPL_PROTO        = "service.proto.tmpl"
 )
 
 const (

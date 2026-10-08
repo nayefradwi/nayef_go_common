@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/nayefradwi/nayef_go_common/errors"
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/log"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
 )
@@ -20,6 +22,27 @@ func runGoFmt(req CreateNewProjectRequest) error {
 	cmd := exec.Command("go", "fmt", "./...")
 	cmd.Dir = req.RootDirPath
 	return cmd.Run()
+}
+
+// Reads the go directive go mod init wrote, so the Docker image matches it.
+func readGoVersion(rootDir string) (string, error) {
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.GoVersion}}")
+	cmd.Dir = rootDir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to read go version from go.mod %w", err)
+	}
+
+	return majorMinor(strings.TrimSpace(string(out))), nil
+}
+
+func majorMinor(version string) string {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return version
+	}
+	return parts[0] + "." + parts[1]
 }
 
 func createGoMod(req CreateNewProjectRequest) error {
@@ -40,10 +63,10 @@ func createGoMod(req CreateNewProjectRequest) error {
 
 func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 	packages := []string{GODOTENV, COMMON_ERRORS, TESTIFY}
-	if req.ServiceType == ServiceTypeRest {
+	if req.ServiceType == common.ServiceTypeRest {
 		packages = append(packages, CHI, HTTPUTIL)
 	} else {
-		packages = append(packages, GRPC, GRPCUTIL, ERRORSPB)
+		packages = append(packages, CONNECT, CONNECTUTIL, GRPCHEALTH)
 	}
 
 	if req.HasAuth() {
@@ -84,6 +107,65 @@ func installGoPackages(req CreateNewProjectRequest) error {
 
 	return nil
 }
+func checkBufInstalled(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	return common.CheckBufInstalled()
+}
+
+func installGoTools(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	stop := printer.Spin("Installing protobuf tools")
+	cmd := exec.Command("go", "get", "-tool", PROTOC_GEN_GO, PROTOC_GEN_CONNECT_GO)
+	cmd.Dir = req.RootDirPath
+
+	err := cmd.Run()
+	stop(err)
+	if err != nil {
+		return fmt.Errorf("failed to get protobuf tools %w", err)
+	}
+
+	return nil
+}
+
+func runBufGenerate(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	return common.RunBufGenerate(req.RootDirPath)
+}
+
+func writeProjectFile(req CreateNewProjectRequest) error {
+	return common.WriteProject(req.RootDirPath, common.Project{
+		ServiceType:          req.ServiceType,
+		InfraTypes:           req.InfraTypes,
+		AuthType:             req.AuthType,
+		Features:             req.Features,
+		Provider:             string(req.ProviderType),
+		StagingDeployment:    string(req.StagingDeploymentType),
+		ProductionDeployment: string(req.ProductionDeploymentType),
+	})
+}
+
+func generateProtoFromRequest(req CreateNewProjectRequest) error {
+	if !req.IsGrpc() {
+		return nil
+	}
+
+	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
+	runner.Do(req, renderBufConfig)
+	runner.Do(req, renderBufGenConfig)
+	runner.Do(req, renderProto)
+	runner.Do(req, renderServiceHandler)
+	return runner.Error
+}
+
 func generateRootFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	runner.Do(req, renderGitIgnore)
@@ -197,6 +279,7 @@ func generateCodeFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, generateDeploymentsFromRequest)
 	runner.Do(req, generateConfigFromRequest)
 	runner.Do(req, generateGithubFromRequest)
+	runner.Do(req, generateProtoFromRequest)
 
 	if runner.Error != nil {
 		return runner.Error

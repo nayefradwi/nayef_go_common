@@ -28,16 +28,16 @@ func RunForm() (*CreateNewProjectRequest, error) {
 		),
 		huh.NewGroup(
 			huh.
-				NewSelect[ServiceType]().
+				NewSelect[common.ServiceType]().
 				Title("Service Type").
 				Options(
-					huh.NewOption(string(ServiceTypeRest), ServiceTypeRest),
-					huh.NewOption(string(ServiceTypeGrpc), ServiceTypeGrpc),
+					huh.NewOption(string(common.ServiceTypeRest), common.ServiceTypeRest),
+					huh.NewOption(string(common.ServiceTypeGrpc), common.ServiceTypeGrpc),
 				).Value(&req.ServiceType),
 		),
-		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes)),
+		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes, common.AllInfraTypes)),
 		huh.NewGroup(common.AuthInput(&req.AuthType)),
-		huh.NewGroup(common.FeatureInput(&req.Features)),
+		huh.NewGroup(common.FeatureInput(&req.Features, common.AllFeatures)),
 		huh.NewGroup(
 			huh.
 				NewSelect[ProviderType]().

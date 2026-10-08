@@ -2,12 +2,20 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
+  {{- if .IsGrpc}}
+  pre_cmd = ["buf generate"]
+  {{- end}}
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ./cmd/api"
   delay = 0
+  {{- if .IsGrpc}}
+  # gen is rewritten by pre_cmd; watching it would retrigger the build in a loop
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "gen"]
+  {{- else}}
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  {{- end}}
   exclude_regex = ["_test.go"]
-  include_ext = ["go", "templ", "tpl", "tmpl"]
+  include_ext = ["go", "templ", "tpl", "tmpl"{{if .IsGrpc}}, "proto"{{end}}]
   kill_delay = "0s"
   log = "build-errors.log"
   poll = false
