@@ -27,6 +27,7 @@ func scaffold(req CreateNewProjectRequest) error {
 	runner.Do(req, installGoPackages)
 	runner.Do(req, installGoTools)
 	runner.Do(req, generateCodeFromRequest)
+	runner.Do(req, writeProjectFile)
 	runner.Do(req, runBufGenerate)
 	runner.Do(req, runGoFmt)
 	runner.Do(req, runGoTidy)

@@ -81,8 +81,13 @@ func renderDi(req CreateNewProjectRequest) error {
 }
 
 func renderDockerfile(req CreateNewProjectRequest) error {
+	goVersion, err := readGoVersion(req.RootDirPath)
+	if err != nil {
+		return err
+	}
+
 	filePath := filepath.Join(req.RootDirPath, BUILD, DOCKERFILE)
-	return renderToFile(TMPL_DOCKERFILE, filePath, req)
+	return renderToFile(TMPL_DOCKERFILE, filePath, newDockerfileView(req, goVersion))
 }
 
 func renderLocalDockerCompose(req CreateNewProjectRequest) error {
@@ -111,7 +116,7 @@ func renderRouter(req CreateNewProjectRequest) error {
 
 func renderAirToml(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, AIR_TOML+"."+TOML)
-	return renderToFile(TMPL_AIR_TOML, filePath, "")
+	return renderToFile(TMPL_AIR_TOML, filePath, req)
 }
 
 func renderStagingDockerCompose(req CreateNewProjectRequest) error {

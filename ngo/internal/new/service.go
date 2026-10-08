@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/nayefradwi/nayef_go_common/errors"
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/log"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
 )
@@ -20,6 +22,27 @@ func runGoFmt(req CreateNewProjectRequest) error {
 	cmd := exec.Command("go", "fmt", "./...")
 	cmd.Dir = req.RootDirPath
 	return cmd.Run()
+}
+
+// Reads the go directive go mod init wrote, so the Docker image matches it.
+func readGoVersion(rootDir string) (string, error) {
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.GoVersion}}")
+	cmd.Dir = rootDir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to read go version from go.mod %w", err)
+	}
+
+	return majorMinor(strings.TrimSpace(string(out))), nil
+}
+
+func majorMinor(version string) string {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return version
+	}
+	return parts[0] + "." + parts[1]
 }
 
 func createGoMod(req CreateNewProjectRequest) error {
@@ -40,7 +63,7 @@ func createGoMod(req CreateNewProjectRequest) error {
 
 func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 	packages := []string{GODOTENV, COMMON_ERRORS, TESTIFY}
-	if req.ServiceType == ServiceTypeRest {
+	if req.ServiceType == common.ServiceTypeRest {
 		packages = append(packages, CHI, HTTPUTIL)
 	} else {
 		packages = append(packages, CONNECT, CONNECTUTIL, GRPCHEALTH)
@@ -89,11 +112,7 @@ func checkBufInstalled(req CreateNewProjectRequest) error {
 		return nil
 	}
 
-	if _, err := exec.LookPath("buf"); err != nil {
-		return fmt.Errorf("gRPC projects need the buf CLI on PATH, see https://buf.build/docs/cli/installation: %w", err)
-	}
-
-	return nil
+	return common.CheckBufInstalled()
 }
 
 func installGoTools(req CreateNewProjectRequest) error {
@@ -119,17 +138,19 @@ func runBufGenerate(req CreateNewProjectRequest) error {
 		return nil
 	}
 
-	stop := printer.Spin("Generating protobuf code")
-	cmd := exec.Command("buf", "generate")
-	cmd.Dir = req.RootDirPath
+	return common.RunBufGenerate(req.RootDirPath)
+}
 
-	out, err := cmd.CombinedOutput()
-	stop(err)
-	if err != nil {
-		return fmt.Errorf("failed to run buf generate %w: %s", err, out)
-	}
-
-	return nil
+func writeProjectFile(req CreateNewProjectRequest) error {
+	return common.WriteProject(req.RootDirPath, common.Project{
+		ServiceType:          req.ServiceType,
+		InfraTypes:           req.InfraTypes,
+		AuthType:             req.AuthType,
+		Features:             req.Features,
+		Provider:             string(req.ProviderType),
+		StagingDeployment:    string(req.StagingDeploymentType),
+		ProductionDeployment: string(req.ProductionDeploymentType),
+	})
 }
 
 func generateProtoFromRequest(req CreateNewProjectRequest) error {

@@ -128,7 +128,7 @@ type HealthView struct {
 
 func newHealthView(req CreateNewProjectRequest) HealthView {
 	return HealthView{
-		IsRest:      req.ServiceType == ServiceTypeRest,
+		IsRest:      req.ServiceType == common.ServiceTypeRest,
 		Name:        req.Name,
 		ServiceName: serviceName(req.Name),
 		GoModule:    req.GoModule,
@@ -153,12 +153,21 @@ type RouterView struct {
 
 func newRouterView(req CreateNewProjectRequest) RouterView {
 	return RouterView{
-		IsRest:        req.ServiceType == ServiceTypeRest,
+		IsRest:        req.ServiceType == common.ServiceTypeRest,
 		HasPagination: req.HasFeature(common.FeaturePagination),
 		GoModule:      req.GoModule,
 		Name:          req.Name,
 		ServiceName:   serviceName(req.Name),
 	}
+}
+
+type DockerfileView struct {
+	Name      string
+	GoVersion string
+}
+
+func newDockerfileView(req CreateNewProjectRequest, goVersion string) DockerfileView {
+	return DockerfileView{Name: req.Name, GoVersion: goVersion}
 }
 
 type ProtoView struct {

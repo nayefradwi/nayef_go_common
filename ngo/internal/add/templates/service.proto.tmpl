@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package {{.Package}}.v1;
+
+service {{.Name}}Service {
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {}

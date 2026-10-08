@@ -4,12 +4,21 @@ import (
 	"slices"
 )
 
+type ServiceType string
+
+const (
+	ServiceTypeRest ServiceType = "REST"
+	ServiceTypeGrpc ServiceType = "gRPC"
+)
+
 type InfraType string
 
 const (
 	InfraTypePostgres InfraType = "postgresql"
 	InfraTypeRedis    InfraType = "redis"
 )
+
+var AllInfraTypes = []InfraType{InfraTypePostgres, InfraTypeRedis}
 
 type Feature string
 
@@ -18,6 +27,8 @@ const (
 	FeatureOtp        Feature = "OTP"
 	FeaturePagination Feature = "Pagination"
 )
+
+var AllFeatures = []Feature{FeatureLocking, FeatureOtp, FeaturePagination}
 
 type AuthType string
 

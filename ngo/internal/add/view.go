@@ -48,13 +48,37 @@ func newServiceView(req CreateFeatureRequest) ServiceView {
 }
 
 type HandlerView struct {
-	Name    string
-	Package string
+	Name     string
+	Package  string
+	GoModule string
 }
 
 func newHandlerView(req CreateFeatureRequest) HandlerView {
 	return HandlerView{
-		Name:    strings.ToUpper(req.Name[:1]) + req.Name[1:],
-		Package: req.Name,
+		Name:     strings.ToUpper(req.Name[:1]) + req.Name[1:],
+		Package:  req.Name,
+		GoModule: req.GoModule,
 	}
+}
+
+func serviceArgs(req CreateFeatureRequest) string {
+	args := []string{}
+	if req.HasPostgres() {
+		args = append(args, "ar.di.Pool")
+	}
+
+	if req.HasRedis() {
+		args = append(args, "ar.di.Redis")
+	}
+
+	if req.HasFeature(common.FeatureLocking) {
+		args = append(args, "ar.di.Locker")
+	}
+
+	// Di has no otp service yet, so the user has to build one.
+	if req.HasFeature(common.FeatureOtp) {
+		args = append(args, "otpService")
+	}
+
+	return strings.Join(args, ", ")
 }

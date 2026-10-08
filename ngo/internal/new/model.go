@@ -4,13 +4,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 )
 
-type ServiceType string
-
-const (
-	ServiceTypeRest ServiceType = "REST"
-	ServiceTypeGrpc ServiceType = "gRPC"
-)
-
 type ProviderType string
 
 const (
@@ -30,7 +23,7 @@ type CreateNewProjectRequest struct {
 	common.TakesInfraTypes
 	common.TakesAuthType
 	Name                     string
-	ServiceType              ServiceType
+	ServiceType              common.ServiceType
 	WithValidation           bool
 	ProviderType             ProviderType
 	StagingDeploymentType    DeploymentType
@@ -40,7 +33,7 @@ type CreateNewProjectRequest struct {
 }
 
 func (r CreateNewProjectRequest) IsGrpc() bool {
-	return r.ServiceType == ServiceTypeGrpc
+	return r.ServiceType == common.ServiceTypeGrpc
 }
 
 func (r CreateNewProjectRequest) NeedsInfra(dt DeploymentType) bool {
