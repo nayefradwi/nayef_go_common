@@ -138,9 +138,9 @@ func TestJwtMiddleware_TokenInContext(t *testing.T) {
 	stub := stubTokenProvider{token: expectedToken}
 	m := NewJwtMiddleware(stub)
 
-	var gotToken auth.Token
+	var gotIdentity auth.Identity
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken, _ = auth.GetToken(r.Context())
+		gotIdentity, _ = auth.GetIdentity(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -149,8 +149,8 @@ func TestJwtMiddleware_TokenInContext(t *testing.T) {
 
 	m.UseAuthentication(capture).ServeHTTP(w, req)
 
-	if gotToken.OwnerId != expectedToken.OwnerId {
-		t.Errorf("expected owner %v, got %v", expectedToken.OwnerId, gotToken.OwnerId)
+	if gotIdentity.OwnerId != expectedToken.OwnerId || gotIdentity.Kind != auth.KindUser {
+		t.Errorf("expected user identity for %v, got %+v", expectedToken.OwnerId, gotIdentity)
 	}
 }
 
@@ -281,9 +281,9 @@ func TestReferenceTokenMiddleware_TokenInContext(t *testing.T) {
 	stub := stubReferenceTokenProvider{token: expectedToken}
 	m := NewReferenceTokenMiddleware(stub)
 
-	var gotToken auth.Token
+	var gotIdentity auth.Identity
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken, _ = auth.GetToken(r.Context())
+		gotIdentity, _ = auth.GetIdentity(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -292,13 +292,7 @@ func TestReferenceTokenMiddleware_TokenInContext(t *testing.T) {
 
 	m.UseAuthentication(capture).ServeHTTP(w, req)
 
-	if gotToken.OwnerId != expectedToken.OwnerId {
-		t.Errorf("expected owner %v, got %v", expectedToken.OwnerId, gotToken.OwnerId)
-	}
-}
-
-func TestGetToken_MissingReturnsNotOk(t *testing.T) {
-	if _, ok := auth.GetToken(context.Background()); ok {
-		t.Fatal("expected ok=false when no token is in context")
+	if gotIdentity.OwnerId != expectedToken.OwnerId || gotIdentity.Kind != auth.KindUser {
+		t.Errorf("expected user identity for %v, got %+v", expectedToken.OwnerId, gotIdentity)
 	}
 }

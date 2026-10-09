@@ -39,7 +39,7 @@ func (i interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return next(ctx, req)
 		}
 
-		ctx, err := i.withToken(ctx, req.Header())
+		ctx, err := i.withIdentity(ctx, req.Header())
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +53,7 @@ func (i interceptor) WrapStreamingClient(next connect.StreamingClientFunc) conne
 
 func (i interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		ctx, err := i.withToken(ctx, conn.RequestHeader())
+		ctx, err := i.withIdentity(ctx, conn.RequestHeader())
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (i interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) con
 	}
 }
 
-func (i interceptor) withToken(ctx context.Context, header http.Header) (context.Context, error) {
+func (i interceptor) withIdentity(ctx context.Context, header http.Header) (context.Context, error) {
 	raw, ok := strings.CutPrefix(header.Get("Authorization"), "Bearer ")
 	if !ok || raw == "" {
 		return ctx, unauthenticated("Token not found")
@@ -72,7 +72,7 @@ func (i interceptor) withToken(ctx context.Context, header http.Header) (context
 		return ctx, unauthenticated("Invalid token")
 	}
 
-	return token.WithToken(ctx), nil
+	return auth.WithIdentity(ctx, auth.IdentityFromToken(token)), nil
 }
 
 func unauthenticated(msg string) error {
