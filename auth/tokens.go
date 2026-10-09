@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,8 +20,6 @@ const (
 	RefreshTokenType = 2
 )
 
-type TokenKey struct{}
-
 type Token struct {
 	Id        uuid.UUID
 	Value     string
@@ -39,13 +36,4 @@ func (t Token) IsExpired() bool {
 
 func (t Token) IsOwner(owner uuid.UUID) bool {
 	return t.OwnerId == owner
-}
-
-func (t Token) WithToken(ctx context.Context) context.Context {
-	return context.WithValue(ctx, TokenKey{}, t)
-}
-
-func GetToken(ctx context.Context) (Token, bool) {
-	t, ok := ctx.Value(TokenKey{}).(Token)
-	return t, ok
 }
