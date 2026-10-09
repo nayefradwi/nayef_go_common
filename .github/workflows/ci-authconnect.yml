@@ -1,0 +1,17 @@
+name: CI authconnect
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth/authconnect/**"
+  pull_request:
+    paths:
+      - "auth/authconnect/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: auth/authconnect

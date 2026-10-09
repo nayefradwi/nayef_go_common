@@ -1,14 +1,11 @@
-name: Release auth
+name: Release authhttp
 
 on:
   push:
     branches:
       - main
     paths:
-      - "auth/**"
-      - "!auth/authpg/**"
-      - "!auth/authhttp/**"
-      - "!auth/authconnect/**"
+      - "auth/authhttp/**"
 
 permissions:
   contents: write
@@ -17,6 +14,6 @@ jobs:
   release:
     uses: ./.github/workflows/deploy-go-module.yml
     with:
-      module_path: auth
+      module_path: auth/authhttp
       bump_type: patch
     secrets: inherit

@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE tokens (
     id UUID PRIMARY KEY,
     value TEXT NOT NULL,
@@ -9,3 +10,6 @@ CREATE TABLE tokens (
 );
 CREATE INDEX idx_tokens_owner_id ON tokens(owner_id);
 CREATE INDEX idx_tokens_reference_type ON tokens(id, type);
+
+-- +goose Down
+DROP TABLE tokens;
