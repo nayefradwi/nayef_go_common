@@ -44,7 +44,7 @@ func (m JwtMiddleware) UseAuthentication(f http.Handler) http.Handler {
 			return
 		}
 
-		ctx := accessToken.WithToken(r.Context())
+		ctx := auth.WithIdentity(r.Context(), auth.IdentityFromToken(accessToken))
 		r = r.WithContext(ctx)
 		f.ServeHTTP(w, r)
 	})
@@ -71,7 +71,7 @@ func (m ReferenceTokenMiddleware) UseAuthentication(f http.Handler) http.Handler
 			return
 		}
 
-		ctx := accessToken.WithToken(r.Context())
+		ctx := auth.WithIdentity(r.Context(), auth.IdentityFromToken(accessToken))
 		r = r.WithContext(ctx)
 		f.ServeHTTP(w, r)
 	})

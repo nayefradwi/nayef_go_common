@@ -49,17 +49,17 @@ func validToken() auth.Token {
 
 type server struct {
 	url   string
-	seen  *auth.Token
+	seen  *auth.Identity
 	calls *int
 }
 
-func newServer(t *testing.T, i connect.Interceptor) server {
+func newServer(t *testing.T, i ...connect.Interceptor) server {
 	t.Helper()
-	s := server{seen: &auth.Token{}, calls: new(int)}
+	s := server{seen: &auth.Identity{}, calls: new(int)}
 
 	record := func(ctx context.Context) {
 		*s.calls++
-		*s.seen, _ = auth.GetToken(ctx)
+		*s.seen, _ = auth.GetIdentity(ctx)
 	}
 
 	mux := http.NewServeMux()
@@ -68,14 +68,14 @@ func newServer(t *testing.T, i connect.Interceptor) server {
 			record(ctx)
 			return connect.NewResponse(&emptypb.Empty{}), nil
 		},
-		connect.WithInterceptors(i),
+		connect.WithInterceptors(i...),
 	))
 	mux.Handle(streamProcedure, connect.NewServerStreamHandler(streamProcedure,
 		func(ctx context.Context, _ *connect.Request[emptypb.Empty], st *connect.ServerStream[emptypb.Empty]) error {
 			record(ctx)
 			return st.Send(&emptypb.Empty{})
 		},
-		connect.WithInterceptors(i),
+		connect.WithInterceptors(i...),
 	))
 
 	ts := httptest.NewServer(mux)
