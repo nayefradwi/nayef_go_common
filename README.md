@@ -194,32 +194,33 @@ validation.AddRule(v, stringFactory.Must(req.Username, "username", "username is 
 This module avoids re-implementing JWT signing, password hashing, and authentication middleware for every project. It provides a layered set of token providers depending on how much control over token revocation is needed:
 
 ```go
-// stateless jwt (no revocation)
-accessConfig := auth.NewJwtTokenProviderConfig(secret, 15*time.Minute)
+// stateless jwt (no revocation), secret must be at least 32 bytes
+accessConfig, err := auth.NewJwtTokenProviderConfig(secret, 15*time.Minute, auth.AccessTokenType)
 provider := auth.NewJwtTokenProvider(accessConfig)
 token, err := provider.SignClaims(userId, map[string]any{"role": "admin"})
 
 // access + refresh token pair
-refreshConfig := auth.NewJwtTokenProviderConfig(secret, 7*24*time.Hour)
+// the token type is signed and checked, so a refresh token is never accepted as an access token
+refreshConfig, err := auth.NewJwtTokenProviderConfig(secret, 7*24*time.Hour, auth.RefreshTokenType)
 refreshProvider := auth.NewJwtRefreshTokenProvider(
     auth.NewJwtTokenProvider(refreshConfig),
     auth.NewJwtTokenProvider(accessConfig),
 )
-dto, err := refreshProvider.GenerateToken(userId, claims) // dto.AccessToken, dto.RefreshToken
+dto, err := refreshProvider.GenerateToken(ctx, userId, claims) // dto.AccessToken, dto.RefreshToken
 ```
 
 or using reference tokens where all tokens are stored in a database for full revocation support:
 
 ```go
 refProvider := auth.NewJwtReferenceTokenProvider(refreshProvider, tokenStore)
-dto, err := refProvider.GenerateToken(userId, claims) // both tokens are IDs, not raw JWTs
-refProvider.RevokeOwner(userId) // invalidate all sessions
+dto, err := refProvider.GenerateToken(ctx, userId, claims) // both tokens are IDs, not raw JWTs
+refProvider.RevokeOwner(ctx, userId) // invalidate all sessions
 ```
 
 password hashing is also provided as a thin wrapper over bcrypt:
 
 ```go
-hc := auth.NewHashingConfig(10)
+hc := auth.NewHashingConfig(10) // bcrypt cost
 hash, err := hc.Hash(password)
 ok := auth.CompareHash(password, hash)
 ```
@@ -230,7 +231,7 @@ protecting routes is done through the provided middleware:
 r.Use(auth.NewJwtAuthenticationMiddleware(provider).UseAuthentication)
 
 // retrieve the token in a handler
-token := auth.GetToken(r.Context())
+token, ok := auth.GetToken(r.Context())
 ```
 
 ### otp

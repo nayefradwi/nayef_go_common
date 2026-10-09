@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -30,17 +31,19 @@ type stubReferenceTokenProvider struct {
 }
 
 func (s stubReferenceTokenProvider) GenerateId() (uuid.UUID, error) { return uuid.Nil, nil }
-func (s stubReferenceTokenProvider) GenerateToken(_ uuid.UUID, _ map[string]any) (TokenDTO, error) {
+func (s stubReferenceTokenProvider) GenerateToken(_ context.Context, _ uuid.UUID, _ map[string]any) (TokenDTO, error) {
 	return TokenDTO{}, nil
 }
-func (s stubReferenceTokenProvider) GetAccessToken(_ uuid.UUID) (Token, error) { return s.token, s.err }
-func (s stubReferenceTokenProvider) GetRefreshToken(_ uuid.UUID) (Token, error) {
+func (s stubReferenceTokenProvider) GetAccessToken(_ context.Context, _ uuid.UUID) (Token, error) {
 	return s.token, s.err
 }
-func (s stubReferenceTokenProvider) RevokeToken(_ uuid.UUID) error          { return nil }
-func (s stubReferenceTokenProvider) RevokeOwner(_ uuid.UUID) error          { return nil }
-func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider { return nil }
-func (s stubReferenceTokenProvider) WithTx(_ pgx.Tx) IReferenceTokenProvider { return s }
+func (s stubReferenceTokenProvider) GetRefreshToken(_ context.Context, _ uuid.UUID) (Token, error) {
+	return s.token, s.err
+}
+func (s stubReferenceTokenProvider) RevokeToken(_ context.Context, _ uuid.UUID) error { return nil }
+func (s stubReferenceTokenProvider) RevokeOwner(_ context.Context, _ uuid.UUID) error { return nil }
+func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider           { return nil }
+func (s stubReferenceTokenProvider) WithTx(_ pgx.Tx) IReferenceTokenProvider          { return s }
 
 func unexpiredToken() Token {
 	return Token{
@@ -138,7 +141,7 @@ func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
 
 	var gotToken Token
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken = GetToken(r.Context())
+		gotToken, _ = GetToken(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -281,7 +284,7 @@ func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) 
 
 	var gotToken Token
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken = GetToken(r.Context())
+		gotToken, _ = GetToken(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -292,5 +295,11 @@ func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) 
 
 	if gotToken.OwnerId != expectedToken.OwnerId {
 		t.Errorf("expected owner %v, got %v", expectedToken.OwnerId, gotToken.OwnerId)
+	}
+}
+
+func TestGetToken_MissingReturnsNotOk(t *testing.T) {
+	if _, ok := GetToken(context.Background()); ok {
+		t.Fatal("expected ok=false when no token is in context")
 	}
 }

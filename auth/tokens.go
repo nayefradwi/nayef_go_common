@@ -45,13 +45,7 @@ func (t Token) WithToken(ctx context.Context) context.Context {
 	return context.WithValue(ctx, TokenKey{}, t)
 }
 
-func GetToken(ctx context.Context) Token {
+func GetToken(ctx context.Context) (Token, bool) {
 	t, ok := ctx.Value(TokenKey{}).(Token)
-	if !ok {
-		return Token{
-			Claims: make(map[string]any),
-		}
-	}
-
-	return t
+	return t, ok
 }

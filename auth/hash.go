@@ -6,15 +6,15 @@ import (
 )
 
 type HashingConfig struct {
-	Salt int
+	Cost int
 }
 
-const defaultSalt = 10
+const defaultCost = 10
 
-var DefaultHashingConfig = NewHashingConfig(defaultSalt)
+var DefaultHashingConfig = NewHashingConfig(defaultCost)
 
-func NewHashingConfig(salt int) HashingConfig {
-	return HashingConfig{Salt: salt}
+func NewHashingConfig(cost int) HashingConfig {
+	return HashingConfig{Cost: cost}
 }
 
 const maxBcryptPasswordBytes = 72
@@ -23,17 +23,17 @@ func (hc HashingConfig) Hash(password string) (string, error) {
 	if len([]byte(password)) > maxBcryptPasswordBytes {
 		return "", BadRequestError("password exceeds maximum length of 72 bytes")
 	}
-	salt := hc.getSalt()
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), salt)
+	cost := hc.getCost()
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	return string(bytes), err
 }
 
-func (hc HashingConfig) getSalt() int {
-	if hc.Salt == 0 {
-		return defaultSalt
+func (hc HashingConfig) getCost() int {
+	if hc.Cost == 0 {
+		return defaultCost
 	}
 
-	return hc.Salt
+	return hc.Cost
 }
 
 func CompareHash(password, hash string) bool {

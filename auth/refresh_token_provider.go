@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/google/uuid"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type JwtRefreshTokenProvider struct {
 	RefreshTokenProvider JwtTokenProvider
@@ -14,7 +18,7 @@ func NewJwtRefreshTokenProvider(refreshTokenProvider JwtTokenProvider, accessTok
 	}
 }
 
-func (t JwtRefreshTokenProvider) GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
+func (t JwtRefreshTokenProvider) GenerateToken(_ context.Context, ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
 	accessToken, err := t.AccessTokenProvider.SignClaims(ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err

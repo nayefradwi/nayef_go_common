@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,13 +20,11 @@ func setupRevokeTestEnv(t *testing.T) revokeTestEnv {
 	pool := mustCreatePostgresConn(t)
 	store := NewPostgresTokenStore(pool)
 
-	accessCfg, err := NewJwtTokenProviderConfig("test-access-secret-key", time.Hour)
+	accessCfg, err := NewJwtTokenProviderConfig("test-access-secret-key-32-bytes-long", time.Hour, AccessTokenType)
 	require.NoError(t, err)
-	accessCfg = accessCfg.SetTokenType(AccessTokenType)
 
-	refreshCfg, err := NewJwtTokenProviderConfig("test-refresh-secret-key", 24*time.Hour)
+	refreshCfg, err := NewJwtTokenProviderConfig("test-refresh-secret-key-32-bytes-long", 24*time.Hour, RefreshTokenType)
 	require.NoError(t, err)
-	refreshCfg = refreshCfg.SetTokenType(RefreshTokenType)
 
 	accessProvider := NewJwtTokenProvider(accessCfg)
 	refreshProvider := NewJwtTokenProvider(refreshCfg)
@@ -40,14 +39,15 @@ func setupRevokeTestEnv(t *testing.T) revokeTestEnv {
 
 func TestJwtRefreshTokenWithRevoke_GenerateToken(t *testing.T) {
 	env := setupRevokeTestEnv(t)
+	ctx := context.Background()
 
-	dto, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, dto.AccessToken, "expected non-empty access token (JWT)")
 	assert.NotEmpty(t, dto.RefreshToken, "expected non-empty refresh token (UUID)")
 
-	stored, err := env.store.GetTokenByReference(mustUUID(dto.RefreshToken), RefreshTokenType)
+	stored, err := env.store.GetTokenByReference(ctx, mustUUID(dto.RefreshToken), RefreshTokenType)
 	require.NoError(t, err)
 	assert.Equal(t, testOwner, stored.OwnerId)
 	assert.Equal(t, RefreshTokenType, stored.Type)
@@ -55,8 +55,9 @@ func TestJwtRefreshTokenWithRevoke_GenerateToken(t *testing.T) {
 
 func TestJwtRefreshTokenWithRevoke_GetAccessToken(t *testing.T) {
 	env := setupRevokeTestEnv(t)
+	ctx := context.Background()
 
-	dto, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
 	token, err := env.provider.GetAccessToken(dto.AccessToken)
@@ -68,11 +69,12 @@ func TestJwtRefreshTokenWithRevoke_GetAccessToken(t *testing.T) {
 
 func TestJwtRefreshTokenWithRevoke_GetRefreshToken(t *testing.T) {
 	env := setupRevokeTestEnv(t)
+	ctx := context.Background()
 
-	dto, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
-	stored, err := env.store.GetTokenByReference(mustUUID(dto.RefreshToken), RefreshTokenType)
+	stored, err := env.store.GetTokenByReference(ctx, mustUUID(dto.RefreshToken), RefreshTokenType)
 	require.NoError(t, err)
 
 	token, err := env.provider.GetRefreshToken(stored.Value)
@@ -84,14 +86,15 @@ func TestJwtRefreshTokenWithRevoke_GetRefreshToken(t *testing.T) {
 
 func TestJwtRefreshTokenWithRevoke_RevokeToken(t *testing.T) {
 	env := setupRevokeTestEnv(t)
+	ctx := context.Background()
 
-	dto, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
-	err = env.provider.RevokeToken(mustUUID(dto.RefreshToken))
+	err = env.provider.RevokeToken(ctx, mustUUID(dto.RefreshToken))
 	require.NoError(t, err)
 
-	_, err = env.store.GetTokenByReference(mustUUID(dto.RefreshToken), RefreshTokenType)
+	_, err = env.store.GetTokenByReference(ctx, mustUUID(dto.RefreshToken), RefreshTokenType)
 	require.Error(t, err)
 
 	token, err := env.provider.GetAccessToken(dto.AccessToken)
@@ -101,19 +104,20 @@ func TestJwtRefreshTokenWithRevoke_RevokeToken(t *testing.T) {
 
 func TestJwtRefreshTokenWithRevoke_RevokeOwner(t *testing.T) {
 	env := setupRevokeTestEnv(t)
+	ctx := context.Background()
 
-	dto1, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto1, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
-	dto2, err := env.provider.GenerateToken(testOwner, map[string]any{"role": "admin"})
+	dto2, err := env.provider.GenerateToken(ctx, testOwner, map[string]any{"role": "admin"})
 	require.NoError(t, err)
 
-	err = env.provider.RevokeOwner(testOwner)
+	err = env.provider.RevokeOwner(ctx, testOwner)
 	require.NoError(t, err)
 
-	_, err = env.store.GetTokenByReference(mustUUID(dto1.RefreshToken), RefreshTokenType)
+	_, err = env.store.GetTokenByReference(ctx, mustUUID(dto1.RefreshToken), RefreshTokenType)
 	require.Error(t, err)
 
-	_, err = env.store.GetTokenByReference(mustUUID(dto2.RefreshToken), RefreshTokenType)
+	_, err = env.store.GetTokenByReference(ctx, mustUUID(dto2.RefreshToken), RefreshTokenType)
 	require.Error(t, err)
 }

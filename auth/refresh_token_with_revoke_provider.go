@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	. "github.com/nayefradwi/nayef_go_common/errors"
@@ -26,8 +28,8 @@ func (t JwtRefreshTokenWithRevokeProvider) GenerateId() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
-	tokenPair, err := t.TokenProvider.GenerateToken(ownerId, claims)
+func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ctx context.Context, ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
+	tokenPair, err := t.TokenProvider.GenerateToken(ctx, ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
@@ -42,7 +44,7 @@ func (t JwtRefreshTokenWithRevokeProvider) GenerateToken(ownerId uuid.UUID, clai
 		return EmptyTokenDTO(), err
 	}
 
-	if err := t.TokenStore.StoreToken(refreshToken); err != nil {
+	if err := t.TokenStore.StoreToken(ctx, refreshToken); err != nil {
 		return EmptyTokenDTO(), err
 	}
 
@@ -61,12 +63,12 @@ func (t JwtRefreshTokenWithRevokeProvider) GetAccessTokenProvider() ITokenProvid
 	return t.TokenProvider.GetAccessTokenProvider()
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(reference uuid.UUID) error {
-	return t.TokenStore.DeleteToken(reference)
+func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(ctx context.Context, reference uuid.UUID) error {
+	return t.TokenStore.DeleteToken(ctx, reference)
 }
 
-func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ownerId uuid.UUID) error {
-	return t.TokenStore.DeleteAllTokensByOwner(ownerId)
+func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ctx context.Context, ownerId uuid.UUID) error {
+	return t.TokenStore.DeleteAllTokensByOwner(ctx, ownerId)
 }
 
 func (t JwtRefreshTokenWithRevokeProvider) WithTx(tx pgx.Tx) IRefreshTokenProviderWithRevoke {

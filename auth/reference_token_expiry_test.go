@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -15,15 +16,17 @@ type fakeTokenStore struct {
 	token Token
 }
 
-func (s fakeTokenStore) StoreToken(_ Token) error     { return nil }
-func (s fakeTokenStore) StoreTokens(_ ...Token) error { return nil }
-func (s fakeTokenStore) GetTokenByReference(_ uuid.UUID, _ int) (Token, error) {
+func (s fakeTokenStore) StoreToken(_ context.Context, _ Token) error     { return nil }
+func (s fakeTokenStore) StoreTokens(_ context.Context, _ ...Token) error { return nil }
+func (s fakeTokenStore) GetTokenByReference(_ context.Context, _ uuid.UUID, _ int) (Token, error) {
 	return s.token, nil
 }
-func (s fakeTokenStore) GetTokenByOwner(_ uuid.UUID, _ int) (Token, error) { return s.token, nil }
-func (s fakeTokenStore) DeleteToken(_ uuid.UUID) error                     { return nil }
-func (s fakeTokenStore) DeleteAllTokensByOwner(_ uuid.UUID) error          { return nil }
-func (s fakeTokenStore) WithTx(_ pgx.Tx) ITokenStore                       { return s }
+func (s fakeTokenStore) GetTokenByOwner(_ context.Context, _ uuid.UUID, _ int) (Token, error) {
+	return s.token, nil
+}
+func (s fakeTokenStore) DeleteToken(_ context.Context, _ uuid.UUID) error            { return nil }
+func (s fakeTokenStore) DeleteAllTokensByOwner(_ context.Context, _ uuid.UUID) error { return nil }
+func (s fakeTokenStore) WithTx(_ pgx.Tx) ITokenStore                                 { return s }
 
 func referenceProviderWith(token Token) IReferenceTokenProvider {
 	return NewJwtReferenceTokenProvider(nil, fakeTokenStore{token: token})
@@ -44,7 +47,7 @@ func storedToken(tokenType int, expiresAt time.Time) Token {
 func TestReferenceTokenProvider_GetRefreshToken_Expired(t *testing.T) {
 	provider := referenceProviderWith(storedToken(RefreshTokenType, time.Now().UTC().Add(-time.Minute)))
 
-	_, err := provider.GetRefreshToken(testTokenID)
+	_, err := provider.GetRefreshToken(context.Background(), testTokenID)
 
 	requireUnauthorized(t, err)
 }
@@ -52,7 +55,7 @@ func TestReferenceTokenProvider_GetRefreshToken_Expired(t *testing.T) {
 func TestReferenceTokenProvider_GetAccessToken_Expired(t *testing.T) {
 	provider := referenceProviderWith(storedToken(AccessTokenType, time.Now().UTC().Add(-time.Minute)))
 
-	_, err := provider.GetAccessToken(testTokenID)
+	_, err := provider.GetAccessToken(context.Background(), testTokenID)
 
 	requireUnauthorized(t, err)
 }
@@ -60,7 +63,7 @@ func TestReferenceTokenProvider_GetAccessToken_Expired(t *testing.T) {
 func TestReferenceTokenProvider_ZeroExpiryIsRejected(t *testing.T) {
 	provider := referenceProviderWith(storedToken(AccessTokenType, time.Time{}))
 
-	_, err := provider.GetAccessToken(testTokenID)
+	_, err := provider.GetAccessToken(context.Background(), testTokenID)
 
 	requireUnauthorized(t, err)
 }
@@ -68,7 +71,7 @@ func TestReferenceTokenProvider_ZeroExpiryIsRejected(t *testing.T) {
 func TestReferenceTokenProvider_GetAccessToken_NotExpired(t *testing.T) {
 	provider := referenceProviderWith(storedToken(AccessTokenType, time.Now().UTC().Add(time.Hour)))
 
-	token, err := provider.GetAccessToken(testTokenID)
+	token, err := provider.GetAccessToken(context.Background(), testTokenID)
 
 	require.NoError(t, err)
 	require.Equal(t, testOwner, token.OwnerId)
