@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	. "github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +25,6 @@ func (s fakeTokenStore) GetTokenByOwner(_ context.Context, _ uuid.UUID, _ int) (
 }
 func (s fakeTokenStore) DeleteToken(_ context.Context, _ uuid.UUID) error            { return nil }
 func (s fakeTokenStore) DeleteAllTokensByOwner(_ context.Context, _ uuid.UUID) error { return nil }
-func (s fakeTokenStore) WithTx(_ pgx.Tx) ITokenStore                                 { return s }
 
 func referenceProviderWith(token Token) IReferenceTokenProvider {
 	return NewJwtReferenceTokenProvider(nil, fakeTokenStore{token: token})

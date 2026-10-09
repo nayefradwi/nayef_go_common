@@ -1,0 +1,17 @@
+name: CI authpg
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth/authpg/**"
+  pull_request:
+    paths:
+      - "auth/authpg/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: auth/authpg

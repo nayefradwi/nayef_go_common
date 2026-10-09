@@ -1,7 +1,8 @@
-package auth
+package authpg
 
 import (
 	"context"
+	"github.com/nayefradwi/nayef_go_common/auth"
 	"net/http"
 	"testing"
 
@@ -20,11 +21,11 @@ func TestReferenceTokenProvider_GenerateToken(t *testing.T) {
 	assert.NotEmpty(t, dto.AccessToken, "expected non-empty access token ID")
 	assert.NotEmpty(t, dto.RefreshToken, "expected non-empty refresh token ID")
 
-	accessToken, err := env.store.GetTokenByReference(ctx, mustUUID(dto.AccessToken), AccessTokenType)
+	accessToken, err := env.store.GetTokenByReference(ctx, mustUUID(dto.AccessToken), auth.AccessTokenType)
 	require.NoError(t, err)
 	assert.Equal(t, testOwner, accessToken.OwnerId)
 
-	refreshToken, err := env.store.GetTokenByReference(ctx, mustUUID(dto.RefreshToken), RefreshTokenType)
+	refreshToken, err := env.store.GetTokenByReference(ctx, mustUUID(dto.RefreshToken), auth.RefreshTokenType)
 	require.NoError(t, err)
 	assert.Equal(t, testOwner, refreshToken.OwnerId)
 }
@@ -40,7 +41,7 @@ func TestReferenceTokenProvider_GetAccessToken(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, testOwner, token.OwnerId)
-	assert.Equal(t, AccessTokenType, token.Type)
+	assert.Equal(t, auth.AccessTokenType, token.Type)
 }
 
 func TestReferenceTokenProvider_GetRefreshToken(t *testing.T) {
@@ -54,7 +55,7 @@ func TestReferenceTokenProvider_GetRefreshToken(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, testOwner, token.OwnerId)
-	assert.Equal(t, RefreshTokenType, token.Type)
+	assert.Equal(t, auth.RefreshTokenType, token.Type)
 }
 
 func TestReferenceTokenProvider_RevokeToken(t *testing.T) {
@@ -91,12 +92,12 @@ func TestReferenceTokenProvider_RevokeOwner(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestPostgresTokenStore_DbErrorIsNotNotFound(t *testing.T) {
+func TestTokenStore_DbErrorIsNotNotFound(t *testing.T) {
 	env := setupTestEnv(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := env.store.GetTokenByReference(ctx, testTokenID, AccessTokenType)
+	_, err := env.store.GetTokenByReference(ctx, testTokenID, auth.AccessTokenType)
 
 	var resultErr *ResultError
 	require.ErrorAs(t, err, &resultErr)

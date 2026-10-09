@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
@@ -69,9 +68,4 @@ func (t JwtRefreshTokenWithRevokeProvider) RevokeToken(ctx context.Context, refe
 
 func (t JwtRefreshTokenWithRevokeProvider) RevokeOwner(ctx context.Context, ownerId uuid.UUID) error {
 	return t.TokenStore.DeleteAllTokensByOwner(ctx, ownerId)
-}
-
-func (t JwtRefreshTokenWithRevokeProvider) WithTx(tx pgx.Tx) IRefreshTokenProviderWithRevoke {
-	t.TokenStore = t.TokenStore.WithTx(tx)
-	return t
 }
