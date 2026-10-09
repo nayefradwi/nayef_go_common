@@ -6,9 +6,13 @@ on:
       - main
     paths:
       - "auth/**"
+      - "!auth/authpg/**"
+      - "!auth/authhttp/**"
   pull_request:
     paths:
       - "auth/**"
+      - "!auth/authpg/**"
+      - "!auth/authhttp/**"
 
 jobs:
   ci:

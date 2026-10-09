@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "auth/**"
+      - "!auth/authpg/**"
+      - "!auth/authhttp/**"
 
 permissions:
   contents: write

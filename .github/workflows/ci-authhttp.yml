@@ -1,0 +1,17 @@
+name: CI authhttp
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth/authhttp/**"
+  pull_request:
+    paths:
+      - "auth/authhttp/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: auth/authhttp

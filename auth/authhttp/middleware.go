@@ -1,6 +1,7 @@
-package auth
+package authhttp
 
 import (
+	"github.com/nayefradwi/nayef_go_common/auth"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -8,32 +9,32 @@ import (
 	"github.com/nayefradwi/nayef_go_common/httputil"
 )
 
-type JwtAuthenticationMiddleware struct {
-	TokenProvider ITokenProvider
+type JwtMiddleware struct {
+	TokenProvider auth.ITokenProvider
 }
 
-type JwtReferenceTokenAuthenticationMiddleware struct {
-	ReferenceTokenProvider IReferenceTokenProvider
+type ReferenceTokenMiddleware struct {
+	ReferenceTokenProvider auth.IReferenceTokenProvider
 }
 
-func NewJwtAuthenticationMiddleware(tokenProvider ITokenProvider) JwtAuthenticationMiddleware {
-	return JwtAuthenticationMiddleware{
+func NewJwtMiddleware(tokenProvider auth.ITokenProvider) JwtMiddleware {
+	return JwtMiddleware{
 		TokenProvider: tokenProvider,
 	}
 }
 
-func NewJwtReferenceTokenAuthenticationMiddleware(referenceTokenProvider IReferenceTokenProvider) JwtReferenceTokenAuthenticationMiddleware {
-	return JwtReferenceTokenAuthenticationMiddleware{
+func NewReferenceTokenMiddleware(referenceTokenProvider auth.IReferenceTokenProvider) ReferenceTokenMiddleware {
+	return ReferenceTokenMiddleware{
 		ReferenceTokenProvider: referenceTokenProvider,
 	}
 }
 
-func (m JwtAuthenticationMiddleware) UseAuthentication(f http.Handler) http.Handler {
+func (m JwtMiddleware) UseAuthentication(f http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jw := httputil.NewJsonResponseWriter(w)
 		token := httputil.GetBearerToken(r)
 		if token == "" {
-			jw.WriteError(errors.UnauthorizedError("Token not found"))
+			jw.WriteError(errors.UnauthorizedError("auth.Token not found"))
 			return
 		}
 
@@ -49,12 +50,12 @@ func (m JwtAuthenticationMiddleware) UseAuthentication(f http.Handler) http.Hand
 	})
 }
 
-func (m JwtReferenceTokenAuthenticationMiddleware) UseAuthentication(f http.Handler) http.Handler {
+func (m ReferenceTokenMiddleware) UseAuthentication(f http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jw := httputil.NewJsonResponseWriter(w)
 		tokenId := httputil.GetBearerToken(r)
 		if tokenId == "" {
-			jw.WriteError(errors.UnauthorizedError("Token not found"))
+			jw.WriteError(errors.UnauthorizedError("auth.Token not found"))
 			return
 		}
 

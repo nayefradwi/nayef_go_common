@@ -1,23 +1,23 @@
-package auth
+package authhttp
 
 import (
 	"context"
 	"errors"
+	"github.com/nayefradwi/nayef_go_common/auth"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type stubTokenProvider struct {
-	token Token
+	token auth.Token
 	err   error
 }
 
-func (s stubTokenProvider) GetClaims(_ string) (Token, error) {
+func (s stubTokenProvider) GetClaims(_ string) (auth.Token, error) {
 	return s.token, s.err
 }
 
@@ -26,35 +26,34 @@ func (s stubTokenProvider) SignClaims(_ uuid.UUID, _ map[string]any) (string, er
 }
 
 type stubReferenceTokenProvider struct {
-	token Token
+	token auth.Token
 	err   error
 }
 
 func (s stubReferenceTokenProvider) GenerateId() (uuid.UUID, error) { return uuid.Nil, nil }
-func (s stubReferenceTokenProvider) GenerateToken(_ context.Context, _ uuid.UUID, _ map[string]any) (TokenDTO, error) {
-	return TokenDTO{}, nil
+func (s stubReferenceTokenProvider) GenerateToken(_ context.Context, _ uuid.UUID, _ map[string]any) (auth.TokenDTO, error) {
+	return auth.TokenDTO{}, nil
 }
-func (s stubReferenceTokenProvider) GetAccessToken(_ context.Context, _ uuid.UUID) (Token, error) {
+func (s stubReferenceTokenProvider) GetAccessToken(_ context.Context, _ uuid.UUID) (auth.Token, error) {
 	return s.token, s.err
 }
-func (s stubReferenceTokenProvider) GetRefreshToken(_ context.Context, _ uuid.UUID) (Token, error) {
+func (s stubReferenceTokenProvider) GetRefreshToken(_ context.Context, _ uuid.UUID) (auth.Token, error) {
 	return s.token, s.err
 }
 func (s stubReferenceTokenProvider) RevokeToken(_ context.Context, _ uuid.UUID) error { return nil }
 func (s stubReferenceTokenProvider) RevokeOwner(_ context.Context, _ uuid.UUID) error { return nil }
-func (s stubReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider           { return nil }
-func (s stubReferenceTokenProvider) WithTx(_ pgx.Tx) IReferenceTokenProvider          { return s }
+func (s stubReferenceTokenProvider) GetAccessTokenProvider() auth.ITokenProvider      { return nil }
 
-func unexpiredToken() Token {
-	return Token{
+func unexpiredToken() auth.Token {
+	return auth.Token{
 		OwnerId:   testOwner,
 		Claims:    map[string]any{},
 		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 }
 
-func expiredToken() Token {
-	return Token{
+func expiredToken() auth.Token {
+	return auth.Token{
 		OwnerId:   testOwner,
 		Claims:    map[string]any{},
 		ExpiresAt: time.Now().UTC().Add(-time.Hour),
@@ -69,18 +68,18 @@ func nextHandler(t *testing.T, called *bool) http.Handler {
 	})
 }
 
-// --- JwtAuthenticationMiddleware ---
+// --- JwtMiddleware ---
 
-func TestJwtAuthenticationMiddleware_ValidToken(t *testing.T) {
+func TestJwtMiddleware_ValidToken(t *testing.T) {
 	cfg := mustConfig(t)
-	provider := NewJwtTokenProvider(cfg)
+	provider := auth.NewJwtTokenProvider(cfg)
 	tokenStr, err := provider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	called := false
-	m := NewJwtAuthenticationMiddleware(provider)
+	m := NewJwtMiddleware(provider)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -97,9 +96,9 @@ func TestJwtAuthenticationMiddleware_ValidToken(t *testing.T) {
 	}
 }
 
-func TestJwtAuthenticationMiddleware_MissingToken(t *testing.T) {
+func TestJwtMiddleware_MissingToken(t *testing.T) {
 	called := false
-	m := NewJwtAuthenticationMiddleware(stubTokenProvider{})
+	m := NewJwtMiddleware(stubTokenProvider{})
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -115,9 +114,9 @@ func TestJwtAuthenticationMiddleware_MissingToken(t *testing.T) {
 	}
 }
 
-func TestJwtAuthenticationMiddleware_InvalidToken(t *testing.T) {
+func TestJwtMiddleware_InvalidToken(t *testing.T) {
 	called := false
-	m := NewJwtAuthenticationMiddleware(stubTokenProvider{err: errors.New("bad token")})
+	m := NewJwtMiddleware(stubTokenProvider{err: errors.New("bad token")})
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -134,14 +133,14 @@ func TestJwtAuthenticationMiddleware_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
+func TestJwtMiddleware_TokenInContext(t *testing.T) {
 	expectedToken := unexpiredToken()
 	stub := stubTokenProvider{token: expectedToken}
-	m := NewJwtAuthenticationMiddleware(stub)
+	m := NewJwtMiddleware(stub)
 
-	var gotToken Token
+	var gotToken auth.Token
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken, _ = GetToken(r.Context())
+		gotToken, _ = auth.GetToken(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -155,10 +154,10 @@ func TestJwtAuthenticationMiddleware_TokenInContext(t *testing.T) {
 	}
 }
 
-func TestJwtAuthenticationMiddleware_ExpiredToken(t *testing.T) {
+func TestJwtMiddleware_ExpiredToken(t *testing.T) {
 	stub := stubTokenProvider{token: expiredToken()}
 	called := false
-	m := NewJwtAuthenticationMiddleware(stub)
+	m := NewJwtMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -177,10 +176,10 @@ func TestJwtAuthenticationMiddleware_ExpiredToken(t *testing.T) {
 
 // A token whose ExpiresAt is the zero value (a JWT carrying no exp claim) is
 // treated as expired rather than as never-expiring.
-func TestJwtAuthenticationMiddleware_ZeroExpiryIsRejected(t *testing.T) {
-	stub := stubTokenProvider{token: Token{OwnerId: testOwner, Claims: map[string]any{}}}
+func TestJwtMiddleware_ZeroExpiryIsRejected(t *testing.T) {
+	stub := stubTokenProvider{token: auth.Token{OwnerId: testOwner, Claims: map[string]any{}}}
 	called := false
-	m := NewJwtAuthenticationMiddleware(stub)
+	m := NewJwtMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -197,12 +196,12 @@ func TestJwtAuthenticationMiddleware_ZeroExpiryIsRejected(t *testing.T) {
 	}
 }
 
-// --- JwtReferenceTokenAuthenticationMiddleware ---
+// --- ReferenceTokenMiddleware ---
 
-func TestJwtReferenceTokenAuthenticationMiddleware_ValidToken(t *testing.T) {
+func TestReferenceTokenMiddleware_ValidToken(t *testing.T) {
 	stub := stubReferenceTokenProvider{token: unexpiredToken()}
 	called := false
-	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
+	m := NewReferenceTokenMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -219,9 +218,9 @@ func TestJwtReferenceTokenAuthenticationMiddleware_ValidToken(t *testing.T) {
 	}
 }
 
-func TestJwtReferenceTokenAuthenticationMiddleware_MissingToken(t *testing.T) {
+func TestReferenceTokenMiddleware_MissingToken(t *testing.T) {
 	called := false
-	m := NewJwtReferenceTokenAuthenticationMiddleware(stubReferenceTokenProvider{})
+	m := NewReferenceTokenMiddleware(stubReferenceTokenProvider{})
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -237,10 +236,10 @@ func TestJwtReferenceTokenAuthenticationMiddleware_MissingToken(t *testing.T) {
 	}
 }
 
-func TestJwtReferenceTokenAuthenticationMiddleware_InvalidToken(t *testing.T) {
+func TestReferenceTokenMiddleware_InvalidToken(t *testing.T) {
 	stub := stubReferenceTokenProvider{err: errors.New("not found")}
 	called := false
-	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
+	m := NewReferenceTokenMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -257,10 +256,10 @@ func TestJwtReferenceTokenAuthenticationMiddleware_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestJwtReferenceTokenAuthenticationMiddleware_ExpiredToken(t *testing.T) {
+func TestReferenceTokenMiddleware_ExpiredToken(t *testing.T) {
 	stub := stubReferenceTokenProvider{token: expiredToken()}
 	called := false
-	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
+	m := NewReferenceTokenMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -277,14 +276,14 @@ func TestJwtReferenceTokenAuthenticationMiddleware_ExpiredToken(t *testing.T) {
 	}
 }
 
-func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) {
+func TestReferenceTokenMiddleware_TokenInContext(t *testing.T) {
 	expectedToken := unexpiredToken()
 	stub := stubReferenceTokenProvider{token: expectedToken}
-	m := NewJwtReferenceTokenAuthenticationMiddleware(stub)
+	m := NewReferenceTokenMiddleware(stub)
 
-	var gotToken Token
+	var gotToken auth.Token
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotToken, _ = GetToken(r.Context())
+		gotToken, _ = auth.GetToken(r.Context())
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -299,7 +298,7 @@ func TestJwtReferenceTokenAuthenticationMiddleware_TokenInContext(t *testing.T) 
 }
 
 func TestGetToken_MissingReturnsNotOk(t *testing.T) {
-	if _, ok := GetToken(context.Background()); ok {
+	if _, ok := auth.GetToken(context.Background()); ok {
 		t.Fatal("expected ok=false when no token is in context")
 	}
 }

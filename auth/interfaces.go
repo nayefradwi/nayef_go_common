@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type ITokenProvider interface {
@@ -19,7 +18,6 @@ type ITokenStore interface {
 	GetTokenByOwner(ctx context.Context, ownerId uuid.UUID, tokenType int) (Token, error)
 	DeleteToken(ctx context.Context, reference uuid.UUID) error
 	DeleteAllTokensByOwner(ctx context.Context, ownerId uuid.UUID) error
-	WithTx(tx pgx.Tx) ITokenStore
 }
 
 type IRefreshTokenProvider interface {
@@ -34,7 +32,6 @@ type IRefreshTokenProviderWithRevoke interface {
 	GenerateId() (uuid.UUID, error)
 	RevokeToken(ctx context.Context, reference uuid.UUID) error
 	RevokeOwner(ctx context.Context, ownerId uuid.UUID) error
-	WithTx(tx pgx.Tx) IRefreshTokenProviderWithRevoke
 }
 
 type IReferenceTokenProvider interface {
@@ -45,5 +42,4 @@ type IReferenceTokenProvider interface {
 	RevokeToken(ctx context.Context, id uuid.UUID) error
 	RevokeOwner(ctx context.Context, ownerId uuid.UUID) error
 	GetAccessTokenProvider() ITokenProvider
-	WithTx(tx pgx.Tx) IReferenceTokenProvider
 }

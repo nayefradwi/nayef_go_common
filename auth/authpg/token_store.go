@@ -1,10 +1,11 @@
-package auth
+package authpg
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nayefradwi/nayef_go_common/auth"
 	"log/slog"
 	"strings"
 
@@ -21,38 +22,38 @@ type dbExecutor interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-type PostgresTokenStore struct {
+type TokenStore struct {
 	db     dbExecutor
-	config PostgresTokenStoreConfig
+	config TokenStoreConfig
 }
 
-type PostgresTokenStoreConfig struct {
+type TokenStoreConfig struct {
 	TableName string
 }
 
-var DefaultPostgresTokenStoreConfig = PostgresTokenStoreConfig{
+var DefaultTokenStoreConfig = TokenStoreConfig{
 	TableName: "tokens",
 }
 
-func NewPostgresTokenStore(pool *pgxpool.Pool, configs ...PostgresTokenStoreConfig) ITokenStore {
-	config := DefaultPostgresTokenStoreConfig
+func NewTokenStore(pool *pgxpool.Pool, configs ...TokenStoreConfig) TokenStore {
+	config := DefaultTokenStoreConfig
 	if len(configs) > 0 {
 		config = configs[0]
 	}
 
-	return PostgresTokenStore{db: pool, config: config}
+	return TokenStore{db: pool, config: config}
 }
 
-func (s PostgresTokenStore) WithTx(tx pgx.Tx) ITokenStore {
+func (s TokenStore) WithTx(tx pgx.Tx) TokenStore {
 	s.db = tx
 	return s
 }
 
-func (s PostgresTokenStore) StoreToken(ctx context.Context, token Token) error {
+func (s TokenStore) StoreToken(ctx context.Context, token auth.Token) error {
 	return s.StoreTokens(ctx, token)
 }
 
-func (s PostgresTokenStore) StoreTokens(ctx context.Context, tokens ...Token) error {
+func (s TokenStore) StoreTokens(ctx context.Context, tokens ...auth.Token) error {
 	if len(tokens) == 0 {
 		return nil
 	}
@@ -79,7 +80,7 @@ func (s PostgresTokenStore) StoreTokens(ctx context.Context, tokens ...Token) er
 	return nil
 }
 
-func (s PostgresTokenStore) GetTokenByReference(ctx context.Context, reference uuid.UUID, tokenType int) (Token, error) {
+func (s TokenStore) GetTokenByReference(ctx context.Context, reference uuid.UUID, tokenType int) (auth.Token, error) {
 	row := s.db.QueryRow(ctx,
 		`SELECT id::text, value, owner_id::text, expires_at, issued_at, claims, type
 		 FROM `+s.config.TableName+` WHERE id = $1 AND type = $2`, reference.String(), tokenType,
@@ -87,7 +88,7 @@ func (s PostgresTokenStore) GetTokenByReference(ctx context.Context, reference u
 	return scanPgxToken(row)
 }
 
-func (s PostgresTokenStore) GetTokenByOwner(ctx context.Context, ownerId uuid.UUID, tokenType int) (Token, error) {
+func (s TokenStore) GetTokenByOwner(ctx context.Context, ownerId uuid.UUID, tokenType int) (auth.Token, error) {
 	row := s.db.QueryRow(ctx,
 		`SELECT id::text, value, owner_id::text, expires_at, issued_at, claims, type
 		 FROM `+s.config.TableName+` WHERE owner_id = $1 AND type = $2`, ownerId.String(), tokenType,
@@ -95,7 +96,7 @@ func (s PostgresTokenStore) GetTokenByOwner(ctx context.Context, ownerId uuid.UU
 	return scanPgxToken(row)
 }
 
-func (s PostgresTokenStore) DeleteToken(ctx context.Context, reference uuid.UUID) error {
+func (s TokenStore) DeleteToken(ctx context.Context, reference uuid.UUID) error {
 	_, err := s.db.Exec(ctx, `DELETE FROM `+s.config.TableName+` WHERE id = $1`, reference.String())
 	if err != nil {
 		return InternalError("failed to delete token: " + err.Error())
@@ -103,7 +104,7 @@ func (s PostgresTokenStore) DeleteToken(ctx context.Context, reference uuid.UUID
 	return nil
 }
 
-func (s PostgresTokenStore) DeleteAllTokensByOwner(ctx context.Context, ownerId uuid.UUID) error {
+func (s TokenStore) DeleteAllTokensByOwner(ctx context.Context, ownerId uuid.UUID) error {
 	_, err := s.db.Exec(ctx, `DELETE FROM `+s.config.TableName+` WHERE owner_id = $1`, ownerId.String())
 	if err != nil {
 		return InternalError("failed to delete tokens by owner: " + err.Error())
@@ -115,31 +116,31 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-func scanPgxToken(row rowScanner) (Token, error) {
-	var t Token
+func scanPgxToken(row rowScanner) (auth.Token, error) {
+	var t auth.Token
 	var idStr, ownerStr string
 	var claimsJSON []byte
 	err := row.Scan(&idStr, &t.Value, &ownerStr, &t.ExpiresAt, &t.IssuedAt, &claimsJSON, &t.Type)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Token{}, UnauthorizedError("Token not found")
+		return auth.Token{}, UnauthorizedError("auth.Token not found")
 	}
 	if err != nil {
 		slog.Error("failed to read token", "err", err)
-		return Token{}, InternalError("failed to read token")
+		return auth.Token{}, InternalError("failed to read token")
 	}
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return Token{}, InternalError("invalid id in store: " + err.Error())
+		return auth.Token{}, InternalError("invalid id in store: " + err.Error())
 	}
 	t.Id = id
 	owner, err := uuid.Parse(ownerStr)
 	if err != nil {
-		return Token{}, InternalError("invalid owner_id in store: " + err.Error())
+		return auth.Token{}, InternalError("invalid owner_id in store: " + err.Error())
 	}
 	t.OwnerId = owner
 	if claimsJSON != nil {
 		if err := json.Unmarshal(claimsJSON, &t.Claims); err != nil {
-			return Token{}, InternalError("failed to unmarshal claims: " + err.Error())
+			return auth.Token{}, InternalError("failed to unmarshal claims: " + err.Error())
 		}
 	}
 	return t, nil
