@@ -122,7 +122,7 @@ func scanPgxToken(row rowScanner) (auth.Token, error) {
 	var claimsJSON []byte
 	err := row.Scan(&idStr, &t.Value, &ownerStr, &t.ExpiresAt, &t.IssuedAt, &claimsJSON, &t.Type)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return auth.Token{}, UnauthorizedError("auth.Token not found")
+		return auth.Token{}, UnauthorizedError("Token not found")
 	}
 	if err != nil {
 		slog.Error("failed to read token", "err", err)

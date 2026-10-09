@@ -1,10 +1,10 @@
 package authhttp
 
 import (
-	"github.com/nayefradwi/nayef_go_common/auth"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/nayefradwi/nayef_go_common/auth"
 	"github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/httputil"
 )
@@ -34,7 +34,7 @@ func (m JwtMiddleware) UseAuthentication(f http.Handler) http.Handler {
 		jw := httputil.NewJsonResponseWriter(w)
 		token := httputil.GetBearerToken(r)
 		if token == "" {
-			jw.WriteError(errors.UnauthorizedError("auth.Token not found"))
+			jw.WriteError(errors.UnauthorizedError("Token not found"))
 			return
 		}
 
@@ -55,7 +55,7 @@ func (m ReferenceTokenMiddleware) UseAuthentication(f http.Handler) http.Handler
 		jw := httputil.NewJsonResponseWriter(w)
 		tokenId := httputil.GetBearerToken(r)
 		if tokenId == "" {
-			jw.WriteError(errors.UnauthorizedError("auth.Token not found"))
+			jw.WriteError(errors.UnauthorizedError("Token not found"))
 			return
 		}
 
