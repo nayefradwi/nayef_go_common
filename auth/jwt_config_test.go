@@ -5,26 +5,26 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func TestNewJwtTokenProviderConfig_EmptySecretKey(t *testing.T) {
-	_, err := NewJwtTokenProviderConfig("", time.Hour)
+func TestNewJwtTokenProviderConfig_SecretKeyTooShort(t *testing.T) {
+	_, err := NewJwtTokenProviderConfig(strings.Repeat("a", 31), time.Hour, AccessTokenType)
 	if err == nil {
-		t.Fatal("expected error for empty secret key")
+		t.Fatal("expected error for 31-byte secret key")
+	}
+	if _, err := NewJwtTokenProviderConfig(strings.Repeat("a", 32), time.Hour, AccessTokenType); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestNewJwtTokenProviderConfig_ValidKey(t *testing.T) {
-	cfg, err := NewJwtTokenProviderConfig("my-secret", time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.SecretKey != "my-secret" {
-		t.Fatalf("expected SecretKey 'my-secret', got %q", cfg.SecretKey)
+func TestNewJwtTokenProviderConfig_InvalidTokenType(t *testing.T) {
+	if _, err := NewJwtTokenProviderConfig(testSecret, time.Hour, 0); err == nil {
+		t.Fatal("expected error for missing token type")
 	}
 }
 
@@ -45,7 +45,7 @@ func TestSetSecretKey_UpdatesParserAndSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newCfg, err := cfg.SetSecretKey("different-secret-key")
+	newCfg, err := cfg.SetSecretKey("different-secret-key-at-least-32-bytes")
 	if err != nil {
 		t.Fatal(err)
 	}

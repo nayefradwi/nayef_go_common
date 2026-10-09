@@ -18,13 +18,11 @@ func setupTestEnv(t *testing.T) testEnv {
 	pool := mustCreatePostgresConn(t)
 	store := NewPostgresTokenStore(pool)
 
-	accessCfg, err := NewJwtTokenProviderConfig("test-access-secret-key", time.Hour)
+	accessCfg, err := NewJwtTokenProviderConfig("test-access-secret-key-32-bytes-long", time.Hour, AccessTokenType)
 	require.NoError(t, err)
-	accessCfg = accessCfg.SetTokenType(AccessTokenType)
 
-	refreshCfg, err := NewJwtTokenProviderConfig("test-refresh-secret-key", 24*time.Hour)
+	refreshCfg, err := NewJwtTokenProviderConfig("test-refresh-secret-key-32-bytes-long", 24*time.Hour, RefreshTokenType)
 	require.NoError(t, err)
-	refreshCfg = refreshCfg.SetTokenType(RefreshTokenType)
 
 	accessProvider := NewJwtTokenProvider(accessCfg)
 	refreshProvider := NewJwtTokenProvider(refreshCfg)

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log/slog"
 	"maps"
 	"time"
 
@@ -20,9 +21,10 @@ func NewJwtTokenProvider(config JwtTokenProviderConfig) JwtTokenProvider {
 }
 
 func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
-	jwtToken, err := jwt.Parse(token, t.Config.parser, t.Config.parserOpts...)
+	jwtToken, err := jwt.Parse(token, t.Config.parser, t.Config.parserOptions()...)
 	if err != nil {
-		return Token{}, UnauthorizedError(err.Error())
+		slog.Debug("jwt parse failed", "err", err)
+		return Token{}, UnauthorizedError("Invalid token")
 	}
 
 	claims, ok := jwtToken.Claims.(jwt.MapClaims)
@@ -35,7 +37,7 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 	expiresAt, _ := claims[expiryClaimKey].(float64)
 	tokenType, _ := claims[tokenTypeClaimKey].(float64)
 
-	if t.Config.TokenType != 0 && int(tokenType) != t.Config.TokenType {
+	if int(tokenType) != t.Config.TokenType {
 		return Token{}, UnauthorizedError("invalid token type")
 	}
 
@@ -66,9 +68,7 @@ func (t JwtTokenProvider) SignClaims(owner uuid.UUID, claims map[string]any) (st
 	newClaims[issuedAtClaimKey] = issuedAt.Unix()
 	newClaims[expiryClaimKey] = expiresAt.Unix()
 	newClaims[ownerClaimKey] = owner.String()
-	if t.Config.TokenType != 0 {
-		newClaims[tokenTypeClaimKey] = t.Config.TokenType
-	}
+	newClaims[tokenTypeClaimKey] = t.Config.TokenType
 	if t.Config.Audience != "" {
 		newClaims[audienceClaimKey] = t.Config.Audience
 	}

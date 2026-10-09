@@ -21,26 +21,32 @@ type JwtTokenProviderConfig struct {
 	Audience      string
 	parser        func(token *jwt.Token) (any, error)
 	signer        func(token *jwt.Token) (string, error)
-	parserOpts    []jwt.ParserOption
 }
 
-func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration) (JwtTokenProviderConfig, error) {
-	if secretKey == "" {
-		return JwtTokenProviderConfig{}, BadRequestError("secret key must not be empty")
+// HS256 needs at least 256 bits of key to resist offline brute force.
+const minSecretKeyBytes = 32
+
+func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration, tokenType int) (JwtTokenProviderConfig, error) {
+	if len(secretKey) < minSecretKeyBytes {
+		return JwtTokenProviderConfig{}, BadRequestError("secret key must be at least 32 bytes")
+	}
+	if tokenType != AccessTokenType && tokenType != RefreshTokenType {
+		return JwtTokenProviderConfig{}, BadRequestError("token type must be access or refresh")
 	}
 	return JwtTokenProviderConfig{
 		SecretKey:     secretKey,
 		ExpiresIn:     expiresIn,
 		signingMethod: jwt.SigningMethodHS256,
 		Issuer:        "AuthModule",
+		TokenType:     tokenType,
 		parser:        defaultHMACParser(secretKey),
 		signer:        defaultHMACSigner(secretKey),
 	}, nil
 }
 
 func (c JwtTokenProviderConfig) SetSecretKey(secretKey string) (JwtTokenProviderConfig, error) {
-	if secretKey == "" {
-		return c, BadRequestError("secret key must not be empty")
+	if len(secretKey) < minSecretKeyBytes {
+		return c, BadRequestError("secret key must be at least 32 bytes")
 	}
 	c.SecretKey = secretKey
 	c.parser = defaultHMACParser(secretKey)
@@ -58,15 +64,21 @@ func (c JwtTokenProviderConfig) SetIssuer(issuer string) JwtTokenProviderConfig 
 	return c
 }
 
-func (c JwtTokenProviderConfig) SetTokenType(tokenType int) JwtTokenProviderConfig {
-	c.TokenType = tokenType
+func (c JwtTokenProviderConfig) SetAudience(audience string) JwtTokenProviderConfig {
+	c.Audience = audience
 	return c
 }
 
-func (c JwtTokenProviderConfig) SetAudience(audience string) JwtTokenProviderConfig {
-	c.Audience = audience
-	c.parserOpts = append(c.parserOpts, jwt.WithAudience(audience))
-	return c
+func (c JwtTokenProviderConfig) parserOptions() []jwt.ParserOption {
+	opts := []jwt.ParserOption{
+		jwt.WithIssuer(c.Issuer),
+		jwt.WithExpirationRequired(),
+		jwt.WithValidMethods([]string{c.signingMethod.Alg()}),
+	}
+	if c.Audience != "" {
+		opts = append(opts, jwt.WithAudience(c.Audience))
+	}
+	return opts
 }
 
 // === HMAC (HS256, HS384, HS512) ===

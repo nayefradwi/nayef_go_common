@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -61,47 +62,63 @@ func TestSignClaims_EmptyClaims(t *testing.T) {
 }
 
 func TestTokenType_Enforcement(t *testing.T) {
-	cfg := mustConfig(t)
-
-	accessCfg := cfg.SetTokenType(AccessTokenType)
-	refreshCfg := cfg.SetTokenType(RefreshTokenType)
+	accessCfg := mustConfig(t)
+	refreshCfg, err := NewJwtTokenProviderConfig(testSecret, 24*time.Hour, RefreshTokenType)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	accessProvider := NewJwtTokenProvider(accessCfg)
 	refreshProvider := NewJwtTokenProvider(refreshCfg)
 
-	accessToken, err := accessProvider.SignClaims(testOwner, map[string]any{})
+	refreshToken, err := refreshProvider.SignClaims(testOwner, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Access provider should accept access token
-	_, err = accessProvider.GetClaims(accessToken)
-	if err != nil {
-		t.Fatalf("access provider should accept access token: %v", err)
-	}
-
-	// Refresh provider should reject access token
-	_, err = refreshProvider.GetClaims(accessToken)
-	if err == nil {
-		t.Fatal("refresh provider should reject access token")
+	// same secret on both sides, as in the README setup
+	if _, err := accessProvider.GetClaims(refreshToken); err == nil {
+		t.Fatal("access provider should reject refresh token")
 	}
 }
 
-func TestTokenType_NotEnforced_WhenZero(t *testing.T) {
+func TestGetClaims_WrongIssuerRejected(t *testing.T) {
 	cfg := mustConfig(t)
-
-	typedProvider := NewJwtTokenProvider(cfg.SetTokenType(AccessTokenType))
-	untypedProvider := NewJwtTokenProvider(cfg)
-
-	token, err := typedProvider.SignClaims(testOwner, map[string]any{})
+	token, err := NewJwtTokenProvider(cfg.SetIssuer("other")).SignClaims(testOwner, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Untyped provider (TokenType=0) should accept any token
-	_, err = untypedProvider.GetClaims(token)
+	if _, err := NewJwtTokenProvider(cfg).GetClaims(token); err == nil {
+		t.Fatal("expected error for wrong issuer")
+	}
+}
+
+func TestGetClaims_MissingExpRejected(t *testing.T) {
+	cfg := mustConfig(t)
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		ownerClaimKey:     testOwner.String(),
+		issuerClaimKey:    cfg.Issuer,
+		tokenTypeClaimKey: AccessTokenType,
+	}).SignedString([]byte(testSecret))
 	if err != nil {
-		t.Fatalf("untyped provider should accept any token: %v", err)
+		t.Fatal(err)
+	}
+
+	if _, err := NewJwtTokenProvider(cfg).GetClaims(token); err == nil {
+		t.Fatal("expected error for token without exp")
+	}
+}
+
+func TestGetClaims_OtherAlgInSameFamilyRejected(t *testing.T) {
+	cfg := mustConfig(t)
+	token, err := NewJwtTokenProvider(cfg.SetHS384SigningMethod()).SignClaims(testOwner, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewJwtTokenProvider(cfg).GetClaims(token); err == nil {
+		t.Fatal("HS256 config should reject HS384 token")
 	}
 }
 

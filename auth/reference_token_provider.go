@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	. "github.com/nayefradwi/nayef_go_common/errors"
@@ -26,8 +28,8 @@ func (t JwtReferenceTokenProvider) GenerateId() (uuid.UUID, error) {
 	return id, nil
 }
 
-func (t JwtReferenceTokenProvider) GenerateToken(ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
-	tokenPair, err := t.tokenProvider.GenerateToken(ownerId, claims)
+func (t JwtReferenceTokenProvider) GenerateToken(ctx context.Context, ownerId uuid.UUID, claims map[string]any) (TokenDTO, error) {
+	tokenPair, err := t.tokenProvider.GenerateToken(ctx, ownerId, claims)
 	if err != nil {
 		return EmptyTokenDTO(), err
 	}
@@ -53,25 +55,25 @@ func (t JwtReferenceTokenProvider) GenerateToken(ownerId uuid.UUID, claims map[s
 	}
 
 	accessToken.Id, refreshToken.Id = accessTokenId, refreshTokenId
-	if err := t.tokenStore.StoreTokens(accessToken, refreshToken); err != nil {
+	if err := t.tokenStore.StoreTokens(ctx, accessToken, refreshToken); err != nil {
 		return EmptyTokenDTO(), err
 	}
 
 	return NewTokenDTOWithRefresh(accessTokenId.String(), refreshTokenId.String()), nil
 }
 
-func (t JwtReferenceTokenProvider) GetAccessToken(id uuid.UUID) (Token, error) {
-	return t.getToken(id, AccessTokenType)
+func (t JwtReferenceTokenProvider) GetAccessToken(ctx context.Context, id uuid.UUID) (Token, error) {
+	return t.getToken(ctx, id, AccessTokenType)
 }
 
-func (t JwtReferenceTokenProvider) GetRefreshToken(id uuid.UUID) (Token, error) {
-	return t.getToken(id, RefreshTokenType)
+func (t JwtReferenceTokenProvider) GetRefreshToken(ctx context.Context, id uuid.UUID) (Token, error) {
+	return t.getToken(ctx, id, RefreshTokenType)
 }
 
-func (t JwtReferenceTokenProvider) getToken(id uuid.UUID, tokenType int) (Token, error) {
-	token, err := t.tokenStore.GetTokenByReference(id, tokenType)
+func (t JwtReferenceTokenProvider) getToken(ctx context.Context, id uuid.UUID, tokenType int) (Token, error) {
+	token, err := t.tokenStore.GetTokenByReference(ctx, id, tokenType)
 	if err != nil {
-		return Token{}, UnauthorizedError("Token not found")
+		return Token{}, err
 	}
 	if token.IsExpired() {
 		return Token{}, UnauthorizedError("Token expired")
@@ -79,12 +81,12 @@ func (t JwtReferenceTokenProvider) getToken(id uuid.UUID, tokenType int) (Token,
 	return token, nil
 }
 
-func (t JwtReferenceTokenProvider) RevokeToken(id uuid.UUID) error {
-	return t.tokenStore.DeleteToken(id)
+func (t JwtReferenceTokenProvider) RevokeToken(ctx context.Context, id uuid.UUID) error {
+	return t.tokenStore.DeleteToken(ctx, id)
 }
 
-func (t JwtReferenceTokenProvider) RevokeOwner(ownerId uuid.UUID) error {
-	return t.tokenStore.DeleteAllTokensByOwner(ownerId)
+func (t JwtReferenceTokenProvider) RevokeOwner(ctx context.Context, ownerId uuid.UUID) error {
+	return t.tokenStore.DeleteAllTokensByOwner(ctx, ownerId)
 }
 
 func (t JwtReferenceTokenProvider) GetAccessTokenProvider() ITokenProvider {
