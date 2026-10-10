@@ -23,6 +23,10 @@ type AccessVerifier interface {
 	VerifyAccess(ctx context.Context, token string) (Token, error)
 }
 
+type KeyVerifier interface {
+	VerifyKey(ctx context.Context, key string) (Identity, error)
+}
+
 type SessionStore interface {
 	Create(ctx context.Context, s Session) error
 	Rotate(ctx context.Context, refreshHash []byte, next Session) (Session, error)
@@ -43,5 +47,14 @@ type OtpStore interface {
 	Save(ctx context.Context, key string, hash []byte, limits OtpLimits) error
 	Attempt(ctx context.Context, key string, maxAttempts int) ([]byte, error)
 	Consume(ctx context.Context, key string, hash []byte) error
+	DeleteExpired(ctx context.Context) error
+}
+
+type ApiKeyStore interface {
+	Create(ctx context.Context, k ApiKey) error
+	GetByHash(ctx context.Context, hash []byte) (ApiKey, error)
+	ListByOwner(ctx context.Context, ownerId uuid.UUID) ([]ApiKey, error)
+	Touch(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, ownerId, id uuid.UUID) error
 	DeleteExpired(ctx context.Context) error
 }
