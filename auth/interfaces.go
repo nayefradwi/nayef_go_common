@@ -38,3 +38,10 @@ type AttemptStore interface {
 	Reset(ctx context.Context, key string) error
 	DeleteExpired(ctx context.Context) error
 }
+
+type OtpStore interface {
+	Save(ctx context.Context, key string, hash []byte, limits OtpLimits) error
+	Attempt(ctx context.Context, key string, maxAttempts int) ([]byte, error)
+	Consume(ctx context.Context, key string, hash []byte) error
+	DeleteExpired(ctx context.Context) error
+}
