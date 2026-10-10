@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "auth/**"
+      - ".github/workflows/release-auth.yml"
       - "!auth/authpg/**"
       - "!auth/authhttp/**"
       - "!auth/authconnect/**"
@@ -20,5 +21,5 @@ jobs:
     uses: ./.github/workflows/deploy-go-module.yml
     with:
       module_path: auth
-      bump_type: patch
+      bump_type: major
     secrets: inherit
