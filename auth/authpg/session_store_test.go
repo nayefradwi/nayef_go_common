@@ -184,6 +184,8 @@ func TestValidTable(t *testing.T) {
 		assert.Error(t, validTable(bad), bad)
 		_, err := SessionMigration(bad)
 		assert.Error(t, err, bad)
+		_, err = OtpMigration(bad)
+		assert.Error(t, err, bad)
 	}
 	assert.NoError(t, validTable(strings.Repeat("a", 48)))
 }
