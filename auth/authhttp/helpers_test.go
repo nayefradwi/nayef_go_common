@@ -10,8 +10,6 @@ import (
 
 var testOwner = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 
-var testTokenID = uuid.MustParse("00000000-0000-0000-0000-0000000000aa")
-
 const testSecret = "test-secret-key-at-least-32-bytes"
 
 func mustConfig(t *testing.T) auth.JwtTokenProviderConfig {

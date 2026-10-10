@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	connectrpc.com/connect v1.21.0
 	github.com/google/uuid v1.6.0
-	github.com/nayefradwi/nayef_go_common/auth v0.1.16
+	github.com/nayefradwi/nayef_go_common/auth v0.1.18
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.11
 )

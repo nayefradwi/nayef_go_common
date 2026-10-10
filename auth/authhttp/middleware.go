@@ -3,7 +3,6 @@ package authhttp
 import (
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/nayefradwi/nayef_go_common/auth"
 	"github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/httputil"
@@ -13,8 +12,8 @@ type JwtMiddleware struct {
 	TokenProvider auth.ITokenProvider
 }
 
-type ReferenceTokenMiddleware struct {
-	ReferenceTokenProvider auth.IReferenceTokenProvider
+type OpaqueMiddleware struct {
+	Verifier auth.AccessVerifier
 }
 
 func NewJwtMiddleware(tokenProvider auth.ITokenProvider) JwtMiddleware {
@@ -23,9 +22,9 @@ func NewJwtMiddleware(tokenProvider auth.ITokenProvider) JwtMiddleware {
 	}
 }
 
-func NewReferenceTokenMiddleware(referenceTokenProvider auth.IReferenceTokenProvider) ReferenceTokenMiddleware {
-	return ReferenceTokenMiddleware{
-		ReferenceTokenProvider: referenceTokenProvider,
+func NewOpaqueMiddleware(verifier auth.AccessVerifier) OpaqueMiddleware {
+	return OpaqueMiddleware{
+		Verifier: verifier,
 	}
 }
 
@@ -50,22 +49,16 @@ func (m JwtMiddleware) UseAuthentication(f http.Handler) http.Handler {
 	})
 }
 
-func (m ReferenceTokenMiddleware) UseAuthentication(f http.Handler) http.Handler {
+func (m OpaqueMiddleware) UseAuthentication(f http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jw := httputil.NewJsonResponseWriter(w)
-		tokenId := httputil.GetBearerToken(r)
-		if tokenId == "" {
+		token := httputil.GetBearerToken(r)
+		if token == "" {
 			jw.WriteError(errors.UnauthorizedError("Token not found"))
 			return
 		}
 
-		id, err := uuid.Parse(tokenId)
-		if err != nil {
-			jw.WriteError(errors.UnauthorizedError("Invalid token"))
-			return
-		}
-
-		accessToken, err := m.ReferenceTokenProvider.GetAccessToken(r.Context(), id)
+		accessToken, err := m.Verifier.VerifyAccess(r.Context(), token)
 		if err != nil || accessToken.IsExpired() {
 			jw.WriteError(errors.UnauthorizedError("Invalid token"))
 			return

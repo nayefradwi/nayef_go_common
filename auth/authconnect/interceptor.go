@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/google/uuid"
 	"github.com/nayefradwi/nayef_go_common/auth"
 )
 
@@ -23,14 +22,8 @@ func NewJwtInterceptor(tokenProvider auth.ITokenProvider) connect.Interceptor {
 	}}
 }
 
-func NewReferenceTokenInterceptor(referenceTokenProvider auth.IReferenceTokenProvider) connect.Interceptor {
-	return interceptor{authenticate: func(ctx context.Context, raw string) (auth.Token, error) {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			return auth.Token{}, err
-		}
-		return referenceTokenProvider.GetAccessToken(ctx, id)
-	}}
+func NewOpaqueInterceptor(verifier auth.AccessVerifier) connect.Interceptor {
+	return interceptor{authenticate: verifier.VerifyAccess}
 }
 
 func (i interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
