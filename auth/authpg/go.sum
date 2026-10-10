@@ -83,8 +83,8 @@ github.com/moby/sys/userns v0.1.0 h1:tVLXkFOxVu9A64/yh59slHVv9ahO9UIev4JZusOLG/g
 github.com/moby/sys/userns v0.1.0/go.mod h1:IHUYgu/kao6N8YZlp9Cf444ySSvCmDlmzUcYfDHOl28=
 github.com/moby/term v0.5.2 h1:6qk3FJAFDs6i/q3W/pQ97SX192qKfZgGjCQqfCJkgzQ=
 github.com/moby/term v0.5.2/go.mod h1:d3djjFCrjnB+fl8NJux+EJzu0msscUP+f8it8hPkFLc=
-github.com/nayefradwi/nayef_go_common/auth v0.1.22 h1:fhGcFj8SliBw0JY9mYjbF7rNpSARQDNxnOX3i3xgkRU=
-github.com/nayefradwi/nayef_go_common/auth v0.1.22/go.mod h1:doCfMnJ3VxQWgcvJS5KXLtFxZRGLVTSdX9APuzjAYOs=
+github.com/nayefradwi/nayef_go_common/auth v0.1.23 h1:PFjPqYdDXwFKM3SmNq2wEGZwKCJJ79z18BjOVwdhflQ=
+github.com/nayefradwi/nayef_go_common/auth v0.1.23/go.mod h1:doCfMnJ3VxQWgcvJS5KXLtFxZRGLVTSdX9APuzjAYOs=
 github.com/nayefradwi/nayef_go_common/errors v1.0.8 h1:Z4h/xeM2HmfFkw7hk8nixNYKSj1u+XAhrdw8LYGjLMY=
 github.com/nayefradwi/nayef_go_common/errors v1.0.8/go.mod h1:Q08yPrQ4V+EI5r70zGzOVgnLUzGJKWf8Wla2Xlg44+s=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=

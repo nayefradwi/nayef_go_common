@@ -20,6 +20,10 @@ func ApiKeyMigration(table string) (string, error) {
 	return renderMigration("migrations/authpg_0005_api_keys.sql", defaultApiKeyTable, table)
 }
 
+func TotpMigration(table string) (string, error) {
+	return renderMigration("migrations/authpg_0006_totp.sql", defaultTotpTable, table)
+}
+
 func renderMigration(file, defaultTable, table string) (string, error) {
 	if err := validTable(table); err != nil {
 		return "", err
