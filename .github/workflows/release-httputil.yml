@@ -6,14 +6,27 @@ on:
       - main
     paths:
       - "httputil/**"
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version segment to bump"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 permissions:
   contents: write
 
 jobs:
   release:
+    # a dispatch from another branch would tag a commit that isn't on main
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy-go-module.yml
     with:
       module_path: httputil
-      bump_type: patch
+      # empty on push runs
+      bump_type: ${{ inputs.bump_type || 'patch' }}
     secrets: inherit

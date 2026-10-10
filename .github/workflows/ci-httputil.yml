@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "httputil/**"
+  workflow_dispatch:
 
 jobs:
   ci:

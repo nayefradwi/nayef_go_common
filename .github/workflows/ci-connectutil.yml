@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "connectutil/**"
+  workflow_dispatch:
 
 jobs:
   ci:

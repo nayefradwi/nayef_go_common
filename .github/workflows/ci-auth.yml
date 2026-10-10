@@ -19,6 +19,7 @@ on:
       - "!auth/authconnect/**"
       - "!auth/authredis/**"
       - "!auth/examples/**"
+  workflow_dispatch:
 
 jobs:
   ci:

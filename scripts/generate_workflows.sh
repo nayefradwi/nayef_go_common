@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # generate_workflows.sh
 # Auto-generates ci-MODULE.yml and release-MODULE.yml for each Go module in the repo.
-# Usage: ./scripts/generate_workflows.sh [--bump-type patch|minor|major] [--dry-run] [--module <name>...] [--yes]
+# Usage: ./scripts/generate_workflows.sh [--dry-run] [--module <name>...] [--yes]
 
 set -euo pipefail
 
@@ -9,7 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 
-BUMP_TYPE="patch"
 DRY_RUN=false
 AUTO_YES=false
 SELECTED_MODULES=()
@@ -20,10 +19,6 @@ IGNORED_MODULES=("archive")
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --bump-type)
-      BUMP_TYPE="$2"
-      shift 2
-      ;;
     --dry-run)
       DRY_RUN=true
       shift
@@ -38,16 +33,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: $0 [--bump-type patch|minor|major] [--dry-run] [--module <name>...] [--yes]" >&2
+      echo "Usage: $0 [--dry-run] [--module <name>...] [--yes]" >&2
       exit 1
       ;;
   esac
 done
-
-if [[ ! "$BUMP_TYPE" =~ ^(patch|minor|major)$ ]]; then
-  echo "Invalid bump_type: '$BUMP_TYPE'. Must be patch, minor, or major." >&2
-  exit 1
-fi
 
 # Discover all modules: directories containing a go.mod (but not the repo root itself)
 MODULE_DIRS=()
@@ -77,6 +67,7 @@ on:
   pull_request:
     paths:
       - "${module}/**"
+  workflow_dispatch:
 
 jobs:
   ci:
@@ -88,7 +79,6 @@ EOF
 
 generate_release() {
   local module="$1"
-  local bump_type="$2"
   cat <<EOF
 name: Release ${module}
 
@@ -98,16 +88,29 @@ on:
       - main
     paths:
       - "${module}/**"
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version segment to bump"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 permissions:
   contents: write
 
 jobs:
   release:
+    # a dispatch from another branch would tag a commit that isn't on main
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy-go-module.yml
     with:
       module_path: ${module}
-      bump_type: ${bump_type}
+      # empty on push runs
+      bump_type: \${{ inputs.bump_type || 'patch' }}
     secrets: inherit
 EOF
 }
@@ -199,7 +202,7 @@ for module in "${TARGET_MODULES[@]}"; do
   release_file="${WORKFLOWS_DIR}/release-${module}.yml"
 
   write_or_print "$ci_file" "$(generate_ci "$module")"
-  write_or_print "$release_file" "$(generate_release "$module" "$BUMP_TYPE")"
+  write_or_print "$release_file" "$(generate_release "$module")"
   PROCESSED+=("$module")
 done
 

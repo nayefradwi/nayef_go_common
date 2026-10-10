@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "locking/**"
+  workflow_dispatch:
 
 jobs:
   ci:
