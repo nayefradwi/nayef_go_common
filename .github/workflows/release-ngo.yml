@@ -6,6 +6,16 @@ on:
       - main
     paths:
       - "ngo/**"
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version segment to bump"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 permissions:
   contents: write
@@ -13,6 +23,8 @@ permissions:
 jobs:
   release:
     name: Release ngo CLI
+    # a dispatch from another branch would tag a commit that isn't on main
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -36,7 +48,8 @@ jobs:
         id: versioning
         run: |
           MODULE_PATH="ngo"
-          BUMP_TYPE="patch"
+          # empty on push runs
+          BUMP_TYPE="${{ inputs.bump_type || 'patch' }}"
 
           LATEST_TAG=$(git tag --list "${MODULE_PATH}/v*" --sort=-v:refname | head -n 1)
 
@@ -48,7 +61,20 @@ jobs:
             MAJOR=$(echo "$SEMVER" | cut -d. -f1)
             MINOR=$(echo "$SEMVER" | cut -d. -f2)
             PATCH=$(echo "$SEMVER" | cut -d. -f3)
-            PATCH=$((PATCH + 1))
+            case "$BUMP_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch|*)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
             NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
             PREV_TAG="$LATEST_TAG"
           fi

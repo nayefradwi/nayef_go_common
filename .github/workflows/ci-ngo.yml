@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "ngo/**"
+  workflow_dispatch:
 
 jobs:
   ci:

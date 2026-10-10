@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "validation/**"
+  workflow_dispatch:
 
 jobs:
   ci:

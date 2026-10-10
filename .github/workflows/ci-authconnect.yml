@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "auth/authconnect/**"
+  workflow_dispatch:
 
 jobs:
   ci:
