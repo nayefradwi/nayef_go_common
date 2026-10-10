@@ -234,31 +234,3 @@ err := locker.RunWithLocks(ctx, []string{"account:"+a, "account:"+b}, params, fu
 ```
 
 **IMPORTANT: if acquiring any lock in a multi-lock call fails, all already-acquired locks are automatically released**
-
-## Todos
-
-### Modules
-- [ ] Storage: abstraction over file system based and s3
-- [ ] Tracing: Open telemetry with LGTM stack and slog? will it be helpful?
-- [ ] testuitl?
-- [ ] emails?
-- [ ] payments?
-- [ ] ...
-
-### CLI
-- [x] Create new command form
-- [x] Bootstraping an empty project
-- [x] Set up config, di, env, and the common stuff
-- [x] REST: add common handler like health check
-- [x] REST: set up empty router and run server
-- [x] REST: Support adding initial feature packages
-- [x] Add hot reload config template using something like air
-- [ ] gRPC: set up initial config for protobuf code gen (might use buf)
-- [ ] gRPC: utilize tools that will add server reflections and improve dev experience
-- [x] generate dockerfile
-- [x] set up locking if redis is specified
-- [ ] set up integration test helpers for redis and postgres
-- [x] set up local deployment using docker-compose
-- [ ] ADD: auto create handler with service injected
-- [ ] ADD: set up empty method to return chi router from handler
-- [ ] ...
