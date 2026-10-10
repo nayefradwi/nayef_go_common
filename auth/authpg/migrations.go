@@ -12,8 +12,8 @@ func SessionMigration(table string) (string, error) {
 	return renderMigration("migrations/authpg_0003_sessions.sql", defaultSessionTable, table)
 }
 
-func OtpMigration(table string) (string, error) {
-	return renderMigration("migrations/authpg_0004_otps.sql", defaultOtpTable, table)
+func CodeMigration(table string) (string, error) {
+	return renderMigration("migrations/authpg_0004_otps.sql", defaultCodeTable, table)
 }
 
 func ApiKeyMigration(table string) (string, error) {

@@ -13,12 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOtpStore(t *testing.T) {
+func TestCodeStore(t *testing.T) {
 	pool := mustCreatePostgresConn(t)
-	store, err := NewOtpStore(pool)
+	store, err := NewCodeStore(pool)
 	require.NoError(t, err)
 	ctx := context.Background()
-	limits := auth.OtpLimits{TTL: time.Minute, ResendAfter: time.Minute, MaxSends: 2, MaxAttempts: 5}
+	limits := auth.CodeLimits{TTL: time.Minute, ResendAfter: time.Minute, MaxSends: 2, MaxAttempts: 5}
 	hash := []byte("hash")
 
 	age := func(t *testing.T, key string, sent, expires time.Duration) {
@@ -44,7 +44,7 @@ func TestOtpStore(t *testing.T) {
 					ok.Add(1)
 					return
 				}
-				assert.ErrorIs(t, err, auth.ErrOtpNotFound)
+				assert.ErrorIs(t, err, auth.ErrCodeNotFound)
 			})
 		}
 		wg.Wait()
@@ -68,12 +68,12 @@ func TestOtpStore(t *testing.T) {
 
 	t.Run("consume with a replaced hash fails", func(t *testing.T) {
 		require.NoError(t, store.Save(ctx, "replaced", []byte("new"), limits))
-		require.ErrorIs(t, store.Consume(ctx, "replaced", hash), auth.ErrOtpNotFound)
+		require.ErrorIs(t, store.Consume(ctx, "replaced", hash), auth.ErrCodeNotFound)
 	})
 
 	t.Run("resend too soon is blocked", func(t *testing.T) {
 		require.NoError(t, store.Save(ctx, "soon", hash, limits))
-		require.ErrorIs(t, store.Save(ctx, "soon", hash, limits), auth.ErrOtpResendBlocked)
+		require.ErrorIs(t, store.Save(ctx, "soon", hash, limits), auth.ErrCodeResendBlocked)
 	})
 
 	t.Run("resend keeps attempts and stops at the send cap", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestOtpStore(t *testing.T) {
 		assert.Equal(t, 1, attempts(t, "cap"))
 
 		age(t, "cap", 2*time.Minute, time.Minute)
-		require.ErrorIs(t, store.Save(ctx, "cap", hash, limits), auth.ErrOtpResendBlocked)
+		require.ErrorIs(t, store.Save(ctx, "cap", hash, limits), auth.ErrCodeResendBlocked)
 	})
 
 	t.Run("resend while locked is blocked", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestOtpStore(t *testing.T) {
 			require.NoError(t, err)
 		}
 		age(t, "locked", 2*time.Minute, time.Minute)
-		require.ErrorIs(t, store.Save(ctx, "locked", hash, limits), auth.ErrOtpResendBlocked)
+		require.ErrorIs(t, store.Save(ctx, "locked", hash, limits), auth.ErrCodeResendBlocked)
 	})
 
 	t.Run("expired row starts over", func(t *testing.T) {
@@ -106,10 +106,17 @@ func TestOtpStore(t *testing.T) {
 		age(t, "expired", 0, -time.Second)
 
 		_, err = store.Attempt(ctx, "expired", limits.MaxAttempts)
-		require.ErrorIs(t, err, auth.ErrOtpNotFound)
+		require.ErrorIs(t, err, auth.ErrCodeNotFound)
 
 		require.NoError(t, store.Save(ctx, "expired", hash, limits))
 		assert.Equal(t, 0, attempts(t, "expired"))
+	})
+
+	t.Run("consume rejects an expired row", func(t *testing.T) {
+		require.NoError(t, store.Save(ctx, "stale", hash, limits))
+		age(t, "stale", 0, -time.Second)
+
+		require.ErrorIs(t, store.Consume(ctx, "stale", hash), auth.ErrCodeNotFound)
 	})
 
 	t.Run("delete expired keeps live rows", func(t *testing.T) {
@@ -126,35 +133,35 @@ func TestOtpStore(t *testing.T) {
 	})
 }
 
-func TestOtpStore_CustomTable(t *testing.T) {
+func TestCodeStore_CustomTable(t *testing.T) {
 	pool := mustCreatePostgresConn(t)
 	ctx := context.Background()
 
-	sql, err := OtpMigration("admin_otps")
+	sql, err := CodeMigration("admin_otps")
 	require.NoError(t, err)
 	up, _, found := strings.Cut(sql, "-- +goose Down")
 	require.True(t, found)
 	_, err = pool.Exec(ctx, up)
 	require.NoError(t, err)
 
-	admin, err := NewOtpStore(pool, OtpStoreConfig{Table: "admin_otps"})
+	admin, err := NewCodeStore(pool, CodeStoreConfig{Table: "admin_otps"})
 	require.NoError(t, err)
 	m, err := auth.NewOtpManager(admin, auth.OtpConfig{
-		Secret:    []byte(strings.Repeat("s", 32)),
-		Length:    6,
-		OtpLimits: auth.OtpLimits{TTL: time.Minute, MaxSends: 1, MaxAttempts: 3},
+		Secret:     []byte(strings.Repeat("s", 32)),
+		Length:     6,
+		CodeLimits: auth.CodeLimits{TTL: time.Minute, MaxSends: 1, MaxAttempts: 3},
 	})
 	require.NoError(t, err)
 
 	code, err := m.Issue(ctx, "login:a")
 	require.NoError(t, err)
 	_, err = m.Issue(ctx, "login:a")
-	require.ErrorIs(t, err, auth.ErrOtpResendBlocked)
+	require.ErrorIs(t, err, auth.ErrCodeResendBlocked)
 
-	defaultStore, err := NewOtpStore(pool)
+	defaultStore, err := NewCodeStore(pool)
 	require.NoError(t, err)
 	_, err = defaultStore.Attempt(ctx, "login:a", 3)
-	require.ErrorIs(t, err, auth.ErrOtpNotFound)
+	require.ErrorIs(t, err, auth.ErrCodeNotFound)
 
 	require.NoError(t, m.Verify(ctx, "login:a", code))
 	require.Error(t, m.Verify(ctx, "login:a", code))
