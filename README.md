@@ -38,8 +38,7 @@ Each module targets a specific area of boilerplate that I am trying to avoid re-
 - redisutil: similar to pgutil but for redis
 - pagination: helper methods and models for generic pagination, supports both limit and offset and cursor based
 - validation: no reflection based validators following a style similar to fluentvalidation in C#
-- auth: Implementation of jwt, hashing (wrapper on bcrypt), and introducing providers to implement jwt, refresh, and opaque tokens
-- otp: OTP helper methods along with a redis based implementation for generating codes
+- auth: building blocks for auth (passwords, sessions, OTP, TOTP, API keys, rate limits) with Postgres/Redis stores and HTTP/Connect middleware
 - locking: A locking interface along with an abstraction on redsync to reduce boilerplate code
 
 ### errors
@@ -54,7 +53,7 @@ with errors coming from the backend as well as a clear message for tracking purp
     "code": "FAILED_TO_CONNECT"
 }
 ```
-The module also has a factory that makes creating domain errors easy, an example from the otp module:
+The module also has a factory that makes creating domain errors easy, for example:
 
 ```go
 var (
@@ -191,72 +190,25 @@ validation.AddRule(v, stringFactory.Must(req.Username, "username", "username is 
 
 ### auth
 
-This module avoids re-implementing JWT signing, password hashing, and authentication middleware for every project. It provides a layered set of token providers depending on how much control over token revocation is needed:
+Building blocks, not flows: you combine them in your handlers. Blocks that keep state take a store interface, and both Postgres and Redis stores ship for all of them.
+
+| Module | What |
+|---|---|
+| [auth](auth) | passwords, sessions (opaque or JWT access, rotating refresh), OTP, one-time links, TOTP + recovery codes, API keys, rate limits |
+| [auth/authpg](auth/authpg) | Postgres stores + goose migrations |
+| [auth/authredis](auth/authredis) | Redis stores |
+| [auth/authhttp](auth/authhttp) | net/http middleware, `Has(check)`, rate limit |
+| [auth/authconnect](auth/authconnect) | Connect interceptors, same API |
 
 ```go
-// stateless jwt (no revocation), secret must be at least 32 bytes
-accessConfig, err := auth.NewJwtTokenProviderConfig(secret, 15*time.Minute, auth.AccessTokenType)
-provider := auth.NewJwtTokenProvider(accessConfig)
-token, err := provider.SignClaims(userId, map[string]any{"role": "admin"})
+store, _ := authpg.NewSessionStore(pool)
+sessions, _ := auth.NewOpaqueSessionManager(store, 15*time.Minute, 30*24*time.Hour)
 
-// access + refresh token pair
-// the token type is signed and checked, so a refresh token is never accepted as an access token
-refreshConfig, err := auth.NewJwtTokenProviderConfig(secret, 7*24*time.Hour, auth.RefreshTokenType)
-refreshProvider := auth.NewJwtRefreshTokenProvider(
-    auth.NewJwtTokenProvider(refreshConfig),
-    auth.NewJwtTokenProvider(accessConfig),
-)
-dto, err := refreshProvider.GenerateToken(ctx, userId, claims) // dto.AccessToken, dto.RefreshToken
+r.Use(authhttp.NewOpaqueMiddleware(sessions).UseAuthentication)
+r.With(authhttp.VerifyClaim("role", "admin")).Get("/admin", admin)
 ```
 
-or using reference tokens where all tokens are stored in a database for full revocation support:
-
-```go
-refProvider := auth.NewJwtReferenceTokenProvider(refreshProvider, tokenStore)
-dto, err := refProvider.GenerateToken(ctx, userId, claims) // both tokens are IDs, not raw JWTs
-refProvider.RevokeOwner(ctx, userId) // invalidate all sessions
-```
-
-password hashing is also provided as a thin wrapper over bcrypt:
-
-```go
-hc := auth.NewHashingConfig(10) // bcrypt cost
-hash, err := hc.Hash(password)
-ok := auth.CompareHash(password, hash)
-```
-
-protecting routes is done through the provided middleware:
-
-```go
-r.Use(auth.NewJwtAuthenticationMiddleware(provider).UseAuthentication)
-
-// retrieve the token in a handler
-token, ok := auth.GetToken(r.Context())
-```
-
-### otp
-
-This module avoids re-implementing OTP generation, hashing, retry limiting, and expiry logic for every project. It provides a service backed by Redis that handles the full OTP lifecycle:
-
-```go
-config := otp.OtpConfig{
-    ExpiresIn:   5 * time.Minute,
-    MaxTries:    3,
-    ResendAfter: 1 * time.Minute,
-}
-generator := otp.NewCodeGenerator(6, false) // 6-digit numeric code
-repo := otp.NewRedisOtpRepository(redisClient)
-service := otp.NewOtpService(repo, generator, config)
-
-// generate and send to user
-generatedOtp, err := service.GenerateOtp(ctx, userId) // returns existing OTP if resend period has not passed
-sendSms(generatedOtp.Code)
-
-// verify when the user submits
-err = service.VerifyOtp(ctx, userId, submittedCode)
-```
-
-**IMPORTANT: codes are stored hashed and verification uses constant-time comparison to prevent timing attacks**
+Runnable flows (password, OTP, reset, activation, RBAC, API keys, TOTP) are in [auth/examples](auth/examples).
 
 ### locking
 
