@@ -1,0 +1,18 @@
+name: CI auth examples
+
+# builds against every auth module in the repo (replace directives), so any auth change can break it
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "auth/**"
+  pull_request:
+    paths:
+      - "auth/**"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-go-module.yml
+    with:
+      module_path: auth/examples

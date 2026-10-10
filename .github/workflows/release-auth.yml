@@ -10,6 +10,7 @@ on:
       - "!auth/authhttp/**"
       - "!auth/authconnect/**"
       - "!auth/authredis/**"
+      - "!auth/examples/**"
 
 permissions:
   contents: write

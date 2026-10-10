@@ -10,6 +10,7 @@ on:
       - "!auth/authhttp/**"
       - "!auth/authconnect/**"
       - "!auth/authredis/**"
+      - "!auth/examples/**"
   pull_request:
     paths:
       - "auth/**"
@@ -17,6 +18,7 @@ on:
       - "!auth/authhttp/**"
       - "!auth/authconnect/**"
       - "!auth/authredis/**"
+      - "!auth/examples/**"
 
 jobs:
   ci:
