@@ -14,7 +14,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/nayefradwi/nayef_go_common/auth v0.1.23
+	github.com/nayefradwi/nayef_go_common/auth v1.0.0
 	github.com/nayefradwi/nayef_go_common/auth/authhttp v0.0.0-00010101000000-000000000000
 	github.com/nayefradwi/nayef_go_common/auth/authpg v0.0.0-00010101000000-000000000000
 	github.com/nayefradwi/nayef_go_common/auth/authredis v0.0.0-00010101000000-000000000000
