@@ -10,7 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// keys: k:<id> api key, h:<hash> → id, o:<owner> ids scored by creation time
+// keys: k:<id> api key, h:<hash> → id, o:<owner> ids by creation time, expiring with its longest-lived key
 // KEYS: key, hash index, owner set; ARGV: id, owner, name, hash, claims, expiry, last used, created, score, prefix
 var createApiKeyScript = redis.NewScript(`
 redis.call('HSET', KEYS[1],
@@ -21,12 +21,23 @@ if ARGV[6] ~= '' then
 	redis.call('PEXPIREAT', KEYS[1], ARGV[6])
 	redis.call('PEXPIREAT', KEYS[2], ARGV[6])
 end
+local forever, latest = ARGV[6] == '', tonumber(ARGV[6]) or 0
 for _, id in ipairs(redis.call('ZRANGE', KEYS[3], 0, -1)) do
-	if redis.call('EXISTS', ARGV[10] .. 'k:' .. id) == 0 then
+	local at = redis.call('PEXPIRETIME', ARGV[10] .. 'k:' .. id)
+	if at == -2 then
 		redis.call('ZREM', KEYS[3], id)
+	elseif at == -1 then
+		forever = true
+	elseif at > latest then
+		latest = at
 	end
 end
 redis.call('ZADD', KEYS[3], ARGV[9], ARGV[1])
+if forever then
+	redis.call('PERSIST', KEYS[3])
+else
+	redis.call('PEXPIREAT', KEYS[3], latest)
+end
 return 1
 `)
 

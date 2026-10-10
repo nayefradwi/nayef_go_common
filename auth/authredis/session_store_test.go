@@ -38,7 +38,8 @@ func nextSession(t *testing.T) auth.Session {
 }
 
 func TestSessionStore(t *testing.T) {
-	store, err := NewSessionStore(mustCreateRedisClient(t))
+	client := mustCreateRedisClient(t)
+	store, err := NewSessionStore(client)
 	require.NoError(t, err)
 	ctx := context.Background()
 
@@ -142,6 +143,23 @@ func TestSessionStore(t *testing.T) {
 			require.ErrorIs(t, err, auth.ErrSessionNotFound)
 		}
 		_, err = store.GetByRefresh(ctx, c.RefreshHash)
+		require.NoError(t, err)
+	})
+
+	t.Run("missing expiry is rejected before anything is written", func(t *testing.T) {
+		s := newTestSession(t, testOwner, time.Time{})
+		require.Error(t, store.Create(ctx, s))
+		n, err := client.Exists(ctx, defaultSessionPrefix+"r:"+string(s.RefreshHash)).Result()
+		require.NoError(t, err)
+		assert.Zero(t, n)
+
+		live := newTestSession(t, testOwner, time.Now().Add(time.Hour))
+		require.NoError(t, store.Create(ctx, live))
+		next := nextSession(t)
+		next.ExpiresAt = time.Time{}
+		_, err = store.Rotate(ctx, live.RefreshHash, next)
+		require.Error(t, err)
+		_, err = store.Rotate(ctx, live.RefreshHash, nextSession(t))
 		require.NoError(t, err)
 	})
 

@@ -119,6 +119,10 @@ func NewSessionStore(client *redis.Client, configs ...SessionStoreConfig) (Sessi
 }
 
 func (s SessionStore) Create(ctx context.Context, session auth.Session) error {
+	if err := validExpiry(session); err != nil {
+		return err
+	}
+
 	claims, err := encodeClaims(session.Claims)
 	if err != nil {
 		return InternalError("failed to create session: " + err.Error())
@@ -143,6 +147,10 @@ func (s SessionStore) Create(ctx context.Context, session auth.Session) error {
 }
 
 func (s SessionStore) Rotate(ctx context.Context, refreshHash []byte, next auth.Session) (auth.Session, error) {
+	if err := validExpiry(next); err != nil {
+		return auth.Session{}, err
+	}
+
 	keys := s.withAccessKey([]string{s.refreshKey(refreshHash), s.refreshKey(next.RefreshHash)}, next.AccessHash)
 	v, err := rotateSessionScript.Run(ctx, s.client, keys,
 		next.RefreshHash, next.AccessHash, formatMs(next.AccessExpiresAt), formatMs(next.ExpiresAt), s.prefix,
@@ -227,6 +235,15 @@ func (s SessionStore) withAccessKey(keys []string, accessHash []byte) []string {
 		return keys
 	}
 	return append(keys, s.prefix+"a:"+string(accessHash))
+}
+
+// checked before the script: a failed PEXPIREAT mid-script would leave earlier writes without a ttl
+func validExpiry(s auth.Session) error {
+	if s.ExpiresAt.IsZero() || (len(s.AccessHash) > 0 && s.AccessExpiresAt.IsZero()) {
+		return InternalError("session needs an expiry, and an access expiry when it has an access token")
+	}
+
+	return nil
 }
 
 func parseSession(v []string) (auth.Session, error) {

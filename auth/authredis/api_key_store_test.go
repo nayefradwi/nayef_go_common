@@ -100,6 +100,32 @@ func TestApiKeyStore(t *testing.T) {
 		require.Len(t, keys, 1)
 		assert.Equal(t, forever.Id, keys[0].Id)
 	})
+
+	t.Run("owner index expires with its longest-lived key", func(t *testing.T) {
+		owner := uuid.New()
+		index := defaultApiKeyPrefix + "o:" + owner.String()
+		_, short, err := m.Issue(ctx, owner, "short", nil, time.Now().Add(300*time.Millisecond))
+		require.NoError(t, err)
+		_, _, err = m.Issue(ctx, owner, "shorter", nil, time.Now().Add(100*time.Millisecond))
+		require.NoError(t, err)
+
+		at, err := client.PExpireTime(ctx, index).Result()
+		require.NoError(t, err)
+		assert.Equal(t, short.ExpiresAt.UnixMilli(), at.Milliseconds())
+
+		time.Sleep(400 * time.Millisecond)
+		n, err := client.Exists(ctx, index).Result()
+		require.NoError(t, err)
+		assert.Zero(t, n)
+
+		_, _, err = m.Issue(ctx, owner, "expiring", nil, time.Now().Add(time.Hour))
+		require.NoError(t, err)
+		_, _, err = m.Issue(ctx, owner, "forever", nil, time.Time{})
+		require.NoError(t, err)
+		ttl, err := client.PTTL(ctx, index).Result()
+		require.NoError(t, err)
+		assert.Equal(t, time.Duration(-1), ttl)
+	})
 }
 
 func TestApiKeyStore_CustomPrefix(t *testing.T) {
