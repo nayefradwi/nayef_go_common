@@ -15,5 +15,5 @@ jobs:
     uses: ./.github/workflows/deploy-go-module.yml
     with:
       module_path: auth/authpg
-      bump_type: patch
+      bump_type: major
     secrets: inherit
