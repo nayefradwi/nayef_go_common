@@ -58,3 +58,13 @@ type ApiKeyStore interface {
 	Delete(ctx context.Context, ownerId, id uuid.UUID) error
 	DeleteExpired(ctx context.Context) error
 }
+
+type TotpStore interface {
+	Save(ctx context.Context, ownerId uuid.UUID, secret []byte) error
+	Get(ctx context.Context, ownerId uuid.UUID) (Totp, error)
+	Confirm(ctx context.Context, ownerId uuid.UUID, step int64, recoveryCodes [][]byte) error
+	UseStep(ctx context.Context, ownerId uuid.UUID, step int64) error
+	SetRecoveryCodes(ctx context.Context, ownerId uuid.UUID, hashes [][]byte) error
+	UseRecoveryCode(ctx context.Context, ownerId uuid.UUID, hash []byte) error
+	Delete(ctx context.Context, ownerId uuid.UUID) error
+}

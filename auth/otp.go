@@ -66,7 +66,7 @@ func (m OtpManager) Issue(ctx context.Context, key string) (string, error) {
 		return "", err
 	}
 
-	if err := m.store.Save(ctx, key, m.hash(code), m.config.CodeLimits); err != nil {
+	if err := m.store.Save(ctx, key, hmacSum(m.config.Secret, code), m.config.CodeLimits); err != nil {
 		return "", err
 	}
 
@@ -74,7 +74,7 @@ func (m OtpManager) Issue(ctx context.Context, key string) (string, error) {
 }
 
 func (m OtpManager) Verify(ctx context.Context, key, code string) error {
-	stored, err := checkCode(ctx, m.store, key, m.config.MaxAttempts, m.hash(code))
+	stored, err := checkCode(ctx, m.store, key, m.config.MaxAttempts, hmacSum(m.config.Secret, code))
 	if err != nil {
 		return err
 	}
@@ -86,9 +86,9 @@ func (m OtpManager) DeleteExpired(ctx context.Context) error {
 	return m.store.DeleteExpired(ctx)
 }
 
-func (m OtpManager) hash(code string) []byte {
-	h := hmac.New(sha256.New, m.config.Secret)
-	h.Write([]byte(code))
+func hmacSum(secret []byte, s string) []byte {
+	h := hmac.New(sha256.New, secret)
+	h.Write([]byte(s))
 	return h.Sum(nil)
 }
 
