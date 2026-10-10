@@ -9,6 +9,7 @@ on:
       - "!auth/authpg/**"
       - "!auth/authhttp/**"
       - "!auth/authconnect/**"
+      - "!auth/authredis/**"
 
 permissions:
   contents: write
