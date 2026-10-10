@@ -25,24 +25,14 @@ func (s stubTokenProvider) SignClaims(_ uuid.UUID, _ map[string]any) (string, er
 	return "", nil
 }
 
-type stubReferenceTokenProvider struct {
+type stubVerifier struct {
 	token auth.Token
 	err   error
 }
 
-func (s stubReferenceTokenProvider) GenerateId() (uuid.UUID, error) { return uuid.Nil, nil }
-func (s stubReferenceTokenProvider) GenerateToken(_ context.Context, _ uuid.UUID, _ map[string]any) (auth.TokenDTO, error) {
-	return auth.TokenDTO{}, nil
-}
-func (s stubReferenceTokenProvider) GetAccessToken(_ context.Context, _ uuid.UUID) (auth.Token, error) {
+func (s stubVerifier) VerifyAccess(_ context.Context, _ string) (auth.Token, error) {
 	return s.token, s.err
 }
-func (s stubReferenceTokenProvider) GetRefreshToken(_ context.Context, _ uuid.UUID) (auth.Token, error) {
-	return s.token, s.err
-}
-func (s stubReferenceTokenProvider) RevokeToken(_ context.Context, _ uuid.UUID) error { return nil }
-func (s stubReferenceTokenProvider) RevokeOwner(_ context.Context, _ uuid.UUID) error { return nil }
-func (s stubReferenceTokenProvider) GetAccessTokenProvider() auth.ITokenProvider      { return nil }
 
 func unexpiredToken() auth.Token {
 	return auth.Token{
@@ -196,16 +186,16 @@ func TestJwtMiddleware_ZeroExpiryIsRejected(t *testing.T) {
 	}
 }
 
-// --- ReferenceTokenMiddleware ---
+// --- OpaqueMiddleware ---
 
-func TestReferenceTokenMiddleware_ValidToken(t *testing.T) {
-	stub := stubReferenceTokenProvider{token: unexpiredToken()}
+func TestOpaqueMiddleware_ValidToken(t *testing.T) {
+	stub := stubVerifier{token: unexpiredToken()}
 	called := false
-	m := NewReferenceTokenMiddleware(stub)
+	m := NewOpaqueMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
+	req.Header.Set("Authorization", "Bearer opaque")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -218,9 +208,9 @@ func TestReferenceTokenMiddleware_ValidToken(t *testing.T) {
 	}
 }
 
-func TestReferenceTokenMiddleware_MissingToken(t *testing.T) {
+func TestOpaqueMiddleware_MissingToken(t *testing.T) {
 	called := false
-	m := NewReferenceTokenMiddleware(stubReferenceTokenProvider{})
+	m := NewOpaqueMiddleware(stubVerifier{})
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -236,14 +226,14 @@ func TestReferenceTokenMiddleware_MissingToken(t *testing.T) {
 	}
 }
 
-func TestReferenceTokenMiddleware_InvalidToken(t *testing.T) {
-	stub := stubReferenceTokenProvider{err: errors.New("not found")}
+func TestOpaqueMiddleware_InvalidToken(t *testing.T) {
+	stub := stubVerifier{err: errors.New("not found")}
 	called := false
-	m := NewReferenceTokenMiddleware(stub)
+	m := NewOpaqueMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer bad-id")
+	req.Header.Set("Authorization", "Bearer opaque")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -256,14 +246,14 @@ func TestReferenceTokenMiddleware_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestReferenceTokenMiddleware_ExpiredToken(t *testing.T) {
-	stub := stubReferenceTokenProvider{token: expiredToken()}
+func TestOpaqueMiddleware_ExpiredToken(t *testing.T) {
+	stub := stubVerifier{token: expiredToken()}
 	called := false
-	m := NewReferenceTokenMiddleware(stub)
+	m := NewOpaqueMiddleware(stub)
 	handler := m.UseAuthentication(nextHandler(t, &called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
+	req.Header.Set("Authorization", "Bearer opaque")
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -276,10 +266,10 @@ func TestReferenceTokenMiddleware_ExpiredToken(t *testing.T) {
 	}
 }
 
-func TestReferenceTokenMiddleware_TokenInContext(t *testing.T) {
+func TestOpaqueMiddleware_TokenInContext(t *testing.T) {
 	expectedToken := unexpiredToken()
-	stub := stubReferenceTokenProvider{token: expectedToken}
-	m := NewReferenceTokenMiddleware(stub)
+	stub := stubVerifier{token: expectedToken}
+	m := NewOpaqueMiddleware(stub)
 
 	var gotIdentity auth.Identity
 	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -287,7 +277,7 @@ func TestReferenceTokenMiddleware_TokenInContext(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer "+testTokenID.String())
+	req.Header.Set("Authorization", "Bearer opaque")
 	w := httptest.NewRecorder()
 
 	m.UseAuthentication(capture).ServeHTTP(w, req)

@@ -33,13 +33,12 @@ func (s stubTokenProvider) SignClaims(uuid.UUID, map[string]any) (string, error)
 	return "", nil
 }
 
-type stubReferenceTokenProvider struct {
-	auth.IReferenceTokenProvider
+type stubVerifier struct {
 	token auth.Token
 	err   error
 }
 
-func (s stubReferenceTokenProvider) GetAccessToken(context.Context, uuid.UUID) (auth.Token, error) {
+func (s stubVerifier) VerifyAccess(context.Context, string) (auth.Token, error) {
 	return s.token, s.err
 }
 
@@ -136,12 +135,13 @@ func TestJwtInterceptor_Rejects(t *testing.T) {
 	}
 }
 
-func TestReferenceTokenInterceptor(t *testing.T) {
-	s := newServer(t, NewReferenceTokenInterceptor(stubReferenceTokenProvider{token: validToken()}))
-	requireUnauthenticated(t, callUnary(t, s, "Bearer not-a-uuid"))
-	require.Zero(t, *s.calls)
+func TestOpaqueInterceptor(t *testing.T) {
+	denied := newServer(t, NewOpaqueInterceptor(stubVerifier{err: errors.New("not found")}))
+	requireUnauthenticated(t, callUnary(t, denied, "Bearer opaque"))
+	require.Zero(t, *denied.calls)
 
-	require.NoError(t, callUnary(t, s, "Bearer "+uuid.NewString()))
+	s := newServer(t, NewOpaqueInterceptor(stubVerifier{token: validToken()}))
+	require.NoError(t, callUnary(t, s, "Bearer opaque"))
 	require.Equal(t, testOwner, s.seen.OwnerId)
 }
 
