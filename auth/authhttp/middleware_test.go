@@ -286,3 +286,37 @@ func TestOpaqueMiddleware_TokenInContext(t *testing.T) {
 		t.Errorf("expected user identity for %v, got %+v", expectedToken.OwnerId, gotIdentity)
 	}
 }
+
+// --- ApiKeyMiddleware ---
+
+type stubKeyVerifier struct {
+	identity auth.Identity
+	err      error
+}
+
+func (s stubKeyVerifier) VerifyKey(context.Context, string) (auth.Identity, error) {
+	return s.identity, s.err
+}
+
+func TestApiKeyMiddleware(t *testing.T) {
+	called := false
+	denied := NewApiKeyMiddleware(stubKeyVerifier{err: errors.New("not found")}).UseAuthentication(nextHandler(t, &called))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer sk_live_x")
+	w := httptest.NewRecorder()
+	denied.ServeHTTP(w, req)
+	if called || w.Code != http.StatusUnauthorized {
+		t.Fatalf("verifier error should 401, got %d called=%v", w.Code, called)
+	}
+
+	var got auth.Identity
+	capture := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		got, _ = auth.GetIdentity(r.Context())
+	})
+	stub := stubKeyVerifier{identity: auth.Identity{OwnerId: testOwner, Kind: auth.KindKey}}
+	w = httptest.NewRecorder()
+	NewApiKeyMiddleware(stub).UseAuthentication(capture).ServeHTTP(w, req)
+	if got.Kind != auth.KindKey || got.OwnerId != testOwner {
+		t.Fatalf("expected key identity, got %+v", got)
+	}
+}

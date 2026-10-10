@@ -43,3 +43,26 @@ func HasClaim(name string, values ...string) Check {
 func VerifyClaim(name string, values ...string) connect.Interceptor {
 	return Has(HasClaim(name, values...))
 }
+
+var (
+	IsUser Check = isKind(auth.KindUser)
+	IsKey  Check = isKind(auth.KindKey)
+)
+
+func isKind(kind auth.IdentityKind) Check {
+	return func(_ context.Context, id auth.Identity, _ connect.AnyRequest) (bool, error) {
+		return id.Kind == kind, nil
+	}
+}
+
+func ByKind(user, key Check) Check {
+	return func(ctx context.Context, id auth.Identity, req connect.AnyRequest) (bool, error) {
+		switch id.Kind {
+		case auth.KindUser:
+			return user(ctx, id, req)
+		case auth.KindKey:
+			return key(ctx, id, req)
+		}
+		return false, nil
+	}
+}

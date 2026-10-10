@@ -17,6 +17,7 @@ import (
 type dbExecutor interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
 const sessionColumns = `family_id, owner_id, refresh_hash, access_hash, access_expires_at, claims, expires_at, rotated_at`
