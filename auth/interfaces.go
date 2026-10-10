@@ -43,10 +43,10 @@ type AttemptStore interface {
 	DeleteExpired(ctx context.Context) error
 }
 
-type OtpStore interface {
-	Save(ctx context.Context, key string, hash []byte, limits OtpLimits) error
+type CodeStore interface {
+	Save(ctx context.Context, key string, hash []byte, limits CodeLimits) error
 	Attempt(ctx context.Context, key string, maxAttempts int) ([]byte, error)
-	Consume(ctx context.Context, key string, hash []byte) error
+	Consume(ctx context.Context, key string, hash []byte) error // must reject expired rows
 	DeleteExpired(ctx context.Context) error
 }
 

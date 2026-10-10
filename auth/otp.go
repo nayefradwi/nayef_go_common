@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	ErrOtpNotFound      = errors.New("otp not found")
-	ErrOtpResendBlocked = errors.New("otp resend blocked")
+	ErrCodeNotFound      = errors.New("code not found")
+	ErrCodeResendBlocked = errors.New("code resend blocked")
 )
 
-type OtpLimits struct {
+type CodeLimits struct {
 	TTL         time.Duration
 	ResendAfter time.Duration
 	MaxSends    int
@@ -27,11 +27,11 @@ type OtpLimits struct {
 type OtpConfig struct {
 	Secret []byte
 	Length int
-	OtpLimits
+	CodeLimits
 }
 
 type OtpManager struct {
-	store  OtpStore
+	store  CodeStore
 	config OtpConfig
 }
 
@@ -40,7 +40,7 @@ const (
 	minOtpSecretLength = 32
 )
 
-func NewOtpManager(store OtpStore, config OtpConfig) (OtpManager, error) {
+func NewOtpManager(store CodeStore, config OtpConfig) (OtpManager, error) {
 	if store == nil {
 		return OtpManager{}, BadRequestError("otp store must not be nil")
 	}
@@ -53,9 +53,8 @@ func NewOtpManager(store OtpStore, config OtpConfig) (OtpManager, error) {
 		return OtpManager{}, BadRequestError("otp length must be at least 6")
 	}
 
-	l := config.OtpLimits
-	if l.TTL <= 0 || l.ResendAfter < 0 || l.MaxSends < 1 || l.MaxAttempts < 1 {
-		return OtpManager{}, BadRequestError("otp needs a positive ttl, a non-negative resend gap and limits of at least 1")
+	if err := validLimits(config.CodeLimits); err != nil {
+		return OtpManager{}, err
 	}
 
 	return OtpManager{store: store, config: config}, nil
@@ -67,7 +66,7 @@ func (m OtpManager) Issue(ctx context.Context, key string) (string, error) {
 		return "", err
 	}
 
-	if err := m.store.Save(ctx, key, m.hash(code), m.config.OtpLimits); err != nil {
+	if err := m.store.Save(ctx, key, m.hash(code), m.config.CodeLimits); err != nil {
 		return "", err
 	}
 
@@ -75,25 +74,12 @@ func (m OtpManager) Issue(ctx context.Context, key string) (string, error) {
 }
 
 func (m OtpManager) Verify(ctx context.Context, key, code string) error {
-	stored, err := m.store.Attempt(ctx, key, m.config.MaxAttempts)
-	if errors.Is(err, ErrOtpNotFound) {
-		return UnauthorizedError("Invalid code")
-	}
-
+	stored, err := checkCode(ctx, m.store, key, m.config.MaxAttempts, m.hash(code))
 	if err != nil {
 		return err
 	}
 
-	if !hmac.Equal(stored, m.hash(code)) {
-		return UnauthorizedError("Invalid code")
-	}
-
-	err = m.store.Consume(ctx, key, stored)
-	if errors.Is(err, ErrOtpNotFound) {
-		return UnauthorizedError("Invalid code")
-	}
-
-	return err
+	return consumeCode(ctx, m.store, key, stored)
 }
 
 func (m OtpManager) DeleteExpired(ctx context.Context) error {
@@ -119,4 +105,37 @@ func newCode(length int) (string, error) {
 	}
 
 	return string(code), nil
+}
+
+func validLimits(l CodeLimits) error {
+	if l.TTL <= 0 || l.ResendAfter < 0 || l.MaxSends < 1 || l.MaxAttempts < 1 {
+		return BadRequestError("code needs a positive ttl, a non-negative resend gap and limits of at least 1")
+	}
+	return nil
+}
+
+func checkCode(ctx context.Context, store CodeStore, key string, maxAttempts int, hash []byte) ([]byte, error) {
+	stored, err := store.Attempt(ctx, key, maxAttempts)
+	if errors.Is(err, ErrCodeNotFound) {
+		return nil, UnauthorizedError("Invalid code")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !hmac.Equal(stored, hash) {
+		return nil, UnauthorizedError("Invalid code")
+	}
+
+	return stored, nil
+}
+
+func consumeCode(ctx context.Context, store CodeStore, key string, hash []byte) error {
+	err := store.Consume(ctx, key, hash)
+	if errors.Is(err, ErrCodeNotFound) {
+		return UnauthorizedError("Invalid code")
+	}
+
+	return err
 }

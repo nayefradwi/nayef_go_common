@@ -20,7 +20,7 @@ type memOtpStore struct {
 	rows map[string]*memOtp
 }
 
-func (m *memOtpStore) Save(_ context.Context, key string, hash []byte, l OtpLimits) error {
+func (m *memOtpStore) Save(_ context.Context, key string, hash []byte, l CodeLimits) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
@@ -30,7 +30,7 @@ func (m *memOtpStore) Save(_ context.Context, key string, hash []byte, l OtpLimi
 		return nil
 	}
 	if now.Before(r.sentAt.Add(l.ResendAfter)) || r.sends >= l.MaxSends || r.attempts >= l.MaxAttempts {
-		return ErrOtpResendBlocked
+		return ErrCodeResendBlocked
 	}
 	r.hash, r.sends, r.sentAt, r.expireAt = hash, r.sends+1, now, now.Add(l.TTL)
 	return nil
@@ -41,7 +41,7 @@ func (m *memOtpStore) Attempt(_ context.Context, key string, max int) ([]byte, e
 	defer m.mu.Unlock()
 	r, ok := m.rows[key]
 	if !ok || r.attempts >= max || !time.Now().Before(r.expireAt) {
-		return nil, ErrOtpNotFound
+		return nil, ErrCodeNotFound
 	}
 	r.attempts++
 	return r.hash, nil
@@ -51,8 +51,8 @@ func (m *memOtpStore) Consume(_ context.Context, key string, hash []byte) error 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r, ok := m.rows[key]
-	if !ok || !bytes.Equal(r.hash, hash) {
-		return ErrOtpNotFound
+	if !ok || !bytes.Equal(r.hash, hash) || !time.Now().Before(r.expireAt) {
+		return ErrCodeNotFound
 	}
 	delete(m.rows, key)
 	return nil
@@ -62,9 +62,9 @@ func (m *memOtpStore) DeleteExpired(context.Context) error { return nil }
 
 func testOtpConfig() OtpConfig {
 	return OtpConfig{
-		Secret:    []byte(testSecret),
-		Length:    6,
-		OtpLimits: OtpLimits{TTL: time.Minute, MaxSends: 3, MaxAttempts: 3},
+		Secret:     []byte(testSecret),
+		Length:     6,
+		CodeLimits: CodeLimits{TTL: time.Minute, MaxSends: 3, MaxAttempts: 3},
 	}
 }
 
@@ -116,7 +116,7 @@ func TestOtp_LockedAfterMaxAttempts(t *testing.T) {
 	if err := m.Verify(ctx, "k", code); err == nil {
 		t.Fatal("right code accepted after lockout")
 	}
-	if _, err := m.Issue(ctx, "k"); !errors.Is(err, ErrOtpResendBlocked) {
+	if _, err := m.Issue(ctx, "k"); !errors.Is(err, ErrCodeResendBlocked) {
 		t.Fatal("resend while locked should be blocked", err)
 	}
 }
