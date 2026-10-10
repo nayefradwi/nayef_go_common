@@ -38,6 +38,20 @@ func TestCodeStore(t *testing.T) {
 		return n
 	}
 
+	t.Run("save and resend set the ttl", func(t *testing.T) {
+		require.NoError(t, store.Save(ctx, "ttl", hash, limits))
+		ttl, err := client.PTTL(ctx, defaultCodePrefix+"ttl").Result()
+		require.NoError(t, err)
+		assert.Positive(t, ttl)
+
+		require.NoError(t, client.PExpire(ctx, defaultCodePrefix+"ttl", time.Second).Err())
+		sentAgo(t, "ttl", 2*time.Minute)
+		require.NoError(t, store.Save(ctx, "ttl", hash, limits))
+		ttl, err = client.PTTL(ctx, defaultCodePrefix+"ttl").Result()
+		require.NoError(t, err)
+		assert.Greater(t, ttl, time.Second)
+	})
+
 	t.Run("concurrent attempts stop at max", func(t *testing.T) {
 		require.NoError(t, store.Save(ctx, "attempts", hash, limits))
 		var ok atomic.Int32

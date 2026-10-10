@@ -58,6 +58,16 @@ func TestTotpStore(t *testing.T) {
 		assert.Len(t, got.RecoveryCodes, 9)
 	})
 
+	t.Run("set recovery codes replaces the old ones", func(t *testing.T) {
+		owner := uuid.New()
+		require.NoError(t, store.Save(ctx, owner, []byte("sealed")))
+		require.NoError(t, store.Confirm(ctx, owner, 1, codes[:5]))
+		require.NoError(t, store.SetRecoveryCodes(ctx, owner, codes[5:]))
+
+		require.ErrorIs(t, store.UseRecoveryCode(ctx, owner, codes[0]), auth.ErrTotpNotFound)
+		require.NoError(t, store.UseRecoveryCode(ctx, owner, codes[5]))
+	})
+
 	t.Run("save cannot replace a confirmed secret", func(t *testing.T) {
 		owner := uuid.New()
 		require.NoError(t, store.Save(ctx, owner, []byte("first")))

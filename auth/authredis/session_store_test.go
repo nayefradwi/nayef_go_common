@@ -163,6 +163,36 @@ func TestSessionStore(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("every key gets a ttl", func(t *testing.T) {
+		s := newTestSession(t, uuid.New(), time.Now().Add(time.Hour))
+		require.NoError(t, store.Create(ctx, s))
+		for _, key := range []string{
+			defaultSessionPrefix + "r:" + string(s.RefreshHash),
+			defaultSessionPrefix + "a:" + string(s.AccessHash),
+			defaultSessionPrefix + "f:" + s.FamilyId.String(),
+			defaultSessionPrefix + "o:" + s.OwnerId.String(),
+		} {
+			ttl, err := client.PTTL(ctx, key).Result()
+			require.NoError(t, err)
+			assert.Positive(t, ttl, key)
+		}
+	})
+
+	t.Run("rotate keeps the family alive past the first session", func(t *testing.T) {
+		s := newTestSession(t, uuid.New(), time.Now().Add(300*time.Millisecond))
+		require.NoError(t, store.Create(ctx, s))
+		rotated, err := store.Rotate(ctx, s.RefreshHash, nextSession(t))
+		require.NoError(t, err)
+
+		time.Sleep(400 * time.Millisecond)
+		_, err = store.GetByRefresh(ctx, rotated.RefreshHash)
+		require.NoError(t, err)
+
+		require.NoError(t, store.DeleteOwner(ctx, s.OwnerId))
+		_, err = store.GetByRefresh(ctx, rotated.RefreshHash)
+		require.ErrorIs(t, err, auth.ErrSessionNotFound)
+	})
+
 	t.Run("manager reuse kills the family", func(t *testing.T) {
 		m, err := auth.NewOpaqueSessionManager(store, time.Minute, time.Hour)
 		require.NoError(t, err)

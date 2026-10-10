@@ -52,6 +52,9 @@ func TestApiKeyStore(t *testing.T) {
 		_, err = m.VerifyKey(ctx, key)
 		require.Error(t, err)
 		require.ErrorIs(t, store.Delete(ctx, testOwner, issued.Id), auth.ErrApiKeyNotFound)
+		n, err := client.Exists(ctx, defaultApiKeyPrefix+"h:"+string(issued.Hash)).Result()
+		require.NoError(t, err)
+		assert.Zero(t, n)
 	})
 
 	t.Run("touch does not bring back a deleted key", func(t *testing.T) {
