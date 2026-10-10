@@ -12,12 +12,6 @@ type Attempt struct {
 	ResetAt time.Time
 }
 
-type AttemptStore interface {
-	Hit(ctx context.Context, key string, window time.Duration) (Attempt, error)
-	Reset(ctx context.Context, key string) error
-	DeleteExpired(ctx context.Context) error
-}
-
 type Limiter struct {
 	store  AttemptStore
 	limit  int

@@ -15,19 +15,20 @@ const (
 	audienceClaimKey  = "aud"
 )
 
+type TokenType string
+
 const (
-	AccessTokenType  = 1
-	RefreshTokenType = 2
+	AccessTokenType  TokenType = "access"
+	RefreshTokenType TokenType = "refresh"
 )
 
 type Token struct {
-	Id        uuid.UUID
 	Value     string
 	OwnerId   uuid.UUID
 	ExpiresAt time.Time
 	IssuedAt  time.Time
 	Claims    map[string]any
-	Type      int
+	Type      TokenType
 }
 
 func (t Token) IsExpired() bool {

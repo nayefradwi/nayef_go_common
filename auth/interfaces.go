@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -11,15 +12,6 @@ type ITokenProvider interface {
 	SignClaims(owner uuid.UUID, claims map[string]any) (string, error)
 }
 
-type ITokenStore interface {
-	StoreToken(ctx context.Context, token Token) error
-	StoreTokens(ctx context.Context, tokens ...Token) error
-	GetTokenByReference(ctx context.Context, reference uuid.UUID, tokenType int) (Token, error)
-	GetTokenByOwner(ctx context.Context, ownerId uuid.UUID, tokenType int) (Token, error)
-	DeleteToken(ctx context.Context, reference uuid.UUID) error
-	DeleteAllTokensByOwner(ctx context.Context, ownerId uuid.UUID) error
-}
-
 type IRefreshTokenProvider interface {
 	GenerateToken(ctx context.Context, ownerId uuid.UUID, claims map[string]any) (TokenDTO, error)
 	GetAccessToken(accessToken string) (Token, error)
@@ -27,19 +19,22 @@ type IRefreshTokenProvider interface {
 	GetAccessTokenProvider() ITokenProvider
 }
 
-type IRefreshTokenProviderWithRevoke interface {
-	IRefreshTokenProvider
-	GenerateId() (uuid.UUID, error)
-	RevokeToken(ctx context.Context, reference uuid.UUID) error
-	RevokeOwner(ctx context.Context, ownerId uuid.UUID) error
+type AccessVerifier interface {
+	VerifyAccess(ctx context.Context, token string) (Token, error)
 }
 
-type IReferenceTokenProvider interface {
-	GenerateId() (uuid.UUID, error)
-	GenerateToken(ctx context.Context, ownerId uuid.UUID, claims map[string]any) (TokenDTO, error)
-	GetAccessToken(ctx context.Context, id uuid.UUID) (Token, error)
-	GetRefreshToken(ctx context.Context, id uuid.UUID) (Token, error)
-	RevokeToken(ctx context.Context, id uuid.UUID) error
-	RevokeOwner(ctx context.Context, ownerId uuid.UUID) error
-	GetAccessTokenProvider() ITokenProvider
+type SessionStore interface {
+	Create(ctx context.Context, s Session) error
+	Rotate(ctx context.Context, refreshHash []byte, next Session) (Session, error)
+	GetByRefresh(ctx context.Context, refreshHash []byte) (Session, error)
+	GetByAccess(ctx context.Context, accessHash []byte) (Session, error)
+	DeleteFamily(ctx context.Context, familyId uuid.UUID) error
+	DeleteOwner(ctx context.Context, ownerId uuid.UUID) error
+	DeleteExpired(ctx context.Context) error
+}
+
+type AttemptStore interface {
+	Hit(ctx context.Context, key string, window time.Duration) (Attempt, error)
+	Reset(ctx context.Context, key string) error
+	DeleteExpired(ctx context.Context) error
 }
