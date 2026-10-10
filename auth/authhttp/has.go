@@ -48,3 +48,26 @@ func HasClaim(name string, values ...string) Check {
 func VerifyClaim(name string, values ...string) func(http.Handler) http.Handler {
 	return Has(HasClaim(name, values...))
 }
+
+var (
+	IsUser Check = isKind(auth.KindUser)
+	IsKey  Check = isKind(auth.KindKey)
+)
+
+func isKind(kind auth.IdentityKind) Check {
+	return func(_ context.Context, id auth.Identity, _ *http.Request) (bool, error) {
+		return id.Kind == kind, nil
+	}
+}
+
+func ByKind(user, key Check) Check {
+	return func(ctx context.Context, id auth.Identity, r *http.Request) (bool, error) {
+		switch id.Kind {
+		case auth.KindUser:
+			return user(ctx, id, r)
+		case auth.KindKey:
+			return key(ctx, id, r)
+		}
+		return false, nil
+	}
+}

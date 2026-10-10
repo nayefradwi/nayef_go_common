@@ -165,3 +165,23 @@ func TestInterceptor_StreamingHandlerRequiresToken(t *testing.T) {
 	require.NoError(t, stream.Err())
 	require.Equal(t, 1, *s.calls)
 }
+
+type stubKeyVerifier struct {
+	identity auth.Identity
+	err      error
+}
+
+func (s stubKeyVerifier) VerifyKey(context.Context, string) (auth.Identity, error) {
+	return s.identity, s.err
+}
+
+func TestApiKeyInterceptor(t *testing.T) {
+	denied := newServer(t, NewApiKeyInterceptor(stubKeyVerifier{err: errors.New("not found")}))
+	requireUnauthenticated(t, callUnary(t, denied, "Bearer sk_live_x"))
+	require.Zero(t, *denied.calls)
+
+	s := newServer(t, NewApiKeyInterceptor(stubKeyVerifier{identity: auth.Identity{OwnerId: testOwner, Kind: auth.KindKey}}))
+	require.NoError(t, callUnary(t, s, "Bearer sk_live_x"))
+	require.Equal(t, testOwner, s.seen.OwnerId)
+	require.Equal(t, auth.KindKey, s.seen.Kind)
+}
