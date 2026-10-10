@@ -1,7 +1,6 @@
 package errors
 
-func Must[T any](f func() (T, error)) T {
-	value, err := f()
+func Must[T any](value T, err error) T {
 	if err != nil {
 		panic(err)
 	}
