@@ -10,41 +10,41 @@ import (
 	. "github.com/nayefradwi/nayef_go_common/errors"
 )
 
-const otpColumns = `key, hash, attempts, sends, sent_at, expires_at`
+const codeColumns = `key, hash, attempts, sends, sent_at, expires_at`
 
 // pool only, no WithTx: a caller's rollback must not undo a failed attempt
-type OtpStore struct {
+type CodeStore struct {
 	pool  *pgxpool.Pool
 	table string
 }
 
-type OtpStoreConfig struct {
+type CodeStoreConfig struct {
 	Table string
 }
 
-const defaultOtpTable = "auth_otps"
+const defaultCodeTable = "auth_otps"
 
-var DefaultOtpStoreConfig = OtpStoreConfig{
-	Table: defaultOtpTable,
+var DefaultCodeStoreConfig = CodeStoreConfig{
+	Table: defaultCodeTable,
 }
 
-func NewOtpStore(pool *pgxpool.Pool, configs ...OtpStoreConfig) (OtpStore, error) {
-	config := DefaultOtpStoreConfig
+func NewCodeStore(pool *pgxpool.Pool, configs ...CodeStoreConfig) (CodeStore, error) {
+	config := DefaultCodeStoreConfig
 	if len(configs) > 0 {
 		config = configs[0]
 	}
 
 	if err := validTable(config.Table); err != nil {
-		return OtpStore{}, err
+		return CodeStore{}, err
 	}
 
-	return OtpStore{pool: pool, table: config.Table}, nil
+	return CodeStore{pool: pool, table: config.Table}, nil
 }
 
-func (s OtpStore) Save(ctx context.Context, key string, hash []byte, l auth.OtpLimits) error {
+func (s CodeStore) Save(ctx context.Context, key string, hash []byte, l auth.CodeLimits) error {
 	var saved string
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO `+s.table+` AS o (`+otpColumns+`) VALUES ($1, $2, 0, 1, now(), now() + $3)
+		INSERT INTO `+s.table+` AS o (`+codeColumns+`) VALUES ($1, $2, 0, 1, now(), now() + $3)
 		ON CONFLICT (key) DO UPDATE SET
 			hash       = EXCLUDED.hash,
 			sent_at    = now(),
@@ -57,17 +57,17 @@ func (s OtpStore) Save(ctx context.Context, key string, hash []byte, l auth.OtpL
 	).Scan(&saved)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return auth.ErrOtpResendBlocked
+		return auth.ErrCodeResendBlocked
 	}
 
 	if err != nil {
-		return InternalError("failed to save otp: " + err.Error())
+		return InternalError("failed to save code: " + err.Error())
 	}
 
 	return nil
 }
 
-func (s OtpStore) Attempt(ctx context.Context, key string, maxAttempts int) ([]byte, error) {
+func (s CodeStore) Attempt(ctx context.Context, key string, maxAttempts int) ([]byte, error) {
 	var hash []byte
 	err := s.pool.QueryRow(ctx, `
 		UPDATE `+s.table+` SET attempts = attempts + 1
@@ -76,34 +76,34 @@ func (s OtpStore) Attempt(ctx context.Context, key string, maxAttempts int) ([]b
 	).Scan(&hash)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, auth.ErrOtpNotFound
+		return nil, auth.ErrCodeNotFound
 	}
 
 	if err != nil {
-		return nil, InternalError("failed to attempt otp: " + err.Error())
+		return nil, InternalError("failed to attempt code: " + err.Error())
 	}
 
 	return hash, nil
 }
 
-func (s OtpStore) Consume(ctx context.Context, key string, hash []byte) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM `+s.table+` WHERE key = $1 AND hash = $2`, key, hash)
+func (s CodeStore) Consume(ctx context.Context, key string, hash []byte) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM `+s.table+` WHERE key = $1 AND hash = $2 AND expires_at > now()`, key, hash)
 	if err != nil {
-		return InternalError("failed to consume otp: " + err.Error())
+		return InternalError("failed to consume code: " + err.Error())
 	}
 
 	if tag.RowsAffected() == 0 {
-		return auth.ErrOtpNotFound
+		return auth.ErrCodeNotFound
 	}
 
 	return nil
 }
 
-func (s OtpStore) DeleteExpired(ctx context.Context) error {
+func (s CodeStore) DeleteExpired(ctx context.Context) error {
 	if _, err := s.pool.Exec(ctx, `DELETE FROM `+s.table+` WHERE expires_at <= now()`); err != nil {
-		return InternalError("failed to delete expired otps: " + err.Error())
+		return InternalError("failed to delete expired codes: " + err.Error())
 	}
 	return nil
 }
 
-var _ auth.OtpStore = OtpStore{}
+var _ auth.CodeStore = CodeStore{}
