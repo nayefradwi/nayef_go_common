@@ -81,8 +81,12 @@ func (m ApiKeyManager) Issue(ctx context.Context, ownerId uuid.UUID, name string
 	return key, k, nil
 }
 
+func (m ApiKeyManager) IsKey(raw string) bool {
+	return strings.HasPrefix(raw, m.prefix)
+}
+
 func (m ApiKeyManager) VerifyKey(ctx context.Context, key string) (Identity, error) {
-	if !strings.HasPrefix(key, m.prefix) {
+	if !m.IsKey(key) {
 		return Identity{}, UnauthorizedError("Invalid key")
 	}
 

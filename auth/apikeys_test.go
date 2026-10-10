@@ -162,3 +162,19 @@ func TestNewApiKeyManager_Rejects(t *testing.T) {
 		t.Error("16-byte prefix should pass", err)
 	}
 }
+
+func TestApiKey_IsKey(t *testing.T) {
+	m := mustApiKeyManager(t, &memApiKeyStore{})
+	key, _, err := m.Issue(context.Background(), testOwner, "ci", nil, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.IsKey(key) {
+		t.Fatal("issued key not recognised")
+	}
+	for _, raw := range []string{"", "sk_test_abc", "sk_live", "eyJhbGciOiJIUzI1NiJ9.e30.x"} {
+		if m.IsKey(raw) {
+			t.Errorf("%q treated as a key", raw)
+		}
+	}
+}
