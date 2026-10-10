@@ -23,7 +23,7 @@ func TestNewJwtTokenProviderConfig_SecretKeyTooShort(t *testing.T) {
 }
 
 func TestNewJwtTokenProviderConfig_InvalidTokenType(t *testing.T) {
-	if _, err := NewJwtTokenProviderConfig(testSecret, time.Hour, 0); err == nil {
+	if _, err := NewJwtTokenProviderConfig(testSecret, time.Hour, ""); err == nil {
 		t.Fatal("expected error for missing token type")
 	}
 }

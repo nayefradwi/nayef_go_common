@@ -35,9 +35,9 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 	ownerStr, _ := claims[ownerClaimKey].(string)
 	issuedAt, _ := claims[issuedAtClaimKey].(float64)
 	expiresAt, _ := claims[expiryClaimKey].(float64)
-	tokenType, _ := claims[tokenTypeClaimKey].(float64)
+	tokenType, _ := claims[tokenTypeClaimKey].(string)
 
-	if int(tokenType) != t.Config.TokenType {
+	if TokenType(tokenType) != t.Config.TokenType {
 		return Token{}, UnauthorizedError("invalid token type")
 	}
 
@@ -52,7 +52,7 @@ func (t JwtTokenProvider) GetClaims(token string) (Token, error) {
 		ExpiresAt: time.Unix(int64(expiresAt), 0),
 		Claims:    claims,
 		IssuedAt:  time.Unix(int64(issuedAt), 0),
-		Type:      int(tokenType),
+		Type:      TokenType(tokenType),
 	}, nil
 }
 

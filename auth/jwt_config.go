@@ -17,7 +17,7 @@ type JwtTokenProviderConfig struct {
 	privateKey    any
 	publicKey     any
 	Issuer        string
-	TokenType     int
+	TokenType     TokenType
 	Audience      string
 	parser        func(token *jwt.Token) (any, error)
 	signer        func(token *jwt.Token) (string, error)
@@ -26,7 +26,7 @@ type JwtTokenProviderConfig struct {
 // HS256 needs at least 256 bits of key to resist offline brute force.
 const minSecretKeyBytes = 32
 
-func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration, tokenType int) (JwtTokenProviderConfig, error) {
+func NewJwtTokenProviderConfig(secretKey string, expiresIn time.Duration, tokenType TokenType) (JwtTokenProviderConfig, error) {
 	if len(secretKey) < minSecretKeyBytes {
 		return JwtTokenProviderConfig{}, BadRequestError("secret key must be at least 32 bytes")
 	}
