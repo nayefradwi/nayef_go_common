@@ -98,8 +98,7 @@ func renderLocalDockerCompose(req CreateNewProjectRequest) error {
 
 func renderLocalEnv(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, ENV)
-	view := newLocalEnvView(req)
-	return renderToFile(TMPL_LOCAL_ENV, filePath, view)
+	return renderToFile(TMPL_LOCAL_ENV, filePath, "")
 }
 
 func renderHealth(req CreateNewProjectRequest) error {

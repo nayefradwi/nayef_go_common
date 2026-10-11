@@ -1,0 +1,20 @@
+package auth
+
+import (
+	"net/http"
+
+	"github.com/nayefradwi/nayef_go_common/errors"
+)
+
+var (
+	ErrNotLoggedIn     = errors.UnauthorizedError("not logged in")
+	ErrUserNotFound    = errors.NotFoundError("user not found")
+	ErrTooManyRequests = errors.NewResultErrorWithStatus("Too many requests", "TOO_MANY_REQUESTS", http.StatusTooManyRequests)
+{{- if .Password}}
+	ErrInvalidLogin    = errors.UnauthorizedError("invalid {{.Identifier}} or password").WithCode("INVALID_LOGIN_CREDENTIALS")
+	ErrTaken           = errors.NewResultErrorWithStatus("{{.Identifier}} already registered", "{{.IdentifierUpper}}_TAKEN", http.StatusConflict)
+{{- end}}
+{{- if .Mfa}}
+	ErrTotpEnabled     = errors.BadRequestError("totp already enabled, disable it first").WithCode("TOTP_ENABLED")
+{{- end}}
+)

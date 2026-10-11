@@ -1,0 +1,30 @@
+package auth
+
+import (
+	"github.com/google/uuid"
+{{- if .Mfa}}
+	"github.com/nayefradwi/nayef_go_common/auth"
+{{- end}}
+)
+
+type UserResponse struct {
+	Id    uuid.UUID `json:"id"`
+	{{.IdentifierField}} string    `json:"{{.Identifier}}"`
+}
+{{- if .Mfa}}
+
+// MfaToken is set instead of Tokens when the user has TOTP on; send it to the challenge
+type LoginResponse struct {
+	Tokens   auth.TokenDTO `json:"tokens,omitzero"`
+	MfaToken string        `json:"mfa_token,omitempty"`
+}
+
+type EnrollResponse struct {
+	Secret string `json:"secret"`
+	Uri    string `json:"uri"`
+}
+
+type RecoveryCodesResponse struct {
+	RecoveryCodes []string `json:"recovery_codes"`
+}
+{{- end}}

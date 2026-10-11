@@ -20,19 +20,6 @@ func NameInput(value *string) *huh.Input {
 		Value(value)
 }
 
-func AuthInput(value *AuthType) *huh.Select[AuthType] {
-	return huh.
-		NewSelect[AuthType]().
-		Title("Auth Type").
-		Description("Choose the level of revocability, or Something Else to skip").
-		Options(
-			huh.NewOption(string(AuthTypeJWT), AuthTypeJWT),
-			huh.NewOption(string(AuthTypeRefresh), AuthTypeRefresh),
-			huh.NewOption(string(AuthTypeOpaque), AuthTypeOpaque),
-			huh.NewOption(string(AuthTypeNone), AuthTypeNone),
-		).Value(value)
-}
-
 func InfraTypeInput(value *[]InfraType, options []InfraType) *huh.MultiSelect[InfraType] {
 	return huh.
 		NewMultiSelect[InfraType]().

@@ -24,5 +24,4 @@ const (
 	PGXPOOL = "github.com/jackc/pgx/v5/pgxpool"
 	REDIS   = "github.com/redis/go-redis/v9"
 	LOCKING = "github.com/nayefradwi/nayef_go_common/locking"
-	OTP     = "github.com/nayefradwi/nayef_go_common/otp"
 )

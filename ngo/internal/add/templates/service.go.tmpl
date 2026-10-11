@@ -17,9 +17,6 @@ type {{.Name}}Service struct {
     {{- if .ShouldAddLocking}}
     locker locking.ILocker
     {{- end}}
-    {{- if .ShouldAddOtp}}
-    otp otp.IOtpService
-    {{- end}}
 }
 
 func New{{.Name}}Service(
@@ -32,9 +29,6 @@ func New{{.Name}}Service(
     {{- if .ShouldAddLocking}}
     locker locking.ILocker,
     {{- end}}
-    {{- if .ShouldAddOtp}}
-    otpService otp.IOtpService,
-    {{- end}}
 ) {{.Name}}Service {
     return {{.Name}}Service{
         {{- if .ShouldAddDb}}
@@ -46,9 +40,6 @@ func New{{.Name}}Service(
         {{- end}}
         {{- if .ShouldAddLocking}}
         locker: locker,
-        {{- end}}
-        {{- if .ShouldAddOtp}}
-        otp: otpService,
         {{- end}}
     }
 }

@@ -1,0 +1,9 @@
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    {{.Identifier}} TEXT NOT NULL UNIQUE,
+{{- if .Password}}
+    password_hash TEXT NOT NULL,
+{{- end}}
+    verified_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

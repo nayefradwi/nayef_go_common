@@ -85,13 +85,11 @@ const (
 	CONNECT          = "connectrpc.com/connect"
 	GRPCHEALTH       = "connectrpc.com/grpchealth"
 	PGUTIL           = "github.com/nayefradwi/nayef_go_common/pgutil"
-	AUTH             = "github.com/nayefradwi/nayef_go_common/auth"
 	REDISUTIL        = "github.com/nayefradwi/nayef_go_common/redisutil"
 	HTTPUTIL         = "github.com/nayefradwi/nayef_go_common/httputil"
 	CONNECTUTIL      = "github.com/nayefradwi/nayef_go_common/connectutil"
 	VALIDATION       = "github.com/nayefradwi/nayef_go_common/validation"
 	PAGINATION       = "github.com/nayefradwi/nayef_go_common/pagination"
-	OTP              = "github.com/nayefradwi/nayef_go_common/otp"
 	LOCKING          = "github.com/nayefradwi/nayef_go_common/locking"
 	COMMON_ERRORS    = "github.com/nayefradwi/nayef_go_common/errors"
 )

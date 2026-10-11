@@ -1,0 +1,160 @@
+package auth
+
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/nayefradwi/nayef_go_common/httputil"
+)
+
+type AuthHandler struct {
+	svc AuthService
+}
+
+func NewAuthHandler(svc AuthService) AuthHandler {
+	return AuthHandler{
+		svc: svc,
+	}
+}
+
+// authenticate puts the caller's auth.Identity on the context; rateLimit caps
+// {{if .Password}}reset{{else}}code{{end}} requests per client IP, since each one sends a message
+func (h AuthHandler) Routes(authenticate, rateLimit func(http.Handler) http.Handler) chi.Router {
+	r := chi.NewRouter()
+	r.Post("/refresh", h.refresh)
+	r.Post("/logout", h.logout)
+{{- if .Password}}
+	r.Post("/signup", h.signup)
+	r.Post("/login", h.login)
+	r.With(rateLimit).Post("/password/reset", h.requestReset)
+	r.Post("/password/reset/confirm", h.confirmReset)
+{{- end}}
+{{- if .Otp}}
+	r.With(rateLimit).Post("/otp/request", h.requestCode)
+	r.Post("/otp/verify", h.verifyCode)
+{{- end}}
+{{- if .Mfa}}
+	r.Post("/mfa/challenge", h.challenge)
+	r.Post("/mfa/recover", h.recover)
+{{- end}}
+	r.Group(func(r chi.Router) {
+		r.Use(authenticate)
+		r.Get("/me", h.me)
+		r.Post("/logout-all", h.logoutAll)
+{{- if .Mfa}}
+		r.Post("/mfa/enroll", h.enroll)
+		r.Post("/mfa/confirm", h.confirm)
+		r.Post("/mfa/disable", h.disable)
+{{- end}}
+	})
+
+	return r
+}
+
+func (h AuthHandler) refresh(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req RefreshRequest) {
+		tokens, err := h.svc.refresh(r.Context(), req)
+		jw.WriteJsonResponse(tokens, err)
+	})
+}
+
+func (h AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req RefreshRequest) {
+		err := h.svc.logout(r.Context(), req)
+		jw.WriteSuccessMessage("logged out", err)
+	})
+}
+
+func (h AuthHandler) me(w http.ResponseWriter, r *http.Request) {
+	jw := httputil.NewJsonResponseWriter(w)
+	user, err := h.svc.me(r.Context())
+	jw.WriteJsonResponse(user, err)
+}
+
+func (h AuthHandler) logoutAll(w http.ResponseWriter, r *http.Request) {
+	jw := httputil.NewJsonResponseWriter(w)
+	err := h.svc.logoutAll(r.Context())
+	jw.WriteSuccessMessage("logged out everywhere", err)
+}
+{{- if .Password}}
+
+func (h AuthHandler) signup(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req CredentialsRequest) {
+		tokens, err := h.svc.signup(r.Context(), req)
+		jw.WithSuccessStatus(http.StatusCreated).WriteJsonResponse(tokens, err)
+	})
+}
+
+func (h AuthHandler) login(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req CredentialsRequest) {
+		res, err := h.svc.login(r.Context(), req)
+		jw.WriteJsonResponse(res, err)
+	})
+}
+
+func (h AuthHandler) requestReset(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req ResetRequest) {
+		err := h.svc.requestReset(r.Context(), req)
+		jw.WithSuccessStatus(http.StatusAccepted).WriteSuccessMessage("if that {{.Identifier}} has an account, a reset token is on its way", err)
+	})
+}
+
+func (h AuthHandler) confirmReset(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req ConfirmResetRequest) {
+		err := h.svc.confirmReset(r.Context(), req)
+		jw.WriteSuccessMessage("password updated, log in again", err)
+	})
+}
+{{- end}}
+{{- if .Otp}}
+
+func (h AuthHandler) requestCode(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req CodeRequest) {
+		err := h.svc.requestCode(r.Context(), req)
+		jw.WithSuccessStatus(http.StatusAccepted).WriteSuccessMessage("code sent", err)
+	})
+}
+
+func (h AuthHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req VerifyCodeRequest) {
+		res, err := h.svc.verifyCode(r.Context(), req)
+		jw.WriteJsonResponse(res, err)
+	})
+}
+{{- end}}
+{{- if .Mfa}}
+
+func (h AuthHandler) challenge(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req ChallengeRequest) {
+		tokens, err := h.svc.challenge(r.Context(), req)
+		jw.WriteJsonResponse(tokens, err)
+	})
+}
+
+func (h AuthHandler) recover(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req RecoverRequest) {
+		tokens, err := h.svc.recover(r.Context(), req)
+		jw.WriteJsonResponse(tokens, err)
+	})
+}
+
+func (h AuthHandler) enroll(w http.ResponseWriter, r *http.Request) {
+	jw := httputil.NewJsonResponseWriter(w)
+	res, err := h.svc.enroll(r.Context())
+	jw.WriteJsonResponse(res, err)
+}
+
+func (h AuthHandler) confirm(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req TotpCodeRequest) {
+		res, err := h.svc.confirm(r.Context(), req)
+		jw.WriteJsonResponse(res, err)
+	})
+}
+
+func (h AuthHandler) disable(w http.ResponseWriter, r *http.Request) {
+	httputil.ParseJsonBody(w, r.Body, func(jw httputil.JsonResponseWriter, req TotpCodeRequest) {
+		err := h.svc.disable(r.Context(), req)
+		jw.WriteSuccessMessage("totp disabled", err)
+	})
+}
+{{- end}}

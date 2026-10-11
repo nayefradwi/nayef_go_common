@@ -1,0 +1,19 @@
+{{- if .Password -}}
+-- name: CreateUser :one
+INSERT INTO users ({{.Identifier}}, password_hash) VALUES ($1, $2) RETURNING *;
+
+-- name: SetUserPassword :exec
+UPDATE users SET password_hash = $2 WHERE id = $1;
+{{- else -}}
+-- name: FindOrCreateUser :one
+-- passwordless logins create the account on first use
+INSERT INTO users ({{.Identifier}}) VALUES ($1)
+ON CONFLICT ({{.Identifier}}) DO UPDATE SET {{.Identifier}} = EXCLUDED.{{.Identifier}}
+RETURNING *;
+{{- end}}
+
+-- name: GetUserBy{{.IdentifierField}} :one
+SELECT * FROM users WHERE {{.Identifier}} = $1;
+
+-- name: GetUserByID :one
+SELECT * FROM users WHERE id = $1;

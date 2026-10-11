@@ -1,0 +1,177 @@
+syntax = "proto3";
+
+package auth.v1;
+
+// Public: no access token needed.
+service AuthService {
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+{{- if .Password}}
+  rpc Signup(SignupRequest) returns (SignupResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc ConfirmReset(ConfirmResetRequest) returns (ConfirmResetResponse);
+{{- end}}
+{{- if .Otp}}
+  rpc VerifyCode(VerifyCodeRequest) returns (VerifyCodeResponse);
+{{- end}}
+{{- if .Mfa}}
+  rpc ChallengeMfa(ChallengeMfaRequest) returns (ChallengeMfaResponse);
+  rpc RecoverMfa(RecoverMfaRequest) returns (RecoverMfaResponse);
+{{- end}}
+}
+
+// Public and rate limited per client IP: every call sends an email or SMS.
+service CodeService {
+{{- if .Password}}
+  rpc RequestReset(RequestResetRequest) returns (RequestResetResponse);
+{{- end}}
+{{- if .Otp}}
+  rpc RequestCode(RequestCodeRequest) returns (RequestCodeResponse);
+{{- end}}
+}
+
+// Needs an access token.
+service AccountService {
+  rpc Me(MeRequest) returns (MeResponse);
+  rpc LogoutAll(LogoutAllRequest) returns (LogoutAllResponse);
+{{- if .Mfa}}
+  rpc EnrollMfa(EnrollMfaRequest) returns (EnrollMfaResponse);
+  rpc ConfirmMfa(ConfirmMfaRequest) returns (ConfirmMfaResponse);
+  rpc DisableMfa(DisableMfaRequest) returns (DisableMfaResponse);
+{{- end}}
+}
+
+message Tokens {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message RefreshResponse {
+  Tokens tokens = 1;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {}
+{{- if .Password}}
+
+message SignupRequest {
+  string {{.Identifier}} = 1;
+  string password = 2;
+}
+
+message SignupResponse {
+  Tokens tokens = 1;
+}
+
+message LoginRequest {
+  string {{.Identifier}} = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  Tokens tokens = 1;
+{{- if .Mfa}}
+  // set instead of tokens when the user has TOTP on; send it to ChallengeMfa
+  string mfa_token = 2;
+{{- end}}
+}
+
+message RequestResetRequest {
+  string {{.Identifier}} = 1;
+}
+
+message RequestResetResponse {}
+
+message ConfirmResetRequest {
+  string {{.Identifier}} = 1;
+  string token = 2;
+  string password = 3;
+}
+
+message ConfirmResetResponse {}
+{{- end}}
+{{- if .Otp}}
+
+message RequestCodeRequest {
+  string {{.Identifier}} = 1;
+}
+
+message RequestCodeResponse {}
+
+message VerifyCodeRequest {
+  string {{.Identifier}} = 1;
+  string code = 2;
+}
+
+message VerifyCodeResponse {
+  Tokens tokens = 1;
+{{- if .Mfa}}
+  // set instead of tokens when the user has TOTP on; send it to ChallengeMfa
+  string mfa_token = 2;
+{{- end}}
+}
+{{- end}}
+{{- if .Mfa}}
+
+message ChallengeMfaRequest {
+  string {{.Identifier}} = 1;
+  string mfa_token = 2;
+  string code = 3;
+}
+
+message ChallengeMfaResponse {
+  Tokens tokens = 1;
+}
+
+message RecoverMfaRequest {
+  string {{.Identifier}} = 1;
+  string mfa_token = 2;
+  string recovery_code = 3;
+}
+
+message RecoverMfaResponse {
+  Tokens tokens = 1;
+}
+{{- end}}
+
+message MeRequest {}
+
+message MeResponse {
+  string id = 1;
+  string {{.Identifier}} = 2;
+}
+
+message LogoutAllRequest {}
+
+message LogoutAllResponse {}
+{{- if .Mfa}}
+
+message EnrollMfaRequest {}
+
+message EnrollMfaResponse {
+  string secret = 1;
+  string uri = 2;
+}
+
+message ConfirmMfaRequest {
+  string code = 1;
+}
+
+// the recovery codes are in this response only
+message ConfirmMfaResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableMfaRequest {
+  string code = 1;
+}
+
+message DisableMfaResponse {}
+{{- end}}
