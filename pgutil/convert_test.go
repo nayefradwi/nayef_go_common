@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -78,5 +79,18 @@ func TestInt16Slices(t *testing.T) {
 	}
 	if got := IntsFromInt16s(nil); len(got) != 0 {
 		t.Fatalf("IntsFromInt16s(nil) = %v, want empty", got)
+	}
+}
+
+func TestUUID(t *testing.T) {
+	id := uuid.New()
+	if got := UUIDFromPg(UUID(id)); got != id {
+		t.Fatalf("round trip = %v, want %v", got, id)
+	}
+	if UUID(uuid.Nil).Valid {
+		t.Fatal("nil uuid should produce an invalid UUID")
+	}
+	if got := UUIDFromPg(pgtype.UUID{Bytes: id}); got != uuid.Nil {
+		t.Fatalf("invalid UUID = %v, want nil", got)
 	}
 }

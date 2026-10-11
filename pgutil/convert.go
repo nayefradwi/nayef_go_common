@@ -3,6 +3,7 @@ package pgutil
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -40,6 +41,20 @@ func TimeFromDate(d pgtype.Date) *time.Time {
 		return nil
 	}
 	return &d.Time
+}
+
+func UUID(id uuid.UUID) pgtype.UUID {
+	if id == uuid.Nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: id, Valid: true}
+}
+
+func UUIDFromPg(id pgtype.UUID) uuid.UUID {
+	if !id.Valid {
+		return uuid.Nil
+	}
+	return id.Bytes
 }
 
 func Int16s(v []int) []int16 {

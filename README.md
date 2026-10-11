@@ -28,6 +28,12 @@ structuring, and code was implemented by me.
 go install github.com/nayefradwi/nayef_go_common/ngo@latest
 ```
 
+### Commands
+
+- `ngo new`: scaffold a service (REST or gRPC, Postgres/Redis, deployments, CI).
+- `ngo add`: add a feature folder (service + handler, proto for gRPC) and print the router wiring.
+- `ngo auth`: add an auth module to a service made by `ngo new`. Asks for the main identifier (email/phone), login (password/otp), MFA (TOTP) endpoints, access token (jwt/opaque), and auth stores (postgres/redis, when the project has Redis). Generates `internal/auth` with the endpoints written, a sqlc users query file, one goose migration (users + auth tables), and env secrets. Prints the `di.go`, config and router wiring to paste; every limit and TTL lives in that wiring. Needs `goose` (and `buf` for gRPC). Runs once per project.
+
 ## Modules
 
 Each module targets a specific area of boilerplate that I am trying to avoid re-writing. Overview of the modules:
@@ -209,6 +215,7 @@ r.With(authhttp.VerifyClaim("role", "admin")).Get("/admin", admin)
 ```
 
 Runnable flows (password, OTP, reset, activation, RBAC, API keys, TOTP) are in [auth/examples](auth/examples).
+`ngo auth` generates these flows into a project (see [ngo](#cli-tool-ngo)).
 
 ### locking
 
