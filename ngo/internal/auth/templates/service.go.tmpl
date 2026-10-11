@@ -1,0 +1,411 @@
+{{- define "signedIn" -}}
+{{- if .Mfa}}LoginResponse{{else}}auth.TokenDTO{{end -}}
+{{- end -}}
+
+package auth
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nayefradwi/nayef_go_common/auth"
+	"github.com/nayefradwi/nayef_go_common/errors"
+	"github.com/nayefradwi/nayef_go_common/pgutil"
+	"{{.GoModule}}/internal/infra/sqlc/gen"
+)
+
+type AuthService struct {
+	q        *db.Queries
+	sessions auth.SessionManager
+{{- if .Password}}
+	// caps password guesses per {{.Identifier}}
+	logins  auth.Limiter
+	resets  auth.OneTimeTokenManager
+	policy  auth.PasswordPolicy
+	hashing auth.HashingConfig
+{{- end}}
+{{- if .Otp}}
+	codes auth.OtpManager
+{{- end}}
+{{- if .Mfa}}
+	totp    auth.TotpManager
+	pending auth.OneTimeTokenManager
+{{- end}}
+}
+
+func NewAuthService(
+	pool *pgxpool.Pool,
+	sessions auth.SessionManager,
+{{- if .Password}}
+	logins auth.Limiter,
+	resets auth.OneTimeTokenManager,
+	policy auth.PasswordPolicy,
+	hashing auth.HashingConfig,
+{{- end}}
+{{- if .Otp}}
+	codes auth.OtpManager,
+{{- end}}
+{{- if .Mfa}}
+	totp auth.TotpManager,
+	pending auth.OneTimeTokenManager,
+{{- end}}
+) AuthService {
+	return AuthService{
+		q:        db.New(pool),
+		sessions: sessions,
+{{- if .Password}}
+		logins:   logins,
+		resets:   resets,
+		policy:   policy,
+		hashing:  hashing,
+{{- end}}
+{{- if .Otp}}
+		codes: codes,
+{{- end}}
+{{- if .Mfa}}
+		totp:    totp,
+		pending: pending,
+{{- end}}
+	}
+}
+
+// TODO: put the user's role or scopes in claims; refresh copies them, so a change applies at the next login
+func (svc AuthService) session(ctx context.Context, user db.User) (auth.TokenDTO, error) {
+	return svc.sessions.Issue(ctx, pgutil.UUIDFromPg(user.ID), nil)
+}
+{{- if .Mfa}}
+
+// with TOTP on, a correct login earns a short-lived pending token instead of a session
+func (svc AuthService) signIn(ctx context.Context, user db.User) (LoginResponse, error) {
+	enabled, err := svc.totp.Enabled(ctx, pgutil.UUIDFromPg(user.ID))
+	if err != nil {
+		return LoginResponse{}, err
+	}
+
+	if !enabled {
+		tokens, err := svc.session(ctx, user)
+		return LoginResponse{Tokens: tokens}, err
+	}
+
+	token, err := svc.pending.Issue(ctx, "mfa:"+user.{{.IdentifierField}})
+	if errors.Is(err, auth.ErrCodeResendBlocked) {
+		return LoginResponse{}, ErrTooManyRequests
+	}
+
+	return LoginResponse{MfaToken: token}, err
+}
+{{- end}}
+
+func (svc AuthService) refresh(ctx context.Context, req RefreshRequest) (auth.TokenDTO, error) {
+	if err := req.Validate(); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	// a refresh token used twice ends the whole login (reuse detection)
+	return svc.sessions.Refresh(ctx, req.RefreshToken)
+}
+
+func (svc AuthService) logout(ctx context.Context, req RefreshRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	return svc.sessions.Revoke(ctx, req.RefreshToken)
+}
+
+func (svc AuthService) me(ctx context.Context) (UserResponse, error) {
+	id, ok := auth.GetIdentity(ctx)
+	if !ok {
+		return UserResponse{}, ErrNotLoggedIn
+	}
+
+	user, err := svc.q.GetUserByID(ctx, pgutil.UUID(id.OwnerId))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return UserResponse{}, ErrUserNotFound
+	}
+
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	return UserResponse{Id: id.OwnerId, {{.IdentifierField}}: user.{{.IdentifierField}}}, nil
+}
+
+func (svc AuthService) logoutAll(ctx context.Context) error {
+	id, ok := auth.GetIdentity(ctx)
+	if !ok {
+		return ErrNotLoggedIn
+	}
+
+	return svc.sessions.RevokeOwner(ctx, id.OwnerId)
+}
+{{- if .Password}}
+
+func (svc AuthService) signup(ctx context.Context, req CredentialsRequest) (auth.TokenDTO, error) {
+	if err := req.Validate(); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.policy.Validate(req.Password); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	hash, err := svc.hashing.Hash(req.Password)
+	if err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	user, err := svc.q.CreateUser(ctx, db.CreateUserParams{ {{- .IdentifierField}}: req.{{.IdentifierField}}, PasswordHash: hash})
+	if pgutil.IsUniqueViolation(err) {
+		return auth.TokenDTO{}, ErrTaken
+	}
+
+	if err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	return svc.session(ctx, user)
+}
+
+func (svc AuthService) login(ctx context.Context, req CredentialsRequest) ({{template "signedIn" .}}, error) {
+	if err := req.Validate(); err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	// keyed on the {{.Identifier}}, not the IP: caps guesses against one account from anywhere
+	allowed, _, err := svc.logins.Allow(ctx, "login:"+req.{{.IdentifierField}})
+	if err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	if !allowed {
+		return {{template "signedIn" .}}{}, ErrTooManyRequests
+	}
+
+	user, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// hashing costs the same bcrypt time as a compare, so a miss can't be told apart from a hit
+		svc.hashing.Hash(req.Password)
+		return {{template "signedIn" .}}{}, ErrInvalidLogin
+	}
+
+	if err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	if !auth.CompareHash(req.Password, user.PasswordHash) {
+		return {{template "signedIn" .}}{}, ErrInvalidLogin
+	}
+
+	return svc.{{if .Mfa}}signIn{{else}}session{{end}}(ctx, user)
+}
+
+// returns nil whether or not the {{.Identifier}} has an account, so it can't be used to find accounts
+func (svc AuthService) requestReset(ctx context.Context, req ResetRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	_, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	token, err := svc.resets.Issue(ctx, "reset:"+req.{{.IdentifierField}})
+	if errors.Is(err, auth.ErrCodeResendBlocked) {
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: send the token to req.{{.IdentifierField}}, e.g. as a link to your reset page
+	_ = token
+	return nil
+}
+
+func (svc AuthService) confirmReset(ctx context.Context, req ConfirmResetRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	// checked before Verify so a rejected password doesn't burn the token
+	if err := svc.policy.Validate(req.Password); err != nil {
+		return err
+	}
+
+	if err := svc.resets.Verify(ctx, "reset:"+req.{{.IdentifierField}}, req.Token); err != nil {
+		return err
+	}
+
+	user, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
+	if err != nil {
+		return err
+	}
+
+	hash, err := svc.hashing.Hash(req.Password)
+	if err != nil {
+		return err
+	}
+
+	if err := svc.q.SetUserPassword(ctx, db.SetUserPasswordParams{ID: user.ID, PasswordHash: hash}); err != nil {
+		return err
+	}
+
+	// whoever knew the old password may still hold a session
+	return svc.sessions.RevokeOwner(ctx, pgutil.UUIDFromPg(user.ID))
+}
+{{- end}}
+{{- if .Otp}}
+
+func (svc AuthService) requestCode(ctx context.Context, req CodeRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	code, err := svc.codes.Issue(ctx, "login:"+req.{{.IdentifierField}})
+	if errors.Is(err, auth.ErrCodeResendBlocked) {
+		return ErrTooManyRequests
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: send the code to req.{{.IdentifierField}}
+	_ = code
+	return nil
+}
+
+func (svc AuthService) verifyCode(ctx context.Context, req VerifyCodeRequest) ({{template "signedIn" .}}, error) {
+	if err := req.Validate(); err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	if err := svc.codes.Verify(ctx, "login:"+req.{{.IdentifierField}}, req.Code); err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	// first verified code creates the account
+	user, err := svc.q.FindOrCreateUser(ctx, req.{{.IdentifierField}})
+	if err != nil {
+		return {{template "signedIn" .}}{}, err
+	}
+
+	return svc.{{if .Mfa}}signIn{{else}}session{{end}}(ctx, user)
+}
+{{- end}}
+{{- if .Mfa}}
+
+// Check (counts an attempt) → TOTP → Consume: a wrong code keeps the pending token
+// until its attempts run out, a right one spends it
+func (svc AuthService) challenge(ctx context.Context, req ChallengeRequest) (auth.TokenDTO, error) {
+	if err := req.Validate(); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.pending.Check(ctx, "mfa:"+req.{{.IdentifierField}}, req.MfaToken); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	user, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
+	if err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.totp.Verify(ctx, pgutil.UUIDFromPg(user.ID), req.Code); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.pending.Consume(ctx, "mfa:"+req.{{.IdentifierField}}, req.MfaToken); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	return svc.session(ctx, user)
+}
+
+// same as challenge with a single-use recovery code in place of the TOTP code
+func (svc AuthService) recover(ctx context.Context, req RecoverRequest) (auth.TokenDTO, error) {
+	if err := req.Validate(); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.pending.Check(ctx, "mfa:"+req.{{.IdentifierField}}, req.MfaToken); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	user, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
+	if err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.totp.UseRecoveryCode(ctx, pgutil.UUIDFromPg(user.ID), req.RecoveryCode); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	if err := svc.pending.Consume(ctx, "mfa:"+req.{{.IdentifierField}}, req.MfaToken); err != nil {
+		return auth.TokenDTO{}, err
+	}
+
+	return svc.session(ctx, user)
+}
+
+// returns the secret for manual entry and the otpauth:// uri for a QR code
+func (svc AuthService) enroll(ctx context.Context) (EnrollResponse, error) {
+	id, ok := auth.GetIdentity(ctx)
+	if !ok {
+		return EnrollResponse{}, ErrNotLoggedIn
+	}
+
+	user, err := svc.q.GetUserByID(ctx, pgutil.UUID(id.OwnerId))
+	if err != nil {
+		return EnrollResponse{}, err
+	}
+
+	secret, uri, err := svc.totp.Enroll(ctx, id.OwnerId, user.{{.IdentifierField}})
+	if errors.Is(err, auth.ErrTotpEnabled) {
+		return EnrollResponse{}, ErrTotpEnabled
+	}
+
+	return EnrollResponse{Secret: secret, Uri: uri}, err
+}
+
+// the recovery codes are in this response only
+func (svc AuthService) confirm(ctx context.Context, req TotpCodeRequest) (RecoveryCodesResponse, error) {
+	if err := req.Validate(); err != nil {
+		return RecoveryCodesResponse{}, err
+	}
+
+	id, ok := auth.GetIdentity(ctx)
+	if !ok {
+		return RecoveryCodesResponse{}, ErrNotLoggedIn
+	}
+
+	codes, err := svc.totp.Confirm(ctx, id.OwnerId, req.Code)
+	return RecoveryCodesResponse{RecoveryCodes: codes}, err
+}
+
+// asks for a current code so a stolen session alone can't turn TOTP off
+func (svc AuthService) disable(ctx context.Context, req TotpCodeRequest) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	id, ok := auth.GetIdentity(ctx)
+	if !ok {
+		return ErrNotLoggedIn
+	}
+
+	if err := svc.totp.Verify(ctx, id.OwnerId, req.Code); err != nil {
+		return err
+	}
+
+	return svc.totp.Disable(ctx, id.OwnerId)
+}
+{{- end}}

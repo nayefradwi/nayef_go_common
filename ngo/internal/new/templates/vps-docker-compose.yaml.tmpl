@@ -15,9 +15,6 @@ services:
 {{- if .ShouldAddRedis}}
       - REDIS_URL=${REDIS_URL}
 {{- end}}
-{{- if .ShouldAddSecret}}
-      - JWT_SECRET=${JWT_SECRET}
-{{- end}}
 {{- if or .ShouldAddDb .ShouldAddRedis}}
     depends_on:
 {{- if .ShouldAddDb}}

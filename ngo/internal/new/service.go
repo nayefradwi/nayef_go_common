@@ -69,10 +69,6 @@ func getPackagesFromRequest(req CreateNewProjectRequest) []string {
 		packages = append(packages, CONNECT, CONNECTUTIL, GRPCHEALTH)
 	}
 
-	if req.HasAuth() {
-		packages = append(packages, AUTH)
-	}
-
 	if req.WithValidation {
 		packages = append(packages, VALIDATION)
 	}
@@ -145,7 +141,6 @@ func writeProjectFile(req CreateNewProjectRequest) error {
 	return common.WriteProject(req.RootDirPath, common.Project{
 		ServiceType:          req.ServiceType,
 		InfraTypes:           req.InfraTypes,
-		AuthType:             req.AuthType,
 		Features:             req.Features,
 		Provider:             string(req.ProviderType),
 		StagingDeployment:    string(req.StagingDeploymentType),

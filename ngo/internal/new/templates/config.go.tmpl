@@ -22,9 +22,6 @@ type Config struct {
     {{- if .ShouldAddRedis}}
     RedisUrl string
     {{- end}}
-    {{- if .ShouldAddSecret}}
-    JwtSecret string
-    {{- end}}
 }
 
 func NewConfig() Config {
@@ -42,9 +39,6 @@ func NewConfig() Config {
         {{- end}}
         {{- if .ShouldAddRedis}}
         RedisUrl: os.Getenv("REDIS_URL"),
-        {{- end}}
-        {{- if .ShouldAddSecret}}
-        JwtSecret: os.Getenv("JWT_SECRET"),
         {{- end}}
     }
 }

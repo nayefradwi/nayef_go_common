@@ -1,0 +1,29 @@
+package auth
+
+import "os"
+
+type AuthConfig struct {
+{{- if .Jwt}}
+	JwtSecret string
+{{- end}}
+{{- if .Otp}}
+	OtpSecret string
+{{- end}}
+{{- if .Mfa}}
+	TotpKey string
+{{- end}}
+}
+
+func NewAuthConfig() AuthConfig {
+	return AuthConfig{
+{{- if .Jwt}}
+		JwtSecret: os.Getenv("JWT_SECRET"),
+{{- end}}
+{{- if .Otp}}
+		OtpSecret: os.Getenv("OTP_SECRET"),
+{{- end}}
+{{- if .Mfa}}
+		TotpKey: os.Getenv("TOTP_KEY"),
+{{- end}}
+	}
+}

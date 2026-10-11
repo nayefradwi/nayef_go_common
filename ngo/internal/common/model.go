@@ -24,20 +24,39 @@ type Feature string
 
 const (
 	FeatureLocking    Feature = "Locking"
-	FeatureOtp        Feature = "OTP"
 	FeaturePagination Feature = "Pagination"
 )
 
-var AllFeatures = []Feature{FeatureLocking, FeatureOtp, FeaturePagination}
+var AllFeatures = []Feature{FeatureLocking, FeaturePagination}
 
-type AuthType string
+type Identifier string
 
 const (
-	AuthTypeJWT     AuthType = "JWT"
-	AuthTypeRefresh AuthType = "JWT + Revokable Refresh"
-	AuthTypeOpaque  AuthType = "Opaque Tokens"
-	AuthTypeNone    AuthType = "Something Else"
+	IdentifierEmail Identifier = "email"
+	IdentifierPhone Identifier = "phone"
 )
+
+type LoginMethod string
+
+const (
+	LoginPassword LoginMethod = "password"
+	LoginOtp      LoginMethod = "otp"
+)
+
+type AccessToken string
+
+const (
+	AccessTokenJwt    AccessToken = "jwt"
+	AccessTokenOpaque AccessToken = "opaque"
+)
+
+type Auth struct {
+	Identifier  Identifier  `yaml:"identifier"`
+	Login       LoginMethod `yaml:"login"`
+	Mfa         bool        `yaml:"mfa"`
+	AccessToken AccessToken `yaml:"access_token"`
+	Store       InfraType   `yaml:"store"`
+}
 
 type TakesFeatures struct {
 	Features []Feature
@@ -45,10 +64,6 @@ type TakesFeatures struct {
 
 type TakesInfraTypes struct {
 	InfraTypes []InfraType
-}
-
-type TakesAuthType struct {
-	AuthType AuthType
 }
 
 func (r TakesInfraTypes) HasPostgres() bool {
@@ -61,8 +76,4 @@ func (r TakesInfraTypes) HasRedis() bool {
 
 func (r TakesFeatures) HasFeature(f Feature) bool {
 	return slices.Contains(r.Features, f)
-}
-
-func (r TakesAuthType) HasAuth() bool {
-	return r.AuthType != AuthTypeNone
 }

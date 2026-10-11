@@ -7,11 +7,10 @@ import (
 )
 
 type VpsDockerComposeView struct {
-	Name            string
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
-	Environment     string
+	Name           string
+	ShouldAddDb    bool
+	ShouldAddRedis bool
+	Environment    string
 }
 
 type TerraformView struct {
@@ -28,11 +27,10 @@ func newTerraformView(req CreateNewProjectRequest, environment string) Terraform
 
 func newVpsDockerComposeView(req CreateNewProjectRequest, environment string) VpsDockerComposeView {
 	return VpsDockerComposeView{
-		Name:            req.Name,
-		ShouldAddDb:     req.HasPostgres(),
-		ShouldAddRedis:  req.HasRedis(),
-		ShouldAddSecret: req.HasAuth(),
-		Environment:     environment,
+		Name:           req.Name,
+		ShouldAddDb:    req.HasPostgres(),
+		ShouldAddRedis: req.HasRedis(),
+		Environment:    environment,
 	}
 }
 
@@ -45,37 +43,32 @@ func newBootstrapView(req CreateNewProjectRequest) BootstrapView {
 }
 
 type EnvView struct {
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
+	ShouldAddDb    bool
+	ShouldAddRedis bool
 }
 
 func newEnvView(req CreateNewProjectRequest) EnvView {
 	return EnvView{
-		ShouldAddDb:     req.HasPostgres(),
-		ShouldAddRedis:  req.HasRedis(),
-		ShouldAddSecret: req.HasAuth(),
+		ShouldAddDb:    req.HasPostgres(),
+		ShouldAddRedis: req.HasRedis(),
 	}
 }
 
 type ConfigView struct {
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
+	ShouldAddDb    bool
+	ShouldAddRedis bool
 }
 
 func newConfigView(req CreateNewProjectRequest) ConfigView {
 	return ConfigView{
-		ShouldAddDb:     req.HasPostgres(),
-		ShouldAddRedis:  req.HasRedis(),
-		ShouldAddSecret: req.HasAuth(),
+		ShouldAddDb:    req.HasPostgres(),
+		ShouldAddRedis: req.HasRedis(),
 	}
 }
 
 type DiView struct {
 	ShouldAddDb      bool
 	ShouldAddRedis   bool
-	ShouldAddSecret  bool
 	ShouldAddLocking bool
 	Imports          []string
 }
@@ -98,24 +91,21 @@ func newDiView(req CreateNewProjectRequest) DiView {
 		Imports:          imports,
 		ShouldAddDb:      req.HasPostgres(),
 		ShouldAddRedis:   req.HasRedis(),
-		ShouldAddSecret:  req.HasAuth(),
 		ShouldAddLocking: req.HasFeature(common.FeatureLocking),
 	}
 }
 
 type LocalDockerComposeView struct {
-	Name            string
-	ShouldAddDb     bool
-	ShouldAddRedis  bool
-	ShouldAddSecret bool
+	Name           string
+	ShouldAddDb    bool
+	ShouldAddRedis bool
 }
 
 func newLocalDockerComposeView(req CreateNewProjectRequest) LocalDockerComposeView {
 	return LocalDockerComposeView{
-		Name:            req.Name,
-		ShouldAddDb:     req.HasPostgres(),
-		ShouldAddRedis:  req.HasRedis(),
-		ShouldAddSecret: req.HasAuth(),
+		Name:           req.Name,
+		ShouldAddDb:    req.HasPostgres(),
+		ShouldAddRedis: req.HasRedis(),
 	}
 }
 
@@ -133,14 +123,6 @@ func newHealthView(req CreateNewProjectRequest) HealthView {
 		ServiceName: serviceName(req.Name),
 		GoModule:    req.GoModule,
 	}
-}
-
-type LocalEnvView struct {
-	ShouldAddSecret bool
-}
-
-func newLocalEnvView(req CreateNewProjectRequest) LocalEnvView {
-	return LocalEnvView{ShouldAddSecret: req.HasAuth()}
 }
 
 type RouterView struct {

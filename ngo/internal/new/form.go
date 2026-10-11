@@ -36,7 +36,6 @@ func RunForm() (*CreateNewProjectRequest, error) {
 				).Value(&req.ServiceType),
 		),
 		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes, common.AllInfraTypes)),
-		huh.NewGroup(common.AuthInput(&req.AuthType)),
 		huh.NewGroup(common.FeatureInput(&req.Features, common.AllFeatures)),
 		huh.NewGroup(
 			huh.

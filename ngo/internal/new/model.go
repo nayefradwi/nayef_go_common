@@ -21,7 +21,6 @@ const (
 type CreateNewProjectRequest struct {
 	common.TakesFeatures
 	common.TakesInfraTypes
-	common.TakesAuthType
 	Name                     string
 	ServiceType              common.ServiceType
 	WithValidation           bool
@@ -46,6 +45,5 @@ var providerToDeploymentType = map[ProviderType][]DeploymentType{
 
 var featureToPackage = map[common.Feature]string{
 	common.FeatureLocking:    LOCKING,
-	common.FeatureOtp:        OTP,
 	common.FeaturePagination: PAGINATION,
 }

@@ -1,10 +1,7 @@
 package add
 
 import (
-	"bufio"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
@@ -43,7 +40,7 @@ func RunForm() (*CreateFeatureRequest, error) {
 func setGoModule(req *CreateFeatureRequest) (*CreateFeatureRequest, error) {
 	wd := req.RootDirPath
 
-	goModule, err := readGoModule(filepath.Join(wd, "go.mod"))
+	goModule, err := common.ReadGoModule(wd)
 	if err != nil {
 		printer.Error(err.Error())
 		return nil, err
@@ -51,25 +48,4 @@ func setGoModule(req *CreateFeatureRequest) (*CreateFeatureRequest, error) {
 	req.GoModule = goModule
 
 	return req, nil
-}
-
-func readGoModule(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if module, found := strings.CutPrefix(line, "module "); found {
-			return strings.TrimSpace(module), nil
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-
-	return "", os.ErrNotExist
 }

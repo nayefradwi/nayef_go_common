@@ -1,0 +1,124 @@
+{{- define "identifier" -}}
+{{- if eq .Identifier "email" -}}
+validation.AddRule(validator, ruleF.IsEmail(r.Email, "email"))
+{{- else -}}
+// E.164, so one number can't sign up twice with different spellings
+validation.AddRule(validator, ruleF.MatchesPattern(r.Phone, "phone", `^\+[1-9][0-9]{7,14}$`))
+{{- end -}}
+{{- end -}}
+
+package auth
+
+import "github.com/nayefradwi/nayef_go_common/validation"
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (r RefreshRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	validation.AddRule(validator, ruleF.IsRequired(r.RefreshToken, "refresh_token"))
+	return validator.Validate()
+}
+{{- if .Password}}
+
+type CredentialsRequest struct {
+	{{.IdentifierField}}    string `json:"{{.Identifier}}"`
+	Password string `json:"password"`
+}
+
+func (r CredentialsRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	validation.AddRule(validator, ruleF.IsRequired(r.Password, "password"))
+	return validator.Validate()
+}
+
+type ResetRequest struct {
+	{{.IdentifierField}} string `json:"{{.Identifier}}"`
+}
+
+func (r ResetRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	return validator.Validate()
+}
+
+type ConfirmResetRequest struct {
+	{{.IdentifierField}}    string `json:"{{.Identifier}}"`
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+func (r ConfirmResetRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	validation.AddRule(validator, ruleF.IsRequired(r.Token, "token"))
+	validation.AddRule(validator, ruleF.IsRequired(r.Password, "password"))
+	return validator.Validate()
+}
+{{- end}}
+{{- if .Otp}}
+
+type CodeRequest struct {
+	{{.IdentifierField}} string `json:"{{.Identifier}}"`
+}
+
+func (r CodeRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	return validator.Validate()
+}
+
+type VerifyCodeRequest struct {
+	{{.IdentifierField}} string `json:"{{.Identifier}}"`
+	Code  string `json:"code"`
+}
+
+func (r VerifyCodeRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	validation.AddRule(validator, ruleF.IsRequired(r.Code, "code"))
+	return validator.Validate()
+}
+{{- end}}
+{{- if .Mfa}}
+
+type ChallengeRequest struct {
+	{{.IdentifierField}}    string `json:"{{.Identifier}}"`
+	MfaToken string `json:"mfa_token"`
+	Code     string `json:"code"`
+}
+
+func (r ChallengeRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	validation.AddRule(validator, ruleF.IsRequired(r.MfaToken, "mfa_token"))
+	validation.AddRule(validator, ruleF.IsRequired(r.Code, "code"))
+	return validator.Validate()
+}
+
+type RecoverRequest struct {
+	{{.IdentifierField}}        string `json:"{{.Identifier}}"`
+	MfaToken     string `json:"mfa_token"`
+	RecoveryCode string `json:"recovery_code"`
+}
+
+func (r RecoverRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	{{template "identifier" .}}
+	validation.AddRule(validator, ruleF.IsRequired(r.MfaToken, "mfa_token"))
+	validation.AddRule(validator, ruleF.IsRequired(r.RecoveryCode, "recovery_code"))
+	return validator.Validate()
+}
+
+type TotpCodeRequest struct {
+	Code string `json:"code"`
+}
+
+func (r TotpCodeRequest) Validate() error {
+	validator, ruleF := validation.NewValidator(), validation.NewStringValidationRuleFactory()
+	validation.AddRule(validator, ruleF.IsRequired(r.Code, "code"))
+	return validator.Validate()
+}
+{{- end}}

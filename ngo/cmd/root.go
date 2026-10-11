@@ -27,6 +27,7 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(newCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(authCmd)
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable debug output")
 	cobra.OnInitialize(func() {
 		if verbose {

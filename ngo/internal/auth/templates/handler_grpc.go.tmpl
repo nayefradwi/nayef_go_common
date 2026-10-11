@@ -1,0 +1,180 @@
+package auth
+
+import (
+	"context"
+
+	"github.com/nayefradwi/nayef_go_common/auth"
+	authv1 "{{.GoModule}}/gen/auth/v1"
+	"{{.GoModule}}/gen/auth/v1/authv1connect"
+)
+
+var (
+	_ authv1connect.AuthServiceHandler    = AuthHandler{}
+	_ authv1connect.CodeServiceHandler    = AuthHandler{}
+	_ authv1connect.AccountServiceHandler = AuthHandler{}
+)
+
+type AuthHandler struct {
+	svc AuthService
+}
+
+func NewAuthHandler(svc AuthService) AuthHandler {
+	return AuthHandler{
+		svc: svc,
+	}
+}
+
+// nil when the login is waiting on an MFA challenge
+func toTokens(t auth.TokenDTO) *authv1.Tokens {
+	if t.AccessToken == "" {
+		return nil
+	}
+
+	return &authv1.Tokens{AccessToken: t.AccessToken, RefreshToken: t.RefreshToken}
+}
+
+func (h AuthHandler) Refresh(ctx context.Context, req *authv1.RefreshRequest) (*authv1.RefreshResponse, error) {
+	tokens, err := h.svc.refresh(ctx, RefreshRequest{RefreshToken: req.RefreshToken})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.RefreshResponse{Tokens: toTokens(tokens)}, nil
+}
+
+func (h AuthHandler) Logout(ctx context.Context, req *authv1.LogoutRequest) (*authv1.LogoutResponse, error) {
+	if err := h.svc.logout(ctx, RefreshRequest{RefreshToken: req.RefreshToken}); err != nil {
+		return nil, err
+	}
+
+	return &authv1.LogoutResponse{}, nil
+}
+
+func (h AuthHandler) Me(ctx context.Context, req *authv1.MeRequest) (*authv1.MeResponse, error) {
+	user, err := h.svc.me(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.MeResponse{Id: user.Id.String(), {{.IdentifierField}}: user.{{.IdentifierField}}}, nil
+}
+
+func (h AuthHandler) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest) (*authv1.LogoutAllResponse, error) {
+	if err := h.svc.logoutAll(ctx); err != nil {
+		return nil, err
+	}
+
+	return &authv1.LogoutAllResponse{}, nil
+}
+{{- if .Password}}
+
+func (h AuthHandler) Signup(ctx context.Context, req *authv1.SignupRequest) (*authv1.SignupResponse, error) {
+	tokens, err := h.svc.signup(ctx, CredentialsRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, Password: req.Password})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.SignupResponse{Tokens: toTokens(tokens)}, nil
+}
+
+func (h AuthHandler) Login(ctx context.Context, req *authv1.LoginRequest) (*authv1.LoginResponse, error) {
+	res, err := h.svc.login(ctx, CredentialsRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, Password: req.Password})
+	if err != nil {
+		return nil, err
+	}
+{{- if .Mfa}}
+
+	return &authv1.LoginResponse{Tokens: toTokens(res.Tokens), MfaToken: res.MfaToken}, nil
+{{- else}}
+
+	return &authv1.LoginResponse{Tokens: toTokens(res)}, nil
+{{- end}}
+}
+
+func (h AuthHandler) RequestReset(ctx context.Context, req *authv1.RequestResetRequest) (*authv1.RequestResetResponse, error) {
+	if err := h.svc.requestReset(ctx, ResetRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}}); err != nil {
+		return nil, err
+	}
+
+	return &authv1.RequestResetResponse{}, nil
+}
+
+func (h AuthHandler) ConfirmReset(ctx context.Context, req *authv1.ConfirmResetRequest) (*authv1.ConfirmResetResponse, error) {
+	err := h.svc.confirmReset(ctx, ConfirmResetRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, Token: req.Token, Password: req.Password})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.ConfirmResetResponse{}, nil
+}
+{{- end}}
+{{- if .Otp}}
+
+func (h AuthHandler) RequestCode(ctx context.Context, req *authv1.RequestCodeRequest) (*authv1.RequestCodeResponse, error) {
+	if err := h.svc.requestCode(ctx, CodeRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}}); err != nil {
+		return nil, err
+	}
+
+	return &authv1.RequestCodeResponse{}, nil
+}
+
+func (h AuthHandler) VerifyCode(ctx context.Context, req *authv1.VerifyCodeRequest) (*authv1.VerifyCodeResponse, error) {
+	res, err := h.svc.verifyCode(ctx, VerifyCodeRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, Code: req.Code})
+	if err != nil {
+		return nil, err
+	}
+{{- if .Mfa}}
+
+	return &authv1.VerifyCodeResponse{Tokens: toTokens(res.Tokens), MfaToken: res.MfaToken}, nil
+{{- else}}
+
+	return &authv1.VerifyCodeResponse{Tokens: toTokens(res)}, nil
+{{- end}}
+}
+{{- end}}
+{{- if .Mfa}}
+
+func (h AuthHandler) ChallengeMfa(ctx context.Context, req *authv1.ChallengeMfaRequest) (*authv1.ChallengeMfaResponse, error) {
+	tokens, err := h.svc.challenge(ctx, ChallengeRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, MfaToken: req.MfaToken, Code: req.Code})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.ChallengeMfaResponse{Tokens: toTokens(tokens)}, nil
+}
+
+func (h AuthHandler) RecoverMfa(ctx context.Context, req *authv1.RecoverMfaRequest) (*authv1.RecoverMfaResponse, error) {
+	tokens, err := h.svc.recover(ctx, RecoverRequest{ {{- .IdentifierField}}: req.{{.IdentifierField}}, MfaToken: req.MfaToken, RecoveryCode: req.RecoveryCode})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.RecoverMfaResponse{Tokens: toTokens(tokens)}, nil
+}
+
+func (h AuthHandler) EnrollMfa(ctx context.Context, req *authv1.EnrollMfaRequest) (*authv1.EnrollMfaResponse, error) {
+	res, err := h.svc.enroll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.EnrollMfaResponse{Secret: res.Secret, Uri: res.Uri}, nil
+}
+
+func (h AuthHandler) ConfirmMfa(ctx context.Context, req *authv1.ConfirmMfaRequest) (*authv1.ConfirmMfaResponse, error) {
+	res, err := h.svc.confirm(ctx, TotpCodeRequest{Code: req.Code})
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.ConfirmMfaResponse{RecoveryCodes: res.RecoveryCodes}, nil
+}
+
+func (h AuthHandler) DisableMfa(ctx context.Context, req *authv1.DisableMfaRequest) (*authv1.DisableMfaResponse, error) {
+	if err := h.svc.disable(ctx, TotpCodeRequest{Code: req.Code}); err != nil {
+		return nil, err
+	}
+
+	return &authv1.DisableMfaResponse{}, nil
+}
+{{- end}}
