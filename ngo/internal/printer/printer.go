@@ -17,4 +17,4 @@ var (
 func Success(msg string) { fmt.Println(success.Render("✓ " + msg)) }
 func Warn(msg string)    { fmt.Println(warn.Render("⚠ " + msg)) }
 func Error(msg string)   { fmt.Fprintln(os.Stderr, errStyle.Render("✗ "+msg)) }
-func Info(msg string)    { fmt.Println(muted.Render("  " + msg)) }
+func Info(msg string)    { fmt.Println("  " + msg) }

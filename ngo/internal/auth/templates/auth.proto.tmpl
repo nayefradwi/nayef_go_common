@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package auth.v1;
 
-// Public: no access token needed.
 service AuthService {
   rpc Refresh(RefreshRequest) returns (RefreshResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
@@ -20,7 +19,6 @@ service AuthService {
 {{- end}}
 }
 
-// Public and rate limited per client IP: every call sends an email or SMS.
 service CodeService {
 {{- if .Password}}
   rpc RequestReset(RequestResetRequest) returns (RequestResetResponse);
@@ -30,7 +28,6 @@ service CodeService {
 {{- end}}
 }
 
-// Needs an access token.
 service AccountService {
   rpc Me(MeRequest) returns (MeResponse);
   rpc LogoutAll(LogoutAllRequest) returns (LogoutAllResponse);
@@ -78,7 +75,6 @@ message LoginRequest {
 message LoginResponse {
   Tokens tokens = 1;
 {{- if .Mfa}}
-  // set instead of tokens when the user has TOTP on; send it to ChallengeMfa
   string mfa_token = 2;
 {{- end}}
 }
@@ -113,7 +109,6 @@ message VerifyCodeRequest {
 message VerifyCodeResponse {
   Tokens tokens = 1;
 {{- if .Mfa}}
-  // set instead of tokens when the user has TOTP on; send it to ChallengeMfa
   string mfa_token = 2;
 {{- end}}
 }
@@ -164,7 +159,6 @@ message ConfirmMfaRequest {
   string code = 1;
 }
 
-// the recovery codes are in this response only
 message ConfirmMfaResponse {
   repeated string recovery_codes = 1;
 }

@@ -19,7 +19,6 @@ type AuthService struct {
 	q        *db.Queries
 	sessions auth.SessionManager
 {{- if .Password}}
-	// caps password guesses per {{.Identifier}}
 	logins  auth.Limiter
 	resets  auth.OneTimeTokenManager
 	policy  auth.PasswordPolicy
@@ -70,13 +69,12 @@ func NewAuthService(
 	}
 }
 
-// TODO: put the user's role or scopes in claims; refresh copies them, so a change applies at the next login
+// TODO: put the user's role or scopes in claims
 func (svc AuthService) session(ctx context.Context, user db.User) (auth.TokenDTO, error) {
 	return svc.sessions.Issue(ctx, pgutil.UUIDFromPg(user.ID), nil)
 }
 {{- if .Mfa}}
 
-// with TOTP on, a correct login earns a short-lived pending token instead of a session
 func (svc AuthService) signIn(ctx context.Context, user db.User) (LoginResponse, error) {
 	enabled, err := svc.totp.Enabled(ctx, pgutil.UUIDFromPg(user.ID))
 	if err != nil {
@@ -102,7 +100,6 @@ func (svc AuthService) refresh(ctx context.Context, req RefreshRequest) (auth.To
 		return auth.TokenDTO{}, err
 	}
 
-	// a refresh token used twice ends the whole login (reuse detection)
 	return svc.sessions.Refresh(ctx, req.RefreshToken)
 }
 
@@ -173,7 +170,6 @@ func (svc AuthService) login(ctx context.Context, req CredentialsRequest) ({{tem
 		return {{template "signedIn" .}}{}, err
 	}
 
-	// keyed on the {{.Identifier}}, not the IP: caps guesses against one account from anywhere
 	allowed, _, err := svc.logins.Allow(ctx, "login:"+req.{{.IdentifierField}})
 	if err != nil {
 		return {{template "signedIn" .}}{}, err
@@ -185,7 +181,6 @@ func (svc AuthService) login(ctx context.Context, req CredentialsRequest) ({{tem
 
 	user, err := svc.q.GetUserBy{{.IdentifierField}}(ctx, req.{{.IdentifierField}})
 	if errors.Is(err, pgx.ErrNoRows) {
-		// hashing costs the same bcrypt time as a compare, so a miss can't be told apart from a hit
 		svc.hashing.Hash(req.Password)
 		return {{template "signedIn" .}}{}, ErrInvalidLogin
 	}
@@ -201,7 +196,6 @@ func (svc AuthService) login(ctx context.Context, req CredentialsRequest) ({{tem
 	return svc.{{if .Mfa}}signIn{{else}}session{{end}}(ctx, user)
 }
 
-// returns nil whether or not the {{.Identifier}} has an account, so it can't be used to find accounts
 func (svc AuthService) requestReset(ctx context.Context, req ResetRequest) error {
 	if err := req.Validate(); err != nil {
 		return err
@@ -225,7 +219,7 @@ func (svc AuthService) requestReset(ctx context.Context, req ResetRequest) error
 		return err
 	}
 
-	// TODO: send the token to req.{{.IdentifierField}}, e.g. as a link to your reset page
+	// TODO: send the token to req.{{.IdentifierField}}
 	_ = token
 	return nil
 }
@@ -235,7 +229,6 @@ func (svc AuthService) confirmReset(ctx context.Context, req ConfirmResetRequest
 		return err
 	}
 
-	// checked before Verify so a rejected password doesn't burn the token
 	if err := svc.policy.Validate(req.Password); err != nil {
 		return err
 	}
@@ -258,7 +251,6 @@ func (svc AuthService) confirmReset(ctx context.Context, req ConfirmResetRequest
 		return err
 	}
 
-	// whoever knew the old password may still hold a session
 	return svc.sessions.RevokeOwner(ctx, pgutil.UUIDFromPg(user.ID))
 }
 {{- end}}
@@ -292,7 +284,6 @@ func (svc AuthService) verifyCode(ctx context.Context, req VerifyCodeRequest) ({
 		return {{template "signedIn" .}}{}, err
 	}
 
-	// first verified code creates the account
 	user, err := svc.q.FindOrCreateUser(ctx, req.{{.IdentifierField}})
 	if err != nil {
 		return {{template "signedIn" .}}{}, err
@@ -303,8 +294,6 @@ func (svc AuthService) verifyCode(ctx context.Context, req VerifyCodeRequest) ({
 {{- end}}
 {{- if .Mfa}}
 
-// Check (counts an attempt) → TOTP → Consume: a wrong code keeps the pending token
-// until its attempts run out, a right one spends it
 func (svc AuthService) challenge(ctx context.Context, req ChallengeRequest) (auth.TokenDTO, error) {
 	if err := req.Validate(); err != nil {
 		return auth.TokenDTO{}, err
@@ -330,7 +319,6 @@ func (svc AuthService) challenge(ctx context.Context, req ChallengeRequest) (aut
 	return svc.session(ctx, user)
 }
 
-// same as challenge with a single-use recovery code in place of the TOTP code
 func (svc AuthService) recover(ctx context.Context, req RecoverRequest) (auth.TokenDTO, error) {
 	if err := req.Validate(); err != nil {
 		return auth.TokenDTO{}, err
@@ -356,7 +344,6 @@ func (svc AuthService) recover(ctx context.Context, req RecoverRequest) (auth.To
 	return svc.session(ctx, user)
 }
 
-// returns the secret for manual entry and the otpauth:// uri for a QR code
 func (svc AuthService) enroll(ctx context.Context) (EnrollResponse, error) {
 	id, ok := auth.GetIdentity(ctx)
 	if !ok {
@@ -376,7 +363,6 @@ func (svc AuthService) enroll(ctx context.Context) (EnrollResponse, error) {
 	return EnrollResponse{Secret: secret, Uri: uri}, err
 }
 
-// the recovery codes are in this response only
 func (svc AuthService) confirm(ctx context.Context, req TotpCodeRequest) (RecoveryCodesResponse, error) {
 	if err := req.Validate(); err != nil {
 		return RecoveryCodesResponse{}, err
@@ -391,7 +377,6 @@ func (svc AuthService) confirm(ctx context.Context, req TotpCodeRequest) (Recove
 	return RecoveryCodesResponse{RecoveryCodes: codes}, err
 }
 
-// asks for a current code so a stolen session alone can't turn TOTP off
 func (svc AuthService) disable(ctx context.Context, req TotpCodeRequest) error {
 	if err := req.Validate(); err != nil {
 		return err

@@ -2,7 +2,6 @@
 {{- if eq .Identifier "email" -}}
 validation.AddRule(validator, ruleF.IsEmail(r.Email, "email"))
 {{- else -}}
-// E.164, so one number can't sign up twice with different spellings
 validation.AddRule(validator, ruleF.MatchesPattern(r.Phone, "phone", `^\+[1-9][0-9]{7,14}$`))
 {{- end -}}
 {{- end -}}

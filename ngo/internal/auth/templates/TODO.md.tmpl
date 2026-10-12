@@ -1,0 +1,168 @@
+# Auth: what's left
+
+{{- if .EnvKeys}}
+
+## 1. Config
+
+`internal/config/config.go`, import `{{.GoModule}}/internal/auth`:
+
+```go
+// add to Config
+Auth auth.AuthConfig
+
+// add to NewConfig()
+Auth: auth.NewAuthConfig(),
+```
+{{- end}}
+
+## {{if .EnvKeys}}2{{else}}1{{end}}. DI
+
+`internal/di/di.go`, add to `Di`:
+
+```go
+Auth          appauth.AuthService
+Authenticate  {{if .Grpc}}connect.Interceptor{{else}}func(http.Handler) http.Handler{{end}} // use it on your own routes too
+AuthRateLimit {{if .Grpc}}connect.Interceptor{{else}}func(http.Handler) http.Handler{{end}}
+```
+
+Imports:
+
+```go
+{{- if .Mfa}}
+"encoding/hex"
+{{- end}}
+{{- if not .Grpc}}
+"net/http"
+{{- end}}
+"time"
+{{- if .Grpc}}
+"connectrpc.com/connect"
+{{- end}}
+"github.com/nayefradwi/nayef_go_common/auth"
+"github.com/nayefradwi/nayef_go_common/auth/{{.StorePkg}}"
+{{- if .Grpc}}
+"github.com/nayefradwi/nayef_go_common/auth/authconnect"
+{{- else}}
+"github.com/nayefradwi/nayef_go_common/auth/authhttp"
+{{- end}}
+"github.com/nayefradwi/nayef_go_common/errors"
+appauth "{{.GoModule}}/internal/auth"
+```
+
+Add to `RegisterServices()` after the connects. Every limit and TTL is yours to change.
+{{- if .Jwt}} JWT access tokens aren't checked against the store, so logout ends the refresh token only; issued access tokens live until they expire.{{end}}
+
+```go
+sessionStore := errors.Must({{.StorePkg}}.NewSessionStore(di.{{.StoreDiField}}))
+codeStore := errors.Must({{.StorePkg}}.NewCodeStore(di.{{.StoreDiField}}))
+attemptStore := {{.StorePkg}}.NewAttemptStore(di.{{.StoreDiField}})
+{{- if .Mfa}}
+totpStore := errors.Must({{.StorePkg}}.NewTotpStore(di.{{.StoreDiField}}))
+{{- end}}
+{{- if .Jwt}}
+provider := auth.NewJwtTokenProvider(errors.Must(auth.NewJwtTokenProviderConfig(config.Auth.JwtSecret, 15*time.Minute, auth.AccessTokenType)))
+sessions := errors.Must(auth.NewJwtSessionManager(sessionStore, provider, 30*24*time.Hour))
+{{- else}}
+sessions := errors.Must(auth.NewOpaqueSessionManager(sessionStore, 15*time.Minute, 30*24*time.Hour))
+{{- end}}
+{{- if .Grpc}}
+di.Authenticate = authconnect.{{if .Jwt}}NewJwtInterceptor(provider){{else}}NewOpaqueInterceptor(sessions){{end}}
+di.AuthRateLimit = authconnect.RateLimit(errors.Must(auth.NewLimiter(attemptStore, 20, time.Hour)), authconnect.ByIP("codes"))
+{{- else}}
+di.Authenticate = authhttp.{{if .Jwt}}NewJwtMiddleware(provider){{else}}NewOpaqueMiddleware(sessions){{end}}.UseAuthentication
+di.AuthRateLimit = authhttp.RateLimit(errors.Must(auth.NewLimiter(attemptStore, 20, time.Hour)), authhttp.ByIP("codes"))
+{{- end}}
+{{- if .Password}}
+logins := errors.Must(auth.NewLimiter(attemptStore, 5, 15*time.Minute))
+resets := errors.Must(auth.NewOneTimeTokenManager(codeStore, auth.CodeLimits{
+	TTL: 30 * time.Minute, ResendAfter: time.Minute, MaxSends: 3, MaxAttempts: 5,
+}))
+{{- end}}
+{{- if .Otp}}
+codes := errors.Must(auth.NewOtpManager(codeStore, auth.OtpConfig{
+	Secret:     []byte(config.Auth.OtpSecret),
+	Length:     6,
+	CodeLimits: auth.CodeLimits{TTL: 10 * time.Minute, ResendAfter: time.Minute, MaxSends: 5, MaxAttempts: 5},
+}))
+{{- end}}
+{{- if .Mfa}}
+totp := errors.Must(auth.NewTotpManager(totpStore, auth.TotpConfig{
+	Key:    errors.Must(hex.DecodeString(config.Auth.TotpKey)),
+	Issuer: "{{.ProjectName}}",
+}))
+pending := errors.Must(auth.NewOneTimeTokenManager(codeStore, auth.CodeLimits{
+	TTL: 5 * time.Minute, ResendAfter: 0, MaxSends: 5, MaxAttempts: 5,
+}))
+{{- end}}
+di.Auth = appauth.NewAuthService(di.Pool, sessions
+{{- if .Password}}, logins, resets, auth.DefaultPasswordPolicy, auth.DefaultHashingConfig{{end}}
+{{- if .Otp}}, codes{{end}}
+{{- if .Mfa}}, totp, pending{{end -}}
+)
+```
+
+## {{if .EnvKeys}}3{{else}}2{{end}}. Router
+{{- if .Grpc}}
+
+`cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"` and `{{.GoModule}}/gen/auth/v1/authv1connect`, add to `setup()`:
+
+```go
+authHandler := appauth.NewAuthHandler(ar.di.Auth)
+ar.mux.Handle(authv1connect.NewAuthServiceHandler(authHandler, opts))
+limited := connect.WithHandlerOptions(opts, connect.WithInterceptors(ar.di.AuthRateLimit))
+ar.mux.Handle(authv1connect.NewCodeServiceHandler(authHandler, limited))
+authed := connect.WithHandlerOptions(opts, connect.WithInterceptors(ar.di.Authenticate))
+ar.mux.Handle(authv1connect.NewAccountServiceHandler(authHandler, authed))
+```
+
+Use `authed` on your own services; narrow it with `connect.WithInterceptors(authconnect.VerifyClaim("role", "admin"))`.
+
+`internal/health/handler.go`, add to `NewStaticChecker`:
+
+```go
+authv1connect.AuthServiceName, authv1connect.CodeServiceName, authv1connect.AccountServiceName
+```
+{{- else}}
+
+`cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"`, add to `setup()`:
+
+```go
+ar.mux.Mount("/auth", appauth.NewAuthHandler(ar.di.Auth).Routes(ar.di.Authenticate, ar.di.AuthRateLimit))
+
+// protect your own routes
+ar.mux.Group(func(r chi.Router) {
+	r.Use(ar.di.Authenticate)
+	r.Use(authhttp.VerifyClaim("role", "admin")) // optional
+})
+```
+{{- end}}
+{{- if .EnvKeys}}
+
+## 4. Deployments
+
+`.env` and `deployments/local/.env` already have generated values. Add to `environment` in `deployments/{staging,production}/docker-compose.yaml`:
+
+```yaml
+{{- range .EnvKeys}}
+- {{.}}=${ {{- .}}}
+{{- end}}
+```
+{{- end}}
+
+## {{if .EnvKeys}}5{{else}}3{{end}}. Database
+
+Run `goose up`.
+{{- if .Redis}}
+
+Redis holds sessions, codes, attempts and TOTP secrets. It needs Redis 7+ (no Cluster), persistence on, and `maxmemory-policy noeviction`, or users lose MFA.
+{{- else}}
+
+Schedule `DeleteExpired` on the session, code and attempt stores to clean up expired rows.
+{{- end}}
+
+## {{if .EnvKeys}}6{{else}}4{{end}}. TODOs
+
+`grep -rn TODO internal/auth`:
+
+- {{if .Password}}send reset tokens{{else}}send login codes{{end}}
+- put roles or scopes in claims

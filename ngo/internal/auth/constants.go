@@ -26,12 +26,12 @@ const (
 	TMPL_PROTO        = "auth.proto.tmpl"
 	TMPL_QUERIES      = "users.sql.tmpl"
 	TMPL_USERS_TABLE  = "users_table.sql.tmpl"
-	TMPL_DI           = "di.tmpl"
+	TMPL_TODO         = "TODO.md.tmpl"
 )
 
 // Pinned so the copied authpg schema matches the store code the project runs;
 // bump together with the authpg require in ngo's go.mod.
-const AUTH_VERSION = "v1.0.0"
+const AUTH_VERSION = "v1.0.1"
 
 const (
 	AUTH_PKG        = "github.com/nayefradwi/nayef_go_common/auth@" + AUTH_VERSION

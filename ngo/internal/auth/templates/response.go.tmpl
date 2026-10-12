@@ -13,7 +13,6 @@ type UserResponse struct {
 }
 {{- if .Mfa}}
 
-// MfaToken is set instead of Tokens when the user has TOTP on; send it to the challenge
 type LoginResponse struct {
 	Tokens   auth.TokenDTO `json:"tokens,omitzero"`
 	MfaToken string        `json:"mfa_token,omitempty"`
