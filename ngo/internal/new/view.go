@@ -43,12 +43,14 @@ func newBootstrapView(req CreateNewProjectRequest) BootstrapView {
 }
 
 type EnvView struct {
+	Name           string
 	ShouldAddDb    bool
 	ShouldAddRedis bool
 }
 
 func newEnvView(req CreateNewProjectRequest) EnvView {
 	return EnvView{
+		Name:           req.Name,
 		ShouldAddDb:    req.HasPostgres(),
 		ShouldAddRedis: req.HasRedis(),
 	}

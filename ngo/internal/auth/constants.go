@@ -9,8 +9,6 @@ const (
 	MIGRATIONS  = "migrations"
 	PROTO       = "proto"
 	V1          = "v1"
-	DEPLOYMENTS = "deployments"
-	LOCAL       = "local"
 	ENV         = ".env"
 	ENV_EXAMPLE = ".env.example"
 )

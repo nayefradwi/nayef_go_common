@@ -52,13 +52,6 @@ func appendEnv(req CreateAuthRequest) error {
 		return err
 	}
 
-	localEnv := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, ENV)
-	if _, err := os.Stat(localEnv); err == nil {
-		if err := appendLines(localEnv, secrets); err != nil {
-			return err
-		}
-	}
-
 	return appendLines(filepath.Join(req.RootDirPath, ENV_EXAMPLE), blanks)
 }
 

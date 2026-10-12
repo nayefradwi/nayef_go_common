@@ -166,6 +166,7 @@ func generateRootFromRequest(req CreateNewProjectRequest) error {
 	runner.Do(req, renderGitIgnore)
 	runner.Do(req, renderEnv)
 	runner.Do(req, renderAirToml)
+	runner.Do(req, renderJustfile)
 	return runner.Error
 }
 
@@ -223,7 +224,6 @@ func generateDeploymentsFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	runner.Do(req, renderDockerfile)
 	runner.Do(req, renderLocalDockerCompose)
-	runner.Do(req, renderLocalEnv)
 	runner.Do(req, renderTerraformModules)
 	runner.Do(req, generateStagingDeploymentFromRequest)
 	runner.Do(req, generateProdDeploymentFromRequest)
