@@ -17,8 +17,6 @@ func NewAuthHandler(svc AuthService) AuthHandler {
 	}
 }
 
-// authenticate puts the caller's auth.Identity on the context; rateLimit caps
-// {{if .Password}}reset{{else}}code{{end}} requests per client IP, since each one sends a message
 func (h AuthHandler) Routes(authenticate, rateLimit func(http.Handler) http.Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/refresh", h.refresh)

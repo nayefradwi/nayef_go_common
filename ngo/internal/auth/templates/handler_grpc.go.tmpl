@@ -24,7 +24,6 @@ func NewAuthHandler(svc AuthService) AuthHandler {
 	}
 }
 
-// nil when the login is waiting on an MFA challenge
 func toTokens(t auth.TokenDTO) *authv1.Tokens {
 	if t.AccessToken == "" {
 		return nil

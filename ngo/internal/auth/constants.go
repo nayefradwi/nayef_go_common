@@ -26,7 +26,7 @@ const (
 	TMPL_PROTO        = "auth.proto.tmpl"
 	TMPL_QUERIES      = "users.sql.tmpl"
 	TMPL_USERS_TABLE  = "users_table.sql.tmpl"
-	TMPL_DI           = "di.tmpl"
+	TMPL_TODO         = "TODO.md.tmpl"
 )
 
 // Pinned so the copied authpg schema matches the store code the project runs;

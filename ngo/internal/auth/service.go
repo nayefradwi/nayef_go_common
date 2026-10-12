@@ -16,10 +16,12 @@ func scaffold(req CreateAuthRequest) error {
 	runner.Do(req, checkPostgres)
 	runner.Do(req, checkNotGenerated)
 	runner.Do(req, checkGooseInstalled)
+	runner.Do(req, checkSqlcInstalled)
 	runner.Do(req, checkBufInstalled)
 	runner.Do(req, installGoPackages)
 	runner.Do(req, generateCode)
 	runner.Do(req, createMigration)
+	runner.Do(req, runSqlcGenerate)
 	runner.Do(req, appendEnv)
 	runner.Do(req, writeProjectFile)
 	runner.Do(req, runBufGenerate)
@@ -122,133 +124,47 @@ func runBufGenerate(req CreateAuthRequest) error {
 	return common.RunBufGenerate(req.RootDirPath)
 }
 
-func printNextSteps(req CreateAuthRequest) error {
-	steps, err := nextSteps(req)
-	if err != nil {
-		return err
-	}
-
-	printer.Success("added auth")
-	for _, line := range steps {
-		printer.Info(line)
+func checkSqlcInstalled(req CreateAuthRequest) error {
+	if _, err := exec.LookPath("sqlc"); err != nil {
+		return fmt.Errorf("ngo auth needs the sqlc CLI on PATH, see https://docs.sqlc.dev/en/latest/overview/install.html: %w", err)
 	}
 
 	return nil
 }
 
-func nextSteps(req CreateAuthRequest) ([]string, error) {
-	view := newAuthView(req)
-	imports, err := renderNamed(TMPL_DI, "imports", view)
+// runs after createMigration: sqlc reads the schema from the migrations
+func runSqlcGenerate(req CreateAuthRequest) error {
+	stop := printer.Spin("Generating user queries")
+	cmd := exec.Command("sqlc", "generate")
+	cmd.Dir = req.RootDirPath
+
+	out, err := cmd.CombinedOutput()
+	stop(err)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to run sqlc generate %w: %s", err, out)
 	}
 
-	wiring, err := renderNamed(TMPL_DI, "wiring", view)
-	if err != nil {
-		return nil, err
-	}
+	return nil
+}
 
-	n := 0
-	step := func(title string) string {
-		n++
-		return fmt.Sprintf("%d. %s", n, title)
-	}
-
-	steps := []string{"", step("generate the user queries:"), "   sqlc generate", ""}
+func printNextSteps(req CreateAuthRequest) error {
+	printer.Success("added auth, finish the steps in internal/auth/TODO.md:")
+	steps := []string{"wire config, di and router"}
 	if len(envKeys(req)) > 0 {
-		steps = append(steps,
-			step("internal/config/config.go (import "+req.GoModule+"/internal/auth):"),
-			"   add to Config:       Auth auth.AuthConfig",
-			"   add to NewConfig():  Auth: auth.NewAuthConfig(),",
-			"",
-		)
+		steps = append(steps, "add "+strings.Join(envKeys(req), ", ")+" to the staging and production compose files")
 	}
 
-	middleware := "func(http.Handler) http.Handler"
-	if req.IsGrpc() {
-		middleware = "connect.Interceptor"
-	}
-
-	steps = append(steps,
-		step("internal/di/di.go, add to Di:"),
-		"   Auth          appauth.AuthService",
-		"   Authenticate  "+middleware+" // use it on your own routes too",
-		"   AuthRateLimit "+middleware,
-		"   imports:",
-	)
-	steps = append(steps, indent(imports, "   ")...)
-	steps = append(steps, "   add to RegisterServices() after the connects:")
-	steps = append(steps, indent(wiring, "   ")...)
-	steps = append(steps, "")
-
-	if req.IsGrpc() {
-		steps = append(steps,
-			step("cmd/api/router.go (import appauth \""+req.GoModule+"/internal/auth\" and "+req.GoModule+"/gen/auth/v1/authv1connect), add to setup():"),
-			"   authHandler := appauth.NewAuthHandler(ar.di.Auth)",
-			"   ar.mux.Handle(authv1connect.NewAuthServiceHandler(authHandler, opts))",
-			"   limited := connect.WithHandlerOptions(opts, connect.WithInterceptors(ar.di.AuthRateLimit))",
-			"   ar.mux.Handle(authv1connect.NewCodeServiceHandler(authHandler, limited))",
-			"   authed := connect.WithHandlerOptions(opts, connect.WithInterceptors(ar.di.Authenticate))",
-			"   ar.mux.Handle(authv1connect.NewAccountServiceHandler(authHandler, authed))",
-			"   use authed on your own services; narrow with",
-			"   connect.WithInterceptors(authconnect.VerifyClaim(\"role\", \"admin\"))",
-			"   internal/health/handler.go, add to NewStaticChecker:",
-			"   authv1connect.AuthServiceName, authv1connect.CodeServiceName, authv1connect.AccountServiceName",
-			"",
-		)
-	} else {
-		steps = append(steps,
-			step("cmd/api/router.go (import appauth \""+req.GoModule+"/internal/auth\"), add to setup():"),
-			"   ar.mux.Mount(\"/auth\", appauth.NewAuthHandler(ar.di.Auth).Routes(ar.di.Authenticate, ar.di.AuthRateLimit))",
-			"   protect your own routes:",
-			"   ar.mux.Group(func(r chi.Router) {",
-			"       r.Use(ar.di.Authenticate)",
-			"       r.Use(authhttp.VerifyClaim(\"role\", \"admin\")) // optional, same as authhttp.Has(authhttp.HasClaim(\"role\", \"admin\"))",
-			"   })",
-			"",
-		)
-	}
-
-	keys := envKeys(req)
-	if len(keys) > 0 {
-		steps = append(steps, step("deployments/{staging,production}/docker-compose.yaml, add to environment:"))
-		for _, key := range keys {
-			steps = append(steps, "      - "+key+"=${"+key+"}")
-		}
-		steps = append(steps, "   .env and deployments/local/.env already have generated values", "")
-	}
-
-	steps = append(steps, step("apply the migration:"), "   goose up", "")
+	steps = append(steps, "goose up")
 	if req.IsRedisStore() {
-		steps = append(steps,
-			step("redis holds sessions, codes, attempts and TOTP secrets: it needs Redis 7+ (no Cluster),"),
-			"   persistence on, and an eviction policy that never drops keys (noeviction), or users lose MFA",
-			"",
-		)
+		steps = append(steps, "configure redis durability")
 	} else {
-		steps = append(steps,
-			step("schedule cleanup of expired rows: DeleteExpired on the session, code and attempt stores"),
-			"",
-		)
+		steps = append(steps, "schedule DeleteExpired on the auth stores")
 	}
 
-	steps = append(steps, step("fill the TODOs: grep -rn TODO internal/auth ("+strings.Join(todos(req), ", ")+")"))
-	return steps, nil
-}
-
-func indent(block, prefix string) []string {
-	lines := strings.Split(strings.TrimSpace(block), "\n")
-	for i, line := range lines {
-		lines[i] = prefix + line
+	steps = append(steps, "fill the TODOs in internal/auth")
+	for i, step := range steps {
+		printer.Info(fmt.Sprintf("%d. %s", i+1, step))
 	}
 
-	return lines
-}
-
-func todos(req CreateAuthRequest) []string {
-	if req.IsPassword() {
-		return []string{"send reset tokens", "claims"}
-	}
-
-	return []string{"send login codes", "claims"}
+	return nil
 }

@@ -19,6 +19,7 @@ type AuthView struct {
 	Jwt             bool
 	Redis           bool
 	Grpc            bool
+	EnvKeys         []string
 }
 
 func newAuthView(req CreateAuthRequest) AuthView {
@@ -42,5 +43,6 @@ func newAuthView(req CreateAuthRequest) AuthView {
 		Jwt:             req.IsJwt(),
 		Redis:           req.IsRedisStore(),
 		Grpc:            req.IsGrpc(),
+		EnvKeys:         envKeys(req),
 	}
 }

@@ -14,17 +14,13 @@ import (
 var templatesFs embed.FS
 
 func renderToString[T any](tmplName string, input T) (string, error) {
-	return renderNamed(tmplName, tmplName, input)
-}
-
-func renderNamed[T any](tmplName, name string, input T) (string, error) {
 	tmpl, err := template.ParseFS(templatesFs, "templates/"+tmplName)
 	if err != nil {
 		return "", err
 	}
 
 	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, name, input); err != nil {
+	if err := tmpl.Execute(&buf, input); err != nil {
 		return "", err
 	}
 
@@ -77,6 +73,7 @@ func renderModule(req CreateAuthRequest) error {
 		TMPL_RESPONSE: "response.go",
 		TMPL_SERVICE:  "service.go",
 		handler:       "handler.go",
+		TMPL_TODO:     "TODO.md",
 	}
 	for tmpl, name := range files {
 		if err := renderToFile(tmpl, filepath.Join(authDir(req), name), newAuthView(req)); err != nil {
