@@ -31,7 +31,7 @@ const (
 
 // Pinned so the copied authpg schema matches the store code the project runs;
 // bump together with the authpg require in ngo's go.mod.
-const AUTH_VERSION = "v1.0.0"
+const AUTH_VERSION = "v1.0.1"
 
 const (
 	AUTH_PKG        = "github.com/nayefradwi/nayef_go_common/auth@" + AUTH_VERSION
