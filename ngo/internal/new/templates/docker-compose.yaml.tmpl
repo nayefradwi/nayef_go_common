@@ -1,37 +1,6 @@
 name: {{ .Name }}local
 services:
-  {{ .Name }}:
-    build:
-      context: ../../
-      dockerfile: build/Dockerfile
-    ports:
-      - "4000:4000"
-    env_file:
-      - .env
-    environment:
-      - ENVIRONMENT=development
-      - ADDRESS=:4000
 {{- if .ShouldAddDb}}
-      - GOOSE_DBSTRING=postgres://postgres:postgres@postgres:5432/{{.Name}}?sslmode=disable
-      - GOOSE_DRIVER=postgres
-      - GOOSE_MIGRATION_DIR=./internal/infra/migrations
-{{- end}}
-{{- if .ShouldAddRedis}}
-      - REDIS_URL=redis://redis:6379/0
-{{- end}}
-{{- if or .ShouldAddDb .ShouldAddRedis}}
-    depends_on:
-{{- if .ShouldAddDb}}
-      {{ .Name }}_postgres:
-        condition: service_healthy
-{{- end}}
-{{- if .ShouldAddRedis}}
-      {{ .Name }}_redis:
-        condition: service_healthy
-{{- end}}
-{{- end}}
-{{- if .ShouldAddDb}}
-
   {{ .Name }}_postgres:
     image: postgres:17-alpine
     ports:

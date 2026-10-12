@@ -1,0 +1,5 @@
+dev:
+{{- if or .HasPostgres .HasRedis}}
+    docker compose -f deployments/local/docker-compose.yaml up -d --wait
+{{- end}}
+    air

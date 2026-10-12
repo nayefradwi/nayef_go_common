@@ -91,14 +91,13 @@ func renderDockerfile(req CreateNewProjectRequest) error {
 }
 
 func renderLocalDockerCompose(req CreateNewProjectRequest) error {
+	if !req.HasPostgres() && !req.HasRedis() {
+		return nil
+	}
+
 	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, DOCKER_COMPOSE+"."+YAML)
 	view := newLocalDockerComposeView(req)
 	return renderToFile(TMPL_DOCKER_COMPOSE, filePath, view)
-}
-
-func renderLocalEnv(req CreateNewProjectRequest) error {
-	filePath := filepath.Join(req.RootDirPath, DEPLOYMENTS, LOCAL, ENV)
-	return renderToFile(TMPL_LOCAL_ENV, filePath, "")
 }
 
 func renderHealth(req CreateNewProjectRequest) error {
@@ -116,6 +115,11 @@ func renderRouter(req CreateNewProjectRequest) error {
 func renderAirToml(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, AIR_TOML+"."+TOML)
 	return renderToFile(TMPL_AIR_TOML, filePath, req)
+}
+
+func renderJustfile(req CreateNewProjectRequest) error {
+	filePath := filepath.Join(req.RootDirPath, JUSTFILE)
+	return renderToFile(TMPL_JUSTFILE, filePath, req)
 }
 
 func renderStagingDockerCompose(req CreateNewProjectRequest) error {
