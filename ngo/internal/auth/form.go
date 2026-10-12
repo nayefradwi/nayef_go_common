@@ -45,13 +45,19 @@ func RunForm() (*CreateAuthRequest, error) {
 				Title("Main identifier").
 				Options(huh.NewOptions(common.IdentifierEmail, common.IdentifierPhone)...).
 				Value(&req.Identifier),
+		),
+		huh.NewGroup(
 			huh.NewSelect[common.LoginMethod]().
 				Title("Login").
 				Options(huh.NewOptions(common.LoginPassword, common.LoginOtp)...).
 				Value(&req.Login),
+		),
+		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Generate MFA (TOTP) endpoints?").
 				Value(&req.Mfa),
+		),
+		huh.NewGroup(
 			huh.NewSelect[common.AccessToken]().
 				Title("Access token").
 				Description("jwt: checked without a store read, lives until it expires. opaque: looked up per request, logout ends it at once").
