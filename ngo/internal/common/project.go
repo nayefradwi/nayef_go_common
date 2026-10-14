@@ -15,13 +15,10 @@ import (
 const PROJECT_FILE = "ngo.yaml"
 
 type Project struct {
-	ServiceType          ServiceType `yaml:"service_type"`
-	InfraTypes           []InfraType `yaml:"infra"`
-	Auth                 *Auth       `yaml:"auth,omitempty"`
-	Features             []Feature   `yaml:"features"`
-	Provider             string      `yaml:"provider"`
-	StagingDeployment    string      `yaml:"staging_deployment"`
-	ProductionDeployment string      `yaml:"production_deployment"`
+	ServiceType ServiceType `yaml:"service_type"`
+	InfraTypes  []InfraType `yaml:"infra"`
+	Auth        *Auth       `yaml:"auth,omitempty"`
+	Features    []Feature   `yaml:"features"`
 }
 
 func WriteProject(dir string, p Project) error {

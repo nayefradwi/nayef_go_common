@@ -6,34 +6,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 )
 
-type VpsDockerComposeView struct {
-	Name           string
-	ShouldAddDb    bool
-	ShouldAddRedis bool
-	Environment    string
-}
-
-type TerraformView struct {
-	Name        string
-	Environment string
-}
-
-func newTerraformView(req CreateNewProjectRequest, environment string) TerraformView {
-	return TerraformView{
-		Name:        req.Name,
-		Environment: environment,
-	}
-}
-
-func newVpsDockerComposeView(req CreateNewProjectRequest, environment string) VpsDockerComposeView {
-	return VpsDockerComposeView{
-		Name:           req.Name,
-		ShouldAddDb:    req.HasPostgres(),
-		ShouldAddRedis: req.HasRedis(),
-		Environment:    environment,
-	}
-}
-
 type BootstrapView struct {
 	GoModule string
 }

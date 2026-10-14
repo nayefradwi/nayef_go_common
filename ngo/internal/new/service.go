@@ -3,7 +3,6 @@ package new
 import (
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/nayefradwi/nayef_go_common/errors"
@@ -139,12 +138,9 @@ func runBufGenerate(req CreateNewProjectRequest) error {
 
 func writeProjectFile(req CreateNewProjectRequest) error {
 	return common.WriteProject(req.RootDirPath, common.Project{
-		ServiceType:          req.ServiceType,
-		InfraTypes:           req.InfraTypes,
-		Features:             req.Features,
-		Provider:             string(req.ProviderType),
-		StagingDeployment:    string(req.StagingDeploymentType),
-		ProductionDeployment: string(req.ProductionDeploymentType),
+		ServiceType: req.ServiceType,
+		InfraTypes:  req.InfraTypes,
+		Features:    req.Features,
 	})
 }
 
@@ -186,47 +182,10 @@ func generateCmdFromRequest(req CreateNewProjectRequest) error {
 	return runner.Error
 }
 
-func generateStagingDeploymentFromRequest(req CreateNewProjectRequest) error {
-	if req.StagingDeploymentType == DeploymentTypeManual {
-		return nil
-	}
-
-	if req.StagingDeploymentType == DeploymentTypeDokploy {
-		runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-		runner.Do(req, renderStagingDockerCompose)
-		runner.Do(req, func(r CreateNewProjectRequest) error {
-			return renderTerraformEnv(r, STAGING)
-		})
-		return runner.Error
-	}
-
-	return nil
-}
-
-func generateProdDeploymentFromRequest(req CreateNewProjectRequest) error {
-	if req.ProductionDeploymentType == DeploymentTypeManual {
-		return nil
-	}
-
-	if req.ProductionDeploymentType == DeploymentTypeDokploy {
-		runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
-		runner.Do(req, renderProductionDockerCompose)
-		runner.Do(req, func(r CreateNewProjectRequest) error {
-			return renderTerraformEnv(r, PRODUCTION)
-		})
-		return runner.Error
-	}
-
-	return nil
-}
-
 func generateDeploymentsFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	runner.Do(req, renderDockerfile)
 	runner.Do(req, renderLocalDockerCompose)
-	runner.Do(req, renderTerraformModules)
-	runner.Do(req, generateStagingDeploymentFromRequest)
-	runner.Do(req, generateProdDeploymentFromRequest)
 	return runner.Error
 }
 
@@ -243,27 +202,6 @@ func generateConfigFromRequest(req CreateNewProjectRequest) error {
 	}
 
 	return runner.Error
-}
-
-func generateSSHKeyPair(dir string) error {
-	keyPath := filepath.Join(dir, "id_rsa.pem")
-	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-f", keyPath, "-N", "")
-	return cmd.Run()
-}
-
-func generateSSHKeys(req CreateNewProjectRequest) error {
-	stop := printer.Spin("Generating SSH keys")
-	var err error
-	if req.NeedsInfra(req.StagingDeploymentType) {
-		dir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, STAGING)
-		err = generateSSHKeyPair(dir)
-	}
-	if err == nil && req.NeedsInfra(req.ProductionDeploymentType) {
-		dir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, PRODUCTION)
-		err = generateSSHKeyPair(dir)
-	}
-	stop(err)
-	return err
 }
 
 func generateCodeFromRequest(req CreateNewProjectRequest) error {

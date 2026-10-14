@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
-
-	"github.com/nayefradwi/nayef_go_common/errors"
 )
 
 //go:embed templates/*
@@ -120,57 +118,6 @@ func renderAirToml(req CreateNewProjectRequest) error {
 func renderJustfile(req CreateNewProjectRequest) error {
 	filePath := filepath.Join(req.RootDirPath, JUSTFILE)
 	return renderToFile(TMPL_JUSTFILE, filePath, req)
-}
-
-func renderStagingDockerCompose(req CreateNewProjectRequest) error {
-	filepath := filepath.Join(req.RootDirPath, DEPLOYMENTS, STAGING, DOCKER_COMPOSE+"."+YAML)
-	view := newVpsDockerComposeView(req, STAGING)
-	return renderToFile(TMPL_VPS_DOCKER_COMPOSE, filepath, view)
-}
-
-func renderProductionDockerCompose(req CreateNewProjectRequest) error {
-	filepath := filepath.Join(req.RootDirPath, DEPLOYMENTS, PRODUCTION, DOCKER_COMPOSE+"."+YAML)
-	view := newVpsDockerComposeView(req, PRODUCTION)
-	return renderToFile(TMPL_VPS_DOCKER_COMPOSE, filepath, view)
-}
-
-func renderTerraformVpsModule(req CreateNewProjectRequest) error {
-	moduleDir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, MODULES, VPS)
-	runner := errors.ResultRunnerWithParam[TerraformView]{}
-	view := TerraformView{Name: req.Name}
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_VPS_MAIN, filepath.Join(moduleDir, "main.tf"), v)
-	})
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_VPS_VARIABLES, filepath.Join(moduleDir, "variables.tf"), v)
-	})
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_VPS_OUTPUTS, filepath.Join(moduleDir, "outputs.tf"), v)
-	})
-	return runner.Error
-}
-
-func renderTerraformEnv(req CreateNewProjectRequest, environment string) error {
-	envDir := filepath.Join(req.RootDirPath, DEPLOYMENTS, TERRAFORM, environment)
-	view := newTerraformView(req, environment)
-	runner := errors.ResultRunnerWithParam[TerraformView]{}
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_ENV_MAIN, filepath.Join(envDir, "main.tf"), v)
-	})
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_ENV_VARIABLES, filepath.Join(envDir, "variables.tf"), v)
-	})
-	runner.Do(view, func(v TerraformView) error {
-		return renderToFile(TMPL_TF_ENV_TFVARS, filepath.Join(envDir, "terraform.tfvars.example"), v)
-	})
-	return runner.Error
-}
-
-func renderTerraformModules(req CreateNewProjectRequest) error {
-	if !req.NeedsInfra(req.StagingDeploymentType) && !req.NeedsInfra(req.ProductionDeploymentType) {
-		return nil
-	}
-	return renderTerraformVpsModule(req)
 }
 
 func renderGithubCI(req CreateNewProjectRequest) error {

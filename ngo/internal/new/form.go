@@ -9,16 +9,6 @@ import (
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
 )
 
-func deploymentOptions(provider ProviderType) []huh.Option[DeploymentType] {
-	opts := []huh.Option[DeploymentType]{
-		huh.NewOption(string(DeploymentTypeManual), DeploymentTypeManual),
-	}
-	for _, dt := range providerToDeploymentType[provider] {
-		opts = append(opts, huh.NewOption(string(dt), dt))
-	}
-	return opts
-}
-
 func RunForm() (*CreateNewProjectRequest, error) {
 	req := &CreateNewProjectRequest{}
 
@@ -37,36 +27,6 @@ func RunForm() (*CreateNewProjectRequest, error) {
 		),
 		huh.NewGroup(common.InfraTypeInput(&req.InfraTypes, common.AllInfraTypes)),
 		huh.NewGroup(common.FeatureInput(&req.Features, common.AllFeatures)),
-		huh.NewGroup(
-			huh.
-				NewSelect[ProviderType]().
-				Title("Cloud Provider").
-				Options(
-					huh.NewOption(string(ProviderTypeAWS), ProviderTypeAWS),
-				).Value(&req.ProviderType),
-		),
-		huh.NewGroup(
-			huh.
-				NewSelect[DeploymentType]().
-				Title("Staging Deployment Type").
-				OptionsFunc(func() []huh.Option[DeploymentType] {
-					return deploymentOptions(req.ProviderType)
-				}, &req.ProviderType).
-				Value(&req.StagingDeploymentType),
-		).WithHideFunc(func() bool {
-			return req.ProviderType == ""
-		}),
-		huh.NewGroup(
-			huh.
-				NewSelect[DeploymentType]().
-				Title("Production Deployment Type").
-				OptionsFunc(func() []huh.Option[DeploymentType] {
-					return deploymentOptions(req.ProviderType)
-				}, &req.ProviderType).
-				Value(&req.ProductionDeploymentType),
-		).WithHideFunc(func() bool {
-			return req.ProviderType == ""
-		}),
 	)
 
 	if err := form.Run(); err != nil {
