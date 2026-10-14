@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/nayefradwi/nayef_go_common/auth/authpg"
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 )
 
 func migrationsDir(req CreateAuthRequest) string {
@@ -30,7 +31,7 @@ func authpgMigrationFiles(req CreateAuthRequest) []string {
 
 // users first, then authpg's files in order; Down undoes them in reverse.
 func migrationSQL(req CreateAuthRequest) (string, error) {
-	users, err := renderToString(TMPL_USERS_TABLE, newAuthView(req))
+	users, err := common.RenderToString(templatesFs, TMPL_USERS_TABLE, newAuthView(req))
 	if err != nil {
 		return "", err
 	}
