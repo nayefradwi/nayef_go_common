@@ -1,0 +1,124 @@
+# Deploy {{.Environment}}: what's left
+{{- if .IsSmall}}
+
+## 1. Provision the box
+
+Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`. The runner token is valid for one hour, so get it right before applying:
+
+```sh
+gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token
+cd deployments/{{.Environment}}/terraform
+terraform init
+terraform apply
+```
+
+Cloud-init installs Docker and registers a runner labelled `{{.Environment}}`. Check it shows up under the repo's Settings → Actions → Runners.
+
+## 2. Set up the box
+
+SSH in as `ubuntu` (`terraform output public_ip`), then as root:
+
+```sh
+git clone git@github.com:OWNER/REPO.git /root/{{.Name}}
+```
+
+and write `/root/{{.Name}}/deployments/{{.Environment}}/.env`:
+
+```sh
+ENVIRONMENT={{.Environment}}
+ADDRESS=:4000
+{{- if .HasPostgres}}
+POSTGRES_USER=app
+POSTGRES_PASSWORD=CHANGE_ME
+POSTGRES_DB={{.Name}}
+GOOSE_DBSTRING=postgres://app:CHANGE_ME@postgres:5432/{{.Name}}?sslmode=disable
+{{- end}}
+{{- if .HasRedis}}
+REDIS_URL=redis://redis:6379/0
+{{- end}}
+{{- if .IsGrpc}}
+DOMAIN=api.example.com
+{{- else}}
+TUNNEL_TOKEN=CHANGE_ME
+{{- end}}
+```
+{{- if .IsGrpc}}
+
+## 3. Domain
+
+Cloudflare tunnels can't serve gRPC on a public hostname, so Caddy serves it from the box on ports 80 and 443.
+
+Point an A record for `DOMAIN` at the box's public IP (`terraform output public_ip`). If the domain is on Cloudflare, set the record to DNS only (grey cloud). On first start Caddy gets a Let's Encrypt certificate, which needs ports 80 and 443 reachable, and keeps it in the `caddydata` volume. Clients connect to `DOMAIN:443` over TLS.
+{{- else}}
+
+## 3. Cloudflare tunnel
+
+The domain's DNS must be on Cloudflare. In Zero Trust → Networks → Tunnels, create a tunnel and put its token in `TUNNEL_TOKEN`. Add a public hostname (e.g. `api.example.com`) with service `http://{{.Name}}:4000`. Cloudflare creates a proxied CNAME to the tunnel and serves HTTPS for it. `cloudflared` connects out from the box, so no inbound ports are open.
+{{- end}}
+
+## 4. Deploy
+
+Actions → Deploy {{.Environment}} → Run workflow.
+{{- else}}
+
+## 1. Once per AWS account
+
+Every environment's deploy role trusts this provider, and AWS allows one per account:
+
+```sh
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com
+```
+
+Then request an ACM certificate for your domain in the same region and validate it. The load balancer only serves HTTPS.
+
+## 2. Apply
+
+Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`.
+
+```sh
+cd deployments/{{.Environment}}/terraform
+terraform init
+terraform apply
+```
+
+The services start on a placeholder image until the first deploy.
+{{- if .IsGrpc}} The placeholder only speaks HTTP/1, so its tasks fail the gRPC health check and ECS keeps restarting them until the first deploy; that is expected.{{end}}
+{{- if .HasPostgres}} The database password is generated and stored in Secrets Manager; it is also in the terraform state, so keep the state private.{{end}}
+
+Point your domain at `terraform output load_balancer_dns_name`.
+
+## 3. GitHub environment
+
+```sh
+gh api -X PUT repos/OWNER/REPO/environments/{{.Environment}}
+for v in aws_role_arn aws_region aws_private_subnets aws_app_security_group; do
+  gh variable set "$(echo "$v" | tr a-z A-Z)" --env {{.Environment}} --body "$(terraform output -raw "$v")"
+done
+```
+
+These are variables, not secrets: the workflow logs in with GitHub OIDC, and the cloud only trusts runs from the `{{.Environment}}` environment of this repo.
+
+## 4. App secrets
+
+Anything the app reads that terraform doesn't know about (e.g. the JWT secret from `ngo auth`) goes into the task definition `secrets`, backed by Secrets Manager.
+
+## 5. Deploy
+
+Actions → Deploy {{.Environment}} → Run workflow. It builds and pushes the images, {{if .HasPostgres}}runs the migration job, {{end}}then rolls out the app.
+{{- end}}
+{{- if .HasPostgres}}
+
+## Migrations
+
+`build/migrate.sh` runs `goose up`. If it fails, it rolls back to the version it started from and exits non-zero, and the new app is not deployed. That means:
+
+- every migration needs a working `-- +goose Down`
+- migrations must be additive, so the running app keeps working on the new schema
+- `-- +goose NO TRANSACTION` files (e.g. `CREATE INDEX CONCURRENTLY`) can fail halfway and leave state behind; a failed concurrent index stays as an invalid index you have to drop
+{{- end}}
+
+## Notes
+
+- Terraform state is local. Move it to the commented-out backend in `main.tf` before anyone else applies.

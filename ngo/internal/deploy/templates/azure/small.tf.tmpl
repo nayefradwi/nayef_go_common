@@ -1,0 +1,197 @@
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+  }
+
+  # backend "azurerm" {
+  #   resource_group_name  = "CHANGE_ME"
+  #   storage_account_name = "CHANGE_ME"
+  #   container_name       = "tfstate"
+  #   key                  = "{{.Name}}/{{.Environment}}/terraform.tfstate"
+  # }
+}
+
+variable "github_repo" {
+  type        = string
+  description = "OWNER/REPO the runner registers with"
+}
+
+variable "github_runner_token" {
+  type        = string
+  sensitive   = true
+  description = "Runner registration token, valid for one hour: gh api -X POST repos/OWNER/REPO/actions/runners/registration-token"
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "Only this range can SSH in, e.g. 203.0.113.4/32"
+}
+
+locals {
+  name = "{{.Name}}-{{.Environment}}"
+
+  # runs on every boot on GCP, hence the guard
+  cloud_init = <<-EOT
+    #!/bin/bash
+    set -euo pipefail
+    [ -f /opt/actions-runner/.runner ] && exit 0
+
+    curl -fsSL https://get.docker.com | sh
+
+    mkdir -p /opt/actions-runner
+    cd /opt/actions-runner
+    version=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | grep -o '"tag_name": *"v[^"]*"' | grep -o '[0-9][0-9.]*')
+    arch=$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
+    curl -fsSL -o runner.tar.gz "https://github.com/actions/runner/releases/download/v$version/actions-runner-linux-$arch-$version.tar.gz"
+    tar xzf runner.tar.gz
+    ./bin/installdependencies.sh
+
+    # ponytail: root runner, so repo write access means root on this box. Tailscale doesn't gate it, the runner polls GitHub outbound.
+    # Fine for a private repo; switch to a non-root runner with a sudo-only deploy script if outside contributors get in.
+    RUNNER_ALLOW_RUNASROOT=1 ./config.sh --unattended \
+      --url "https://github.com/${var.github_repo}" \
+      --token "${var.github_runner_token}" \
+      --name "${local.name}" \
+      --labels "{{.Environment}}"
+    ./svc.sh install root
+    ./svc.sh start
+  EOT
+}
+
+variable "subscription_id" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+
+provider "azurerm" {
+  features {}
+  subscription_id                 = var.subscription_id
+  resource_provider_registrations = "none"
+  resource_providers_to_register  = ["Microsoft.Compute", "Microsoft.Network"]
+}
+
+resource "azurerm_resource_group" "main" {
+  name     = "rg-${local.name}"
+  location = var.location
+}
+
+resource "azurerm_virtual_network" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_subnet" "main" {
+  name                 = "vm"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_public_ip" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_network_security_group" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  security_rule {
+    name                       = "ssh"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.ssh_allowed_cidr
+    destination_address_prefix = "*"
+  }
+{{- if .IsGrpc}}
+
+  security_rule {
+    name                       = "web"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+{{- end}}
+}
+
+resource "azurerm_network_interface" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  ip_configuration {
+    name                          = "main"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.main.id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "main" {
+  network_interface_id      = azurerm_network_interface.main.id
+  network_security_group_id = azurerm_network_security_group.main.id
+}
+
+resource "azurerm_linux_virtual_machine" "main" {
+  name                  = local.name
+  resource_group_name   = azurerm_resource_group.main.name
+  location              = azurerm_resource_group.main.location
+  size                  = "Standard_B2s"
+  admin_username        = "ubuntu"
+  network_interface_ids = [azurerm_network_interface.main.id]
+  custom_data           = base64encode(local.cloud_init)
+
+  admin_ssh_key {
+    username   = "ubuntu"
+    public_key = var.ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "StandardSSD_LRS"
+    disk_size_gb         = 30
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  # a fresh runner token must not replace the box
+  lifecycle {
+    ignore_changes = [custom_data]
+  }
+}
+
+output "public_ip" {
+  value = azurerm_public_ip.main.ip_address
+}

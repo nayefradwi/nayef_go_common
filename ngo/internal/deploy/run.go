@@ -1,5 +1,10 @@
 package deploy
 
 func Run() error {
-	return nil
+	req, err := RunForm()
+	if err != nil {
+		return err
+	}
+
+	return generateDeployment(*req)
 }
