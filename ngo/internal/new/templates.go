@@ -70,6 +70,26 @@ func renderDockerfile(req CreateNewProjectRequest) error {
 	return common.RenderToFile(templatesFs, TMPL_DOCKERFILE, filePath, newDockerfileView(req, goVersion))
 }
 
+func renderMigrate(req CreateNewProjectRequest) error {
+	if !req.HasPostgres() {
+		return nil
+	}
+
+	goVersion, err := readGoVersion(req.RootDirPath)
+	if err != nil {
+		return err
+	}
+
+	view := newDockerfileView(req, goVersion)
+	dockerfile := filepath.Join(req.RootDirPath, BUILD, MIGRATE_DOCKERFILE)
+	if err := common.RenderToFile(templatesFs, TMPL_MIGRATE_DOCKERFILE, dockerfile, view); err != nil {
+		return err
+	}
+
+	script := filepath.Join(req.RootDirPath, BUILD, MIGRATE_SCRIPT)
+	return common.RenderToFile(templatesFs, TMPL_MIGRATE_SCRIPT, script, view)
+}
+
 func renderLocalDockerCompose(req CreateNewProjectRequest) error {
 	if !req.HasPostgres() && !req.HasRedis() {
 		return nil

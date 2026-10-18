@@ -185,6 +185,7 @@ func generateCmdFromRequest(req CreateNewProjectRequest) error {
 func generateDeploymentsFromRequest(req CreateNewProjectRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateNewProjectRequest]{}
 	runner.Do(req, renderDockerfile)
+	runner.Do(req, renderMigrate)
 	runner.Do(req, renderLocalDockerCompose)
 	return runner.Error
 }
