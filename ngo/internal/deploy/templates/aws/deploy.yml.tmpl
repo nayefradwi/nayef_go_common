@@ -1,0 +1,35 @@
+name: Deploy {{.Environment}}
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-{{.Environment}}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: {{.Environment}}
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{"{{"}} vars.AWS_ROLE_ARN }}
+          aws-region: ${{"{{"}} vars.AWS_REGION }}
+
+      - name: Deploy
+        env:
+          AWS_REGION: ${{"{{"}} vars.AWS_REGION }}
+{{- if .HasPostgres}}
+          AWS_PRIVATE_SUBNETS: ${{"{{"}} vars.AWS_PRIVATE_SUBNETS }}
+          AWS_APP_SECURITY_GROUP: ${{"{{"}} vars.AWS_APP_SECURITY_GROUP }}
+{{- end}}
+        run: bash deployments/{{.Environment}}/deploy.sh

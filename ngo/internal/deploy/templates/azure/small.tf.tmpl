@@ -1,0 +1,176 @@
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+  }
+
+  # backend "azurerm" {
+  #   resource_group_name  = "CHANGE_ME"
+  #   storage_account_name = "CHANGE_ME"
+  #   container_name       = "tfstate"
+  #   key                  = "{{.Name}}/{{.Environment}}/terraform.tfstate"
+  # }
+}
+
+variable "github_repo" {
+  type        = string
+  description = "OWNER/REPO the runner registers with"
+}
+
+variable "github_runner_token" {
+  type        = string
+  sensitive   = true
+  description = "Runner registration token, valid for one hour: gh api -X POST repos/OWNER/REPO/actions/runners/registration-token"
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "Only this range can SSH in, e.g. 203.0.113.4/32"
+}
+
+locals {
+  name = "{{.Name}}-{{.Environment}}"
+
+  runner_init = templatefile("${path.module}/runner-init.sh", {
+    github_repo  = var.github_repo
+    runner_token = var.github_runner_token
+    name         = local.name
+  })
+}
+
+variable "subscription_id" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+
+provider "azurerm" {
+  features {}
+  subscription_id                 = var.subscription_id
+  resource_provider_registrations = "none"
+  resource_providers_to_register  = ["Microsoft.Compute", "Microsoft.Network"]
+}
+
+resource "azurerm_resource_group" "main" {
+  name     = "rg-${local.name}"
+  location = var.location
+}
+
+resource "azurerm_virtual_network" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_subnet" "main" {
+  name                 = "vm"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_public_ip" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_network_security_group" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  security_rule {
+    name                       = "ssh"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.ssh_allowed_cidr
+    destination_address_prefix = "*"
+  }
+{{- if .IsGrpc}}
+
+  security_rule {
+    name                       = "web"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+{{- end}}
+}
+
+resource "azurerm_network_interface" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  ip_configuration {
+    name                          = "main"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.main.id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "main" {
+  network_interface_id      = azurerm_network_interface.main.id
+  network_security_group_id = azurerm_network_security_group.main.id
+}
+
+resource "azurerm_linux_virtual_machine" "main" {
+  name                  = local.name
+  resource_group_name   = azurerm_resource_group.main.name
+  location              = azurerm_resource_group.main.location
+  size                  = "Standard_B2s"
+  admin_username        = "ubuntu"
+  network_interface_ids = [azurerm_network_interface.main.id]
+  custom_data           = base64encode(local.runner_init)
+
+  admin_ssh_key {
+    username   = "ubuntu"
+    public_key = var.ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "StandardSSD_LRS"
+    disk_size_gb         = 30
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  # a fresh runner token must not replace the box
+  lifecycle {
+    ignore_changes = [custom_data]
+  }
+}
+
+output "public_ip" {
+  value = azurerm_public_ip.main.ip_address
+}

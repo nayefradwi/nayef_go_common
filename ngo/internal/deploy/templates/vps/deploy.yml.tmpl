@@ -1,0 +1,33 @@
+name: Deploy {{.Environment}}
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-{{.Environment}}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: [self-hosted, {{.Environment}}]
+    environment: {{.Environment}}
+    env:
+      COMPOSE: docker compose -f /root/{{.Name}}/deployments/{{.Environment}}/docker-compose.yaml
+
+    steps:
+      - name: Pull
+        run: |
+          cd /root/{{.Name}}
+          git pull origin main
+
+      - name: Build
+        run: $COMPOSE build
+{{- if .HasPostgres}}
+
+      # runs before up so a failed migration leaves the old app running; up re-runs it as a no-op
+      - name: Migrate
+        run: $COMPOSE run --rm migrate
+{{- end}}
+
+      - name: Up
+        run: $COMPOSE up -d --remove-orphans

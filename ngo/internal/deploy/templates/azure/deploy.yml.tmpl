@@ -1,0 +1,32 @@
+name: Deploy {{.Environment}}
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-{{.Environment}}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: {{.Environment}}
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{"{{"}} vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{"{{"}} vars.AZURE_TENANT_ID }}
+          subscription-id: ${{"{{"}} vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy
+        env:
+          AZURE_ACR_NAME: ${{"{{"}} vars.AZURE_ACR_NAME }}
+        run: bash deployments/{{.Environment}}/deploy.sh

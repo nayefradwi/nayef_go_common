@@ -1,0 +1,139 @@
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+
+  # backend "s3" {
+  #   bucket = "CHANGE_ME"
+  #   key    = "{{.Name}}/{{.Environment}}/terraform.tfstate"
+  #   region = "us-east-1"
+  # }
+}
+
+variable "github_repo" {
+  type        = string
+  description = "OWNER/REPO the runner registers with"
+}
+
+variable "github_runner_token" {
+  type        = string
+  sensitive   = true
+  description = "Runner registration token, valid for one hour: gh api -X POST repos/OWNER/REPO/actions/runners/registration-token"
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "Only this range can SSH in, e.g. 203.0.113.4/32"
+}
+
+locals {
+  name = "{{.Name}}-{{.Environment}}"
+
+  runner_init = templatefile("${path.module}/runner-init.sh", {
+    github_repo  = var.github_repo
+    runner_token = var.github_runner_token
+    name         = local.name
+  })
+}
+
+variable "region" {
+  type = string
+}
+
+provider "aws" {
+  region = var.region
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-*"]
+  }
+}
+
+resource "aws_key_pair" "main" {
+  key_name   = local.name
+  public_key = var.ssh_public_key
+}
+
+resource "aws_security_group" "main" {
+  name   = local.name
+  vpc_id = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.ssh_allowed_cidr]
+  }
+{{- if .IsGrpc}}
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+{{- end}}
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "main" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t4g.medium"
+  key_name               = aws_key_pair.main.key_name
+  vpc_security_group_ids = [aws_security_group.main.id]
+  user_data              = local.runner_init
+
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+    encrypted   = true
+  }
+
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  tags = {
+    Name = local.name
+  }
+
+  # a newer AMI or a fresh runner token must not replace the box
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
+}
+
+output "public_ip" {
+  value = aws_instance.main.public_ip
+}

@@ -1,52 +1,14 @@
 package auth
 
 import (
-	"bytes"
 	"embed"
-	"go/format"
-	"os"
 	"path/filepath"
-	"strings"
-	"text/template"
+
+	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 )
 
 //go:embed templates/*
 var templatesFs embed.FS
-
-func renderToString[T any](tmplName string, input T) (string, error) {
-	tmpl, err := template.ParseFS(templatesFs, "templates/"+tmplName)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, input); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
-func renderToFile[T any](tmplName, filePath string, input T) error {
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-		return err
-	}
-
-	out, err := renderToString(tmplName, input)
-	if err != nil {
-		return err
-	}
-
-	content := []byte(out)
-	if strings.HasSuffix(filePath, ".go") {
-		content, err = format.Source(content)
-		if err != nil {
-			return err
-		}
-	}
-
-	return os.WriteFile(filePath, content, 0644)
-}
 
 func authDir(req CreateAuthRequest) string {
 	return filepath.Join(req.RootDirPath, INTERNAL, AUTH)
@@ -58,7 +20,7 @@ func renderConfig(req CreateAuthRequest) error {
 		return nil
 	}
 
-	return renderToFile(TMPL_CONFIG, filepath.Join(authDir(req), "config.go"), newAuthView(req))
+	return common.RenderToFile(templatesFs, TMPL_CONFIG, filepath.Join(authDir(req), "config.go"), newAuthView(req))
 }
 
 func renderModule(req CreateAuthRequest) error {
@@ -76,7 +38,7 @@ func renderModule(req CreateAuthRequest) error {
 		TMPL_TODO:     "TODO.md",
 	}
 	for tmpl, name := range files {
-		if err := renderToFile(tmpl, filepath.Join(authDir(req), name), newAuthView(req)); err != nil {
+		if err := common.RenderToFile(templatesFs, tmpl, filepath.Join(authDir(req), name), newAuthView(req)); err != nil {
 			return err
 		}
 	}
@@ -89,7 +51,7 @@ func queriesPath(req CreateAuthRequest) string {
 }
 
 func renderQueries(req CreateAuthRequest) error {
-	return renderToFile(TMPL_QUERIES, queriesPath(req), newAuthView(req))
+	return common.RenderToFile(templatesFs, TMPL_QUERIES, queriesPath(req), newAuthView(req))
 }
 
 func renderProto(req CreateAuthRequest) error {
@@ -98,5 +60,5 @@ func renderProto(req CreateAuthRequest) error {
 	}
 
 	filePath := filepath.Join(req.RootDirPath, PROTO, AUTH, V1, AUTH+"."+PROTO)
-	return renderToFile(TMPL_PROTO, filePath, newAuthView(req))
+	return common.RenderToFile(templatesFs, TMPL_PROTO, filePath, newAuthView(req))
 }

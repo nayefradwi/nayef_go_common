@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# needs az logged in and docker; run from a laptop with the same env vars the workflow sets
+set -euo pipefail
+
+: "${AZURE_ACR_NAME:?}"
+
+REGISTRY=$AZURE_ACR_NAME.azurecr.io
+RESOURCE_GROUP=rg-{{.Name}}-{{.Environment}}
+APP={{.Name}}-{{.Environment}}
+{{- if .HasPostgres}}
+JOB={{.Name}}-{{.Environment}}-migrate
+{{- end}}
+
+cd "$(git rev-parse --show-toplevel)"
+tag=${GITHUB_SHA:-$(git rev-parse HEAD)}
+
+# env form of `az config set`, so a laptop run doesn't change the user's az config
+export AZURE_EXTENSION_USE_DYNAMIC_INSTALL=yes_without_prompt
+az acr login --name "$AZURE_ACR_NAME"
+
+docker build -f build/Dockerfile -t "$REGISTRY/app:$tag" .
+docker push "$REGISTRY/app:$tag"
+{{- if .HasPostgres}}
+
+docker build -f build/migrate.Dockerfile -t "$REGISTRY/migrate:$tag" .
+docker push "$REGISTRY/migrate:$tag"
+
+az containerapp job update --name "$JOB" --resource-group "$RESOURCE_GROUP" --image "$REGISTRY/migrate:$tag" --output none
+execution=$(az containerapp job start --name "$JOB" --resource-group "$RESOURCE_GROUP" --query name --output tsv)
+
+# the job's replica timeout bounds this loop
+while true; do
+  status=$(az containerapp job execution show --name "$JOB" --resource-group "$RESOURCE_GROUP" \
+    --job-execution-name "$execution" --query properties.status --output tsv)
+  case "$status" in
+  Succeeded) break ;;
+  Failed | Stopped | Degraded)
+    echo "migration $status, see execution $execution"
+    exit 1
+    ;;
+  esac
+  sleep 10
+done
+{{- end}}
+
+# single revision mode keeps the old revision serving until the new one is ready
+az containerapp update --name "$APP" --resource-group "$RESOURCE_GROUP" --image "$REGISTRY/app:$tag" --output none
+latest=$(az containerapp show --name "$APP" --resource-group "$RESOURCE_GROUP" --query properties.latestRevisionName --output tsv)
+
+for _ in $(seq 30); do
+  ready=$(az containerapp show --name "$APP" --resource-group "$RESOURCE_GROUP" --query properties.latestReadyRevisionName --output tsv)
+  [ "$ready" = "$latest" ] && exit 0
+  sleep 10
+done
+
+echo "revision $latest did not become ready, traffic stays on $ready"
+exit 1

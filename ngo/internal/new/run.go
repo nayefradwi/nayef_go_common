@@ -31,6 +31,5 @@ func scaffold(req CreateNewProjectRequest) error {
 	runner.Do(req, runBufGenerate)
 	runner.Do(req, runGoFmt)
 	runner.Do(req, runGoTidy)
-	runner.Do(req, generateSSHKeys)
 	return runner.Error
 }

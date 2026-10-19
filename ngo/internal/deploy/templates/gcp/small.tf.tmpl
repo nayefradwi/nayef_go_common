@@ -1,0 +1,149 @@
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 7.0"
+    }
+  }
+
+  # backend "gcs" {
+  #   bucket = "CHANGE_ME"
+  #   prefix = "{{.Name}}/{{.Environment}}"
+  # }
+}
+
+variable "github_repo" {
+  type        = string
+  description = "OWNER/REPO the runner registers with"
+}
+
+variable "github_runner_token" {
+  type        = string
+  sensitive   = true
+  description = "Runner registration token, valid for one hour: gh api -X POST repos/OWNER/REPO/actions/runners/registration-token"
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
+variable "ssh_allowed_cidr" {
+  type        = string
+  description = "Only this range can SSH in, e.g. 203.0.113.4/32"
+}
+
+locals {
+  name = "{{.Name}}-{{.Environment}}"
+
+  runner_init = templatefile("${path.module}/runner-init.sh", {
+    github_repo  = var.github_repo
+    runner_token = var.github_runner_token
+    name         = local.name
+  })
+}
+
+variable "project_id" {
+  type = string
+}
+
+variable "region" {
+  type = string
+}
+
+variable "zone" {
+  type = string
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+resource "google_project_service" "compute" {
+  service = "compute.googleapis.com"
+
+  # other environments can share this project; destroying one must not turn its APIs off
+  disable_on_destroy = false
+}
+
+# own network: the default one ships default-allow-ssh from 0.0.0.0/0, which would void ssh_allowed_cidr
+resource "google_compute_network" "main" {
+  name                    = local.name
+  auto_create_subnetworks = false
+  depends_on              = [google_project_service.compute]
+}
+
+resource "google_compute_subnetwork" "main" {
+  name          = local.name
+  network       = google_compute_network.main.id
+  region        = var.region
+  ip_cidr_range = "10.0.0.0/24"
+}
+
+resource "google_compute_firewall" "ssh" {
+  name          = "${local.name}-ssh"
+  network       = google_compute_network.main.id
+  source_ranges = [var.ssh_allowed_cidr]
+  target_tags   = [local.name]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  depends_on = [google_project_service.compute]
+}
+{{- if .IsGrpc}}
+
+resource "google_compute_firewall" "web" {
+  name          = "${local.name}-web"
+  network       = google_compute_network.main.id
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = [local.name]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+
+  depends_on = [google_project_service.compute]
+}
+{{- end}}
+
+resource "google_compute_instance" "main" {
+  name         = local.name
+  machine_type = "e2-medium"
+  zone         = var.zone
+  tags         = [local.name]
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+      size  = 30
+    }
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.main.id
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "ubuntu:${var.ssh_public_key}"
+  }
+
+  metadata_startup_script = local.runner_init
+
+  # a fresh runner token must not replace the box
+  lifecycle {
+    ignore_changes = [metadata_startup_script]
+  }
+
+  depends_on = [google_project_service.compute]
+}
+
+output "public_ip" {
+  value = google_compute_instance.main.network_interface[0].access_config[0].nat_ip
+}

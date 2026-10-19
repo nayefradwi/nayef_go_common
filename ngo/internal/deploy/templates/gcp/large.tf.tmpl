@@ -1,0 +1,424 @@
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 7.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+  }
+
+  # backend "gcs" {
+  #   bucket = "CHANGE_ME"
+  #   prefix = "{{.Name}}/{{.Environment}}"
+  # }
+}
+
+variable "github_repo" {
+  type        = string
+  description = "OWNER/REPO allowed to deploy, through the GitHub environment {{.Environment}}"
+}
+
+locals {
+  name = "{{.Name}}-{{.Environment}}"
+  port = 4000
+
+  # public image that listens on $PORT; the first deploy replaces it
+  placeholder_image = "us-docker.pkg.dev/cloudrun/container/hello"
+}
+{{- if .HasPostgres}}
+
+resource "random_password" "database" {
+  length  = 32
+  special = false
+}
+{{- end}}
+
+variable "project_id" {
+  type = string
+}
+
+variable "region" {
+  type = string
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+resource "google_project_service" "main" {
+  for_each = toset([
+    "artifactregistry.googleapis.com",
+    "compute.googleapis.com",
+    "iam.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "sts.googleapis.com",
+{{- if .HasPostgres}}
+    "servicenetworking.googleapis.com",
+    "sqladmin.googleapis.com",
+{{- end}}
+{{- if .HasRedis}}
+    "redis.googleapis.com",
+{{- end}}
+  ])
+
+  service = each.value
+
+  # other environments can share this project; destroying one must not turn its APIs off
+  disable_on_destroy = false
+}
+
+# network
+
+resource "google_compute_network" "main" {
+  name                    = local.name
+  auto_create_subnetworks = false
+  depends_on              = [google_project_service.main]
+}
+
+resource "google_compute_subnetwork" "main" {
+  name          = local.name
+  network       = google_compute_network.main.id
+  region        = var.region
+  ip_cidr_range = "10.0.0.0/24"
+}
+{{- if .HasPostgres}}
+
+resource "google_compute_global_address" "private_services" {
+  name          = "${local.name}-private-services"
+  network       = google_compute_network.main.id
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+}
+
+resource "google_service_networking_connection" "main" {
+  network                 = google_compute_network.main.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_services.name]
+}
+
+# database
+
+resource "google_sql_database_instance" "main" {
+  name                = local.name
+  database_version    = "POSTGRES_17"
+  region              = var.region
+  deletion_protection = true
+
+  settings {
+    edition           = "ENTERPRISE"
+    tier              = "db-custom-2-7680"
+    availability_type = "REGIONAL"
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.main.id
+      ssl_mode        = "ENCRYPTED_ONLY"
+    }
+
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+    }
+  }
+
+  depends_on = [google_service_networking_connection.main]
+}
+
+resource "google_sql_database" "main" {
+  name     = "{{.Name}}"
+  instance = google_sql_database_instance.main.name
+}
+
+resource "google_sql_user" "app" {
+  name     = "app"
+  instance = google_sql_database_instance.main.name
+  password = random_password.database.result
+}
+
+resource "google_secret_manager_secret" "database_url" {
+  secret_id = "${local.name}-database-url"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.main]
+}
+
+resource "google_secret_manager_secret_version" "database_url" {
+  secret      = google_secret_manager_secret.database_url.id
+  secret_data = "postgres://app:${random_password.database.result}@${google_sql_database_instance.main.private_ip_address}:5432/{{.Name}}?sslmode=require"
+}
+
+resource "google_secret_manager_secret_iam_member" "database_url" {
+  secret_id = google_secret_manager_secret.database_url.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.run.email}"
+}
+{{- end}}
+{{- if .HasRedis}}
+
+# cache
+
+resource "google_redis_instance" "main" {
+  name               = local.name
+  tier               = "STANDARD_HA"
+  memory_size_gb     = 1
+  region             = var.region
+  redis_version      = "REDIS_7_2"
+  authorized_network = google_compute_network.main.id
+
+  redis_configs = {
+    maxmemory-policy = "noeviction"
+  }
+
+  persistence_config {
+    persistence_mode    = "RDB"
+    rdb_snapshot_period = "TWELVE_HOURS"
+  }
+
+  depends_on = [google_project_service.main]
+}
+{{- end}}
+
+# containers
+
+resource "google_artifact_registry_repository" "main" {
+  repository_id = local.name
+  location      = var.region
+  format        = "DOCKER"
+  depends_on    = [google_project_service.main]
+}
+
+resource "google_service_account" "run" {
+  account_id = "${substr(local.name, 0, 26)}-run"
+  depends_on = [google_project_service.main]
+}
+
+resource "google_cloud_run_v2_service" "app" {
+  name                = local.name
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = true
+
+  template {
+    service_account = google_service_account.run.email
+
+    scaling {
+      min_instance_count = 2
+      max_instance_count = 4
+    }
+
+    vpc_access {
+      egress = "PRIVATE_RANGES_ONLY"
+
+      network_interfaces {
+        network    = google_compute_network.main.id
+        subnetwork = google_compute_subnetwork.main.id
+      }
+    }
+
+    containers {
+      image = local.placeholder_image
+
+      ports {
+        container_port = local.port
+{{- if .IsGrpc}}
+        name           = "h2c"
+{{- end}}
+      }
+
+      # instance-based billing: the app keeps db and redis pools open between requests
+      resources {
+        cpu_idle = false
+        limits = {
+          cpu    = "1"
+          memory = "1Gi"
+        }
+      }
+
+      env {
+        name  = "ENVIRONMENT"
+        value = "{{.Environment}}"
+      }
+
+      env {
+        name  = "ADDRESS"
+        value = ":${local.port}"
+      }
+{{- if .HasPostgres}}
+
+      env {
+        name = "GOOSE_DBSTRING"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+{{- end}}
+{{- if .HasRedis}}
+
+      env {
+        name  = "REDIS_URL"
+        value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}/0"
+      }
+{{- end}}
+    }
+  }
+
+  # CD deploys new images; terraform must not roll them back
+  lifecycle {
+    ignore_changes = [template[0].containers[0].image, client, client_version]
+  }
+{{- if .HasPostgres}}
+
+  depends_on = [google_secret_manager_secret_version.database_url, google_secret_manager_secret_iam_member.database_url]
+{{- end}}
+}
+
+resource "google_cloud_run_v2_service_iam_member" "public" {
+  name     = google_cloud_run_v2_service.app.name
+  location = var.region
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+{{- if .HasPostgres}}
+
+resource "google_cloud_run_v2_job" "migrate" {
+  name                = "${local.name}-migrate"
+  location            = var.region
+  deletion_protection = false
+
+  template {
+    template {
+      service_account = google_service_account.run.email
+      max_retries     = 0
+      timeout         = "600s"
+
+      vpc_access {
+        egress = "PRIVATE_RANGES_ONLY"
+
+        network_interfaces {
+          network    = google_compute_network.main.id
+          subnetwork = google_compute_subnetwork.main.id
+        }
+      }
+
+      containers {
+        image = local.placeholder_image
+
+        env {
+          name = "GOOSE_DBSTRING"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.database_url.secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [template[0].template[0].containers[0].image, client, client_version]
+  }
+
+  depends_on = [google_secret_manager_secret_version.database_url, google_secret_manager_secret_iam_member.database_url]
+}
+{{- end}}
+
+# GitHub deploy identity
+
+resource "google_iam_workload_identity_pool" "github" {
+  workload_identity_pool_id = "github-{{.Environment}}"
+  depends_on                = [google_project_service.main]
+}
+
+resource "google_iam_workload_identity_pool_provider" "github" {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
+  workload_identity_pool_provider_id = "github"
+  attribute_condition                = "assertion.repository == '${var.github_repo}' && assertion.environment == '{{.Environment}}'"
+
+  attribute_mapping = {
+    "google.subject"        = "assertion.sub"
+    "attribute.repository"  = "assertion.repository"
+    "attribute.environment" = "assertion.environment"
+  }
+
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+}
+
+resource "google_service_account" "deploy" {
+  account_id = "${substr(local.name, 0, 23)}-deploy"
+  depends_on = [google_project_service.main]
+}
+
+resource "google_service_account_iam_member" "deploy_github" {
+  service_account_id = google_service_account.deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
+}
+
+resource "google_artifact_registry_repository_iam_member" "deploy" {
+  repository = google_artifact_registry_repository.main.name
+  location   = var.region
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.deploy.email}"
+}
+
+# scoped to this env's service and job so a shared project can't deploy over another env
+resource "google_cloud_run_v2_service_iam_member" "deploy_run" {
+  name     = google_cloud_run_v2_service.app.name
+  location = var.region
+  role     = "roles/run.developer"
+  member   = "serviceAccount:${google_service_account.deploy.email}"
+}
+{{- if .HasPostgres}}
+
+resource "google_cloud_run_v2_job_iam_member" "deploy_migrate" {
+  name     = google_cloud_run_v2_job.migrate.name
+  location = var.region
+  role     = "roles/run.developer"
+  member   = "serviceAccount:${google_service_account.deploy.email}"
+}
+{{- end}}
+
+resource "google_service_account_iam_member" "deploy_acts_as_run" {
+  service_account_id = google_service_account.run.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deploy.email}"
+}
+
+output "gcp_project_id" {
+  value = var.project_id
+}
+
+output "gcp_region" {
+  value = var.region
+}
+
+output "gcp_workload_identity_provider" {
+  value = google_iam_workload_identity_pool_provider.github.name
+}
+
+output "gcp_service_account" {
+  value = google_service_account.deploy.email
+}
+
+output "url" {
+  value = google_cloud_run_v2_service.app.uri
+}

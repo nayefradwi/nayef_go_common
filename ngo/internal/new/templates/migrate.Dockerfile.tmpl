@@ -1,0 +1,12 @@
+FROM golang:{{.GoVersion}}-alpine AS builder
+RUN CGO_ENABLED=0 go install github.com/pressly/goose/v3/cmd/goose@v3.27.2
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /go/bin/goose /usr/local/bin/goose
+COPY internal/infra/migrations ./migrations
+COPY build/migrate.sh ./migrate.sh
+RUN chmod +x ./migrate.sh
+ENV GOOSE_DRIVER=postgres
+ENV GOOSE_MIGRATION_DIR=./migrations
+ENTRYPOINT ["./migrate.sh"]

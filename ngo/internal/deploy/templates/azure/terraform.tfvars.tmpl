@@ -1,0 +1,10 @@
+subscription_id = "SUBSCRIPTION_ID"
+location        = "eastus"
+github_repo     = "OWNER/REPO"
+{{- if .IsSmall}}
+
+# valid for one hour: gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token
+github_runner_token = "CHANGE_ME"
+ssh_public_key      = "ssh-ed25519 AAAA... you@host"
+ssh_allowed_cidr    = "203.0.113.4/32"
+{{- end}}

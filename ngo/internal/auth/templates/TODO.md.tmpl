@@ -1,10 +1,12 @@
 # Auth: what's left
 
+Do the steps in order.
+
 {{- if .EnvKeys}}
 
 ## 1. Config
 
-`internal/config/config.go`, import `{{.GoModule}}/internal/auth`:
+In `internal/config/config.go`, import `{{.GoModule}}/internal/auth` and add:
 
 ```go
 // add to Config
@@ -17,7 +19,7 @@ Auth: auth.NewAuthConfig(),
 
 ## {{if .EnvKeys}}2{{else}}1{{end}}. DI
 
-`internal/di/di.go`, add to `Di`:
+In `internal/di/di.go`, add to `Di`:
 
 ```go
 Auth          appauth.AuthService
@@ -49,8 +51,11 @@ Imports:
 appauth "{{.GoModule}}/internal/auth"
 ```
 
-Add to `RegisterServices()` after the connects. Every limit and TTL is yours to change.
-{{- if .Jwt}} JWT access tokens aren't checked against the store, so logout ends the refresh token only; issued access tokens live until they expire.{{end}}
+Add this to `RegisterServices()`, after the {{if .Redis}}database and Redis connections are{{else}}database connection is{{end}} made. You can change any limit or time below.
+{{- if .Jwt}}
+
+**Logout does not end access tokens.** An access token keeps working until it expires (15 minutes below). Logout only ends the refresh token.
+{{- end}}
 
 ```go
 sessionStore := errors.Must({{.StorePkg}}.NewSessionStore(di.{{.StoreDiField}}))
@@ -104,7 +109,7 @@ di.Auth = appauth.NewAuthService(di.Pool, sessions
 ## {{if .EnvKeys}}3{{else}}2{{end}}. Router
 {{- if .Grpc}}
 
-`cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"` and `{{.GoModule}}/gen/auth/v1/authv1connect`, add to `setup()`:
+In `cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"` and `{{.GoModule}}/gen/auth/v1/authv1connect`. Add to `setup()`:
 
 ```go
 authHandler := appauth.NewAuthHandler(ar.di.Auth)
@@ -115,16 +120,16 @@ authed := connect.WithHandlerOptions(opts, connect.WithInterceptors(ar.di.Authen
 ar.mux.Handle(authv1connect.NewAccountServiceHandler(authHandler, authed))
 ```
 
-Use `authed` on your own services; narrow it with `connect.WithInterceptors(authconnect.VerifyClaim("role", "admin"))`.
+To protect your own services, use `authed`. To allow only some users, add `connect.WithInterceptors(authconnect.VerifyClaim("role", "admin"))`.
 
-`internal/health/handler.go`, add to `NewStaticChecker`:
+In `internal/health/handler.go`, add to `NewStaticChecker`:
 
 ```go
 authv1connect.AuthServiceName, authv1connect.CodeServiceName, authv1connect.AccountServiceName
 ```
 {{- else}}
 
-`cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"`, add to `setup()`:
+In `cmd/api/router.go`, import `appauth "{{.GoModule}}/internal/auth"`. Add to `setup()`:
 
 ```go
 ar.mux.Mount("/auth", appauth.NewAuthHandler(ar.di.Auth).Routes(ar.di.Authenticate, ar.di.AuthRateLimit))
@@ -138,31 +143,43 @@ ar.mux.Group(func(r chi.Router) {
 {{- end}}
 {{- if .EnvKeys}}
 
-## 4. Deployments
+## 4. Secrets
 
-`.env` and `deployments/local/.env` already have generated values. Add to `environment` in `deployments/{staging,production}/docker-compose.yaml`:
+Your local `.env` already has values for {{range $i, $k := .EnvKeys}}{{if $i}}, {{end}}`{{$k}}`{{end}}.
 
-```yaml
-{{- range .EnvKeys}}
-- {{.}}=${ {{- .}}}
-{{- end}}
+Every deployed environment needs its own values. **Do not copy the values from your local `.env`.** Make a new one for each key:
+
+```sh
+openssl rand -hex 32
 ```
+{{- if .Mfa}}
+
+**Never change `TOTP_KEY` after users turn on MFA.** It encrypts their MFA secrets. A new key breaks MFA for every user.
+{{- end}}
+
+Where to put them: open `deployments/<env>/TODO.md` and follow "Add your own environment variables". Treat each key as a secret.
 {{- end}}
 
 ## {{if .EnvKeys}}5{{else}}3{{end}}. Database
 
-Run `goose up`.
+Run `goose up` on your computer. Deployed environments run it on every deploy.
 {{- if .Redis}}
 
-Redis holds sessions, codes, attempts and TOTP secrets. It needs Redis 7+ (no Cluster), persistence on, and `maxmemory-policy noeviction`, or users lose MFA.
+Redis holds sessions, codes{{if .Mfa}}, login attempts and MFA secrets{{else}} and login attempts{{end}}. Your Redis must have:
+
+- version 7 or newer, not Cluster mode
+- persistence turned on
+- `maxmemory-policy noeviction`
+
+**If Redis drops data, users are logged out{{if .Mfa}} and lose MFA{{end}}.**
 {{- else}}
 
-Schedule `DeleteExpired` on the session, code and attempt stores to clean up expired rows.
+Expired sessions, codes and attempts stay in the database. To clean them up, run `DeleteExpired` on the session, code and attempt stores on a schedule.
 {{- end}}
 
 ## {{if .EnvKeys}}6{{else}}4{{end}}. TODOs
 
-`grep -rn TODO internal/auth`:
+Some parts are left for you. Find them with `grep -rn TODO internal/auth`:
 
 - {{if .Password}}send reset tokens{{else}}send login codes{{end}}
 - put roles or scopes in claims
