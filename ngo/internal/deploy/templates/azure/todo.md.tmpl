@@ -117,6 +117,35 @@ The workflow runs on your server. It pulls the code, builds it, {{if .HasPostgre
 Add them to `/root/{{.Name}}/deployments/{{.Environment}}/.env` on the server. Then run the Deploy workflow again.
 
 Put secrets (passwords, API keys) there too. Git ignores `.env`, so they stay on the server.
+{{- if or .HasPostgres .HasRedis}}
+
+## Reach {{if .HasPostgres}}Postgres{{end}}{{if and .HasPostgres .HasRedis}} and {{end}}{{if .HasRedis}}Redis{{end}}
+
+They only listen on the server itself (`127.0.0.1`), not on the internet. To use them from your computer, open an SSH tunnel from `deployments/{{.Environment}}/terraform` and keep it running:
+
+```sh
+ssh -N{{if .HasPostgres}} -L 5432:localhost:5432{{end}}{{if .HasRedis}} -L 6379:localhost:6379{{end}} ubuntu@$(terraform output -raw public_ip)
+```
+
+Then, in another terminal, connect to `localhost`:
+
+```sh
+{{- if .HasPostgres}}
+psql "postgres://app:YOUR_POSTGRES_PASSWORD@localhost:5432/{{.Name}}"
+{{- end}}
+{{- if .HasRedis}}
+redis-cli -h localhost
+{{- end}}
+```
+
+Port already used on your computer? Pick another local port, for example {{if .HasPostgres}}`-L 15432:localhost:5432`, then connect to port `15432`{{else}}`-L 16379:localhost:6379`, then connect to port `16379`{{end}}.
+{{- end}}
+
+## Ports
+
+**Never publish a port as `"5432:5432"` or `"0.0.0.0:5432:5432"` in `docker-compose.yaml`.** Docker skips the firewall (ufw), so that port is open to the internet. Always write `"127.0.0.1:5432:5432"`.
+
+If you put a VPN in front of the server, closing public SSH is up to you.
 {{- else}}
 
 ## 1. Fill in the settings
