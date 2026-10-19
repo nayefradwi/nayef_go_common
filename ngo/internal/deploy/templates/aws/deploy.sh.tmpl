@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# needs AWS credentials, docker, jq; run from a laptop with the same env vars the workflow sets
+set -euo pipefail
+
+: "${AWS_REGION:?}"
+{{- if .HasPostgres}}
+: "${AWS_PRIVATE_SUBNETS:?}"
+: "${AWS_APP_SECURITY_GROUP:?}"
+{{- end}}
+
+CLUSTER={{.Name}}-{{.Environment}}
+SERVICE={{.Name}}-{{.Environment}}
+
+cd "$(git rev-parse --show-toplevel)"
+tag=${GITHUB_SHA:-$(git rev-parse HEAD)}
+
+registry=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com
+aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
+
+app_image=$registry/$SERVICE:$tag
+docker build -f build/Dockerfile -t "$app_image" .
+docker push "$app_image"
+{{- if .HasPostgres}}
+
+migrate_image=$registry/$SERVICE-migrate:$tag
+docker build -f build/migrate.Dockerfile -t "$migrate_image" .
+docker push "$migrate_image"
+{{- end}}
+
+register() {
+  local definition
+  definition=$(aws ecs describe-task-definition --task-definition "$1" --query taskDefinition |
+    jq --arg image "$2" '.containerDefinitions[0].image = $image | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+  aws ecs register-task-definition --cli-input-json "$definition" --query taskDefinition.taskDefinitionArn --output text
+}
+
+app_task_definition=$(register "$SERVICE" "$app_image")
+{{- if .HasPostgres}}
+migrate_task_definition=$(register "$SERVICE-migrate" "$migrate_image")
+
+task=$(aws ecs run-task --cluster "$CLUSTER" --launch-type FARGATE \
+  --task-definition "$migrate_task_definition" \
+  --network-configuration "awsvpcConfiguration={subnets=[$AWS_PRIVATE_SUBNETS],securityGroups=[$AWS_APP_SECURITY_GROUP],assignPublicIp=DISABLED}" \
+  --query 'tasks[0].taskArn' --output text)
+aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$task"
+
+code=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$task" --query 'tasks[0].containers[0].exitCode' --output text)
+if [ "$code" != "0" ]; then
+  echo "migration failed with exit code $code, see the migrate stream in /ecs/$CLUSTER"
+  exit 1
+fi
+{{- end}}
+
+aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$app_task_definition" > /dev/null
+aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+# the circuit breaker rolls a failed deploy back, which also ends up "stable"
+running=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].taskDefinition' --output text)
+if [ "$running" != "$app_task_definition" ]; then
+  echo "new tasks failed their health checks, ECS rolled back to $running"
+  exit 1
+fi

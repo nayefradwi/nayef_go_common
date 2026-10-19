@@ -1,14 +1,41 @@
-# Deploy {{.Environment}}: what's left
+# Deploy {{.Environment}}
 
-## 1. Set up the box
+Do the steps in order.
 
-On the server, as root: install Docker, then register a self-hosted runner (repo → Settings → Actions → Runners → New) with the label `{{.Environment}}`, installed as a service (`./svc.sh install root`). Then:
+## 1. Set up the server
+
+SSH in to your server and become root (`sudo -i`). Install Docker:
+
+```sh
+curl -fsSL https://get.docker.com | sh
+```
+
+Add a GitHub runner: repo → Settings → Actions → Runners → New self-hosted runner → Linux. Run the commands GitHub shows, with these changes:
+
+- Put it in `/opt/actions-runner`.
+- Start `config.sh` with `RUNNER_ALLOW_RUNASROOT=1 ./config.sh ...`.
+- When it asks for labels, type `{{.Environment}}`. **The workflow only runs on a runner with this label.**
+- Do not run `./run.sh`. Install it as a service instead, so it survives a reboot:
+
+```sh
+./svc.sh install root
+./svc.sh start
+```
+
+The server needs a key to read your repo. Make one and print it:
+
+```sh
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+```
+
+Add it on GitHub: repo → Settings → Deploy keys → Add. Leave "write access" off. Then clone:
 
 ```sh
 git clone git@github.com:OWNER/REPO.git /root/{{.Name}}
 ```
 
-and write `/root/{{.Name}}/deployments/{{.Environment}}/.env`:
+Create `/root/{{.Name}}/deployments/{{.Environment}}/.env` with this, and replace every `CHANGE_ME`:
 
 ```sh
 ENVIRONMENT={{.Environment}}
@@ -28,30 +55,52 @@ DOMAIN=api.example.com
 TUNNEL_TOKEN=CHANGE_ME
 {{- end}}
 ```
+{{- if .HasPostgres}}
+
+Use the same password in `POSTGRES_PASSWORD` and `GOOSE_DBSTRING`.
+{{- end}}
 {{- if .IsGrpc}}
 
 ## 2. Domain
 
-Cloudflare tunnels can't serve gRPC on a public hostname, so Caddy serves it from the box on ports 80 and 443.
+Add an A record for your `DOMAIN` that points to the server IP. If your DNS is on Cloudflare, turn the proxy off (grey cloud). Ports 80 and 443 must be open.
 
-Point an A record for `DOMAIN` at the box's public IP. If the domain is on Cloudflare, set the record to DNS only (grey cloud). On first start Caddy gets a Let's Encrypt certificate, which needs ports 80 and 443 reachable, and keeps it in the `caddydata` volume. Clients connect to `DOMAIN:443` over TLS.
+On first start, Caddy gets an HTTPS certificate by itself. Clients connect to `DOMAIN:443`.
 {{- else}}
 
-## 2. Cloudflare tunnel
+## 2. Domain
 
-The domain's DNS must be on Cloudflare. In Zero Trust → Networks → Tunnels, create a tunnel and put its token in `TUNNEL_TOKEN`. Add a public hostname (e.g. `api.example.com`) with service `http://{{.Name}}:4000`. Cloudflare creates a proxied CNAME to the tunnel and serves HTTPS for it. `cloudflared` connects out from the box, so no inbound ports are open.
+Your domain's DNS must be on Cloudflare.
+
+1. Cloudflare → Zero Trust → Networks → Tunnels → create a tunnel.
+2. Copy the tunnel token into `TUNNEL_TOKEN` in `.env`.
+3. Add a public hostname, for example `api.example.com`, with service `http://{{.Name}}:4000`.
+
+Cloudflare serves HTTPS for you. You do not need to open any ports.
 {{- end}}
 
 ## 3. Deploy
 
-Actions → Deploy {{.Environment}} → Run workflow.
+GitHub → Actions → Deploy {{.Environment}} → Run workflow.
+
+The workflow runs on your server. It pulls the code, builds it, {{if .HasPostgres}}runs the database migration, {{end}}and restarts the app.
+
+**It always deploys the `main` branch**, even if you pick another branch in GitHub.
+
+## Add your own environment variables
+
+Add them to `/root/{{.Name}}/deployments/{{.Environment}}/.env` on the server. Then run the Deploy workflow again.
+
+Put secrets (passwords, API keys) there too. Git ignores `.env`, so they stay on the server.
 {{- if .HasPostgres}}
 
-## Migrations
+## Database migrations
 
-`build/migrate.sh` runs `goose up`. If it fails, it rolls back to the version it started from and exits non-zero, and the new app is not deployed. That means:
+Each deploy runs `build/migrate.sh` (`goose up`) before it starts the new app. If a migration fails, it is undone, and the old app keeps running.
 
-- every migration needs a working `-- +goose Down`
-- migrations must be additive, so the running app keeps working on the new schema
-- `-- +goose NO TRANSACTION` files (e.g. `CREATE INDEX CONCURRENTLY`) can fail halfway and leave state behind; a failed concurrent index stays as an invalid index you have to drop
+Rules for every migration:
+
+- Write a working `-- +goose Down`.
+- Only add things. Do not drop or rename columns the running app still uses.
+- Be careful with `-- +goose NO TRANSACTION` (for example `CREATE INDEX CONCURRENTLY`). It can fail halfway. A failed concurrent index stays behind as an invalid index, and you must drop it by hand.
 {{- end}}

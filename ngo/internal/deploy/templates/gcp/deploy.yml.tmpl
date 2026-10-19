@@ -16,11 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: {{.Environment}}
     timeout-minutes: 30
-    env:
-      REGION: ${{"{{"}} vars.GCP_REGION }}
-      REGISTRY: ${{"{{"}} vars.GCP_REGION }}-docker.pkg.dev/${{"{{"}} vars.GCP_PROJECT_ID }}/{{.Name}}-{{.Environment}}
-      SERVICE: {{.Name}}-{{.Environment}}
-      JOB: {{.Name}}-{{.Environment}}-migrate
 
     steps:
       - uses: actions/checkout@v4
@@ -32,29 +27,8 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build and push
-        run: |
-          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
-
-          docker build -f build/Dockerfile -t "$REGISTRY/app:$GITHUB_SHA" .
-          docker push "$REGISTRY/app:$GITHUB_SHA"
-{{- if .HasPostgres}}
-
-          docker build -f build/migrate.Dockerfile -t "$REGISTRY/migrate:$GITHUB_SHA" .
-          docker push "$REGISTRY/migrate:$GITHUB_SHA"
-
-      - name: Migrate
-        run: |
-          gcloud run jobs update "$JOB" --region "$REGION" --image "$REGISTRY/migrate:$GITHUB_SHA" --quiet
-          execution=$(gcloud run jobs execute "$JOB" --region "$REGION" --wait --format 'value(metadata.name)')
-
-          succeeded=$(gcloud run jobs executions describe "$execution" --region "$REGION" --format 'value(status.succeededCount)')
-          if [ "$succeeded" != "1" ]; then
-            echo "migration failed, see execution $execution"
-            exit 1
-          fi
-{{- end}}
-
-      # traffic stays on the old revision if the new one fails to start
       - name: Deploy
-        run: gcloud run deploy "$SERVICE" --region "$REGION" --image "$REGISTRY/app:$GITHUB_SHA" --quiet
+        env:
+          GCP_REGION: ${{"{{"}} vars.GCP_REGION }}
+          GCP_PROJECT_ID: ${{"{{"}} vars.GCP_PROJECT_ID }}
+        run: bash deployments/{{.Environment}}/deploy.sh

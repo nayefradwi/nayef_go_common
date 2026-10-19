@@ -19,11 +19,12 @@ func generateDeployment(req CreateDeploymentRequest) error {
 	runner := errors.ResultRunnerWithParam[CreateDeploymentRequest]{}
 	runner.Do(req, renderTerraform)
 	runner.Do(req, renderTerraformVars)
+	runner.Do(req, renderRunnerInit)
 	runner.Do(req, renderDockerCompose)
 	runner.Do(req, renderContinousDelivery)
+	runner.Do(req, renderDeployScript)
 	runner.Do(req, renderTodo)
 	if runner.Error != nil {
-		// a half-written env dir would make checkEnvironmentNotExists block the rerun
 		os.RemoveAll(envDir(req))
 	}
 

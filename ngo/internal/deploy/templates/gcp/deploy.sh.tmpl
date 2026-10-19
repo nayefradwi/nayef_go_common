@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# needs gcloud logged in and docker; run from a laptop with the same env vars the workflow sets
+set -euo pipefail
+
+: "${GCP_REGION:?}"
+: "${GCP_PROJECT_ID:?}"
+
+# a laptop's gcloud may default to another project
+export CLOUDSDK_CORE_PROJECT=$GCP_PROJECT_ID
+
+REGISTRY=$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/{{.Name}}-{{.Environment}}
+SERVICE={{.Name}}-{{.Environment}}
+{{- if .HasPostgres}}
+JOB={{.Name}}-{{.Environment}}-migrate
+{{- end}}
+
+cd "$(git rev-parse --show-toplevel)"
+tag=${GITHUB_SHA:-$(git rev-parse HEAD)}
+
+gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+
+docker build -f build/Dockerfile -t "$REGISTRY/app:$tag" .
+docker push "$REGISTRY/app:$tag"
+{{- if .HasPostgres}}
+
+docker build -f build/migrate.Dockerfile -t "$REGISTRY/migrate:$tag" .
+docker push "$REGISTRY/migrate:$tag"
+
+gcloud run jobs update "$JOB" --region "$GCP_REGION" --image "$REGISTRY/migrate:$tag" --quiet
+execution=$(gcloud run jobs execute "$JOB" --region "$GCP_REGION" --wait --format 'value(metadata.name)')
+
+succeeded=$(gcloud run jobs executions describe "$execution" --region "$GCP_REGION" --format 'value(status.succeededCount)')
+if [ "$succeeded" != "1" ]; then
+  echo "migration failed, see execution $execution"
+  exit 1
+fi
+{{- end}}
+
+# traffic stays on the old revision if the new one fails to start
+gcloud run deploy "$SERVICE" --region "$GCP_REGION" --image "$REGISTRY/app:$tag" --quiet

@@ -90,6 +90,16 @@ func renderTerraformVars(req CreateDeploymentRequest) error {
 	return common.RenderToFile(templatesFs, path.Join(dir, TF_VARS), filePath, req)
 }
 
+// sits next to main.tf, which loads it with templatefile
+func renderRunnerInit(req CreateDeploymentRequest) error {
+	if req.Size != Small || req.Provider == Vps {
+		return nil
+	}
+
+	filePath := filepath.Join(envDir(req), TERRAFORM, "runner-init.sh")
+	return common.RenderToFile(templatesFs, TMPL_RUNNER_INIT, filePath, req)
+}
+
 func renderDockerCompose(req CreateDeploymentRequest) error {
 	if req.Size != Small {
 		return nil
@@ -99,7 +109,6 @@ func renderDockerCompose(req CreateDeploymentRequest) error {
 	return common.RenderToFile(templatesFs, TMPL_DOCKER_COMPOSE, filePath, req)
 }
 
-// small runs compose on a self-hosted runner on every provider, so it shares the vps workflow
 func renderContinousDelivery(req CreateDeploymentRequest) error {
 	dir, err := providerDir(req.Provider)
 	if err != nil {
@@ -113,6 +122,20 @@ func renderContinousDelivery(req CreateDeploymentRequest) error {
 	tmpl := path.Join(dir, TMPL_DEPLOY)
 	filePath := filepath.Join(req.RootDirPath, GITHUB, WORKFLOWS, "deploy-"+req.Environment+".yml")
 	return common.RenderToFile(templatesFs, tmpl, filePath, req)
+}
+
+func renderDeployScript(req CreateDeploymentRequest) error {
+	if req.Size == Small {
+		return nil
+	}
+
+	dir, err := providerDir(req.Provider)
+	if err != nil {
+		return err
+	}
+
+	filePath := filepath.Join(envDir(req), "deploy.sh")
+	return common.RenderToFile(templatesFs, path.Join(dir, TMPL_DEPLOY_SCRIPT), filePath, req)
 }
 
 func renderTodo(req CreateDeploymentRequest) error {

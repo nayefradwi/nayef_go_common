@@ -1,28 +1,66 @@
-# Deploy {{.Environment}}: what's left
+# Deploy {{.Environment}}
+
+Do the steps in order. Run commands from the repo root.
+
+Before you start: install `terraform`, `gh` and `az`. Log in to both (`gh auth login`, `az login`).
 {{- if .IsSmall}}
 
-## 1. Provision the box
+## 1. Fill in the settings
 
-Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`. The runner token is valid for one hour, so get it right before applying:
+Open `deployments/{{.Environment}}/terraform/terraform.tfvars`. Replace `SUBSCRIPTION_ID`, every `CHANGE_ME` and `OWNER/REPO`.
+
+- `ssh_allowed_cidr`: your IP with `/32` at the end. Get your IP with `curl -4 ifconfig.me`. Only this IP can SSH in.
+- `github_runner_token`: get it with the command below. **It stops working after 1 hour.** Get it right before step 2.
 
 ```sh
 gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token
+```
+
+Git ignores this file. Do not commit it.
+
+## 2. Create the server
+
+```sh
 cd deployments/{{.Environment}}/terraform
 terraform init
 terraform apply
 ```
 
-Cloud-init installs Docker and registers a runner labelled `{{.Environment}}`. Check it shows up under the repo's Settings → Actions → Runners.
+On first start, the server runs `terraform/runner-init.sh`. It installs Docker and a GitHub runner. Wait a few minutes. Then check the runner is there: repo → Settings → Actions → Runners.
 
-## 2. Set up the box
+Runner not there? The token probably expired. Get a new token, put it in `terraform.tfvars`, and rebuild the server:
 
-SSH in as `ubuntu` (`terraform output public_ip`), then as root:
+```sh
+terraform apply -replace=azurerm_linux_virtual_machine.main
+```
+
+`runner-init.sh` runs only once. Editing it later does not change the server.
+
+**Do not lose `terraform.tfstate`.** Terraform needs it to change or delete what it made. Git ignores it. Back it up, or move it to a storage account: see the `backend "azurerm"` block at the top of `main.tf`.
+
+## 3. Set up the server
+
+SSH in and become root:
+
+```sh
+ssh ubuntu@$(terraform output -raw public_ip)
+sudo -i
+```
+
+The server needs a key to read your repo. Make one and print it:
+
+```sh
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+```
+
+Add it on GitHub: repo → Settings → Deploy keys → Add. Leave "write access" off. Then clone:
 
 ```sh
 git clone git@github.com:OWNER/REPO.git /root/{{.Name}}
 ```
 
-and write `/root/{{.Name}}/deployments/{{.Environment}}/.env`:
+Create `/root/{{.Name}}/deployments/{{.Environment}}/.env` with this, and replace every `CHANGE_ME`:
 
 ```sh
 ENVIRONMENT={{.Environment}}
@@ -42,32 +80,52 @@ DOMAIN=api.example.com
 TUNNEL_TOKEN=CHANGE_ME
 {{- end}}
 ```
+{{- if .HasPostgres}}
+
+Use the same password in `POSTGRES_PASSWORD` and `GOOSE_DBSTRING`.
+{{- end}}
 {{- if .IsGrpc}}
 
-## 3. Domain
+## 4. Domain
 
-Cloudflare tunnels can't serve gRPC on a public hostname, so Caddy serves it from the box on ports 80 and 443.
+Add an A record for your `DOMAIN` that points to the server IP (`terraform output public_ip`). If your DNS is on Cloudflare, turn the proxy off (grey cloud).
 
-Point an A record for `DOMAIN` at the box's public IP (`terraform output public_ip`). If the domain is on Cloudflare, set the record to DNS only (grey cloud). On first start Caddy gets a Let's Encrypt certificate, which needs ports 80 and 443 reachable, and keeps it in the `caddydata` volume. Clients connect to `DOMAIN:443` over TLS.
+On first start, Caddy gets an HTTPS certificate by itself. Clients connect to `DOMAIN:443`.
 {{- else}}
 
-## 3. Cloudflare tunnel
+## 4. Domain
 
-The domain's DNS must be on Cloudflare. In Zero Trust → Networks → Tunnels, create a tunnel and put its token in `TUNNEL_TOKEN`. Add a public hostname (e.g. `api.example.com`) with service `http://{{.Name}}:4000`. Cloudflare creates a proxied CNAME to the tunnel and serves HTTPS for it. `cloudflared` connects out from the box, so no inbound ports are open.
+Your domain's DNS must be on Cloudflare.
+
+1. Cloudflare → Zero Trust → Networks → Tunnels → create a tunnel.
+2. Copy the tunnel token into `TUNNEL_TOKEN` in `.env`.
+3. Add a public hostname, for example `api.example.com`, with service `http://{{.Name}}:4000`.
+
+Cloudflare serves HTTPS for you. No ports are open on the server.
 {{- end}}
 
-## 4. Deploy
+## 5. Deploy
 
-Actions → Deploy {{.Environment}} → Run workflow.
+GitHub → Actions → Deploy {{.Environment}} → Run workflow.
+
+The workflow runs on your server. It pulls the code, builds it, {{if .HasPostgres}}runs the database migration, {{end}}and restarts the app.
+
+**It always deploys the `main` branch**, even if you pick another branch in GitHub.
+
+## Add your own environment variables
+
+Add them to `/root/{{.Name}}/deployments/{{.Environment}}/.env` on the server. Then run the Deploy workflow again.
+
+Put secrets (passwords, API keys) there too. Git ignores `.env`, so they stay on the server.
 {{- else}}
 
-## 1. Once per Azure subscription
+## 1. Fill in the settings
 
-`az login` to the subscription. Terraform registers the resource providers it needs.
+Open `deployments/{{.Environment}}/terraform/terraform.tfvars`. Replace `SUBSCRIPTION_ID` and `OWNER/REPO`. Change `location` if you want.
 
-## 2. Apply
+Git ignores this file. Do not commit it. Later it will hold your secrets.
 
-Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`.
+## 2. Create the cloud resources
 
 ```sh
 cd deployments/{{.Environment}}/terraform
@@ -75,10 +133,19 @@ terraform init
 terraform apply
 ```
 
-The services start on a placeholder image until the first deploy.
-{{- if .HasPostgres}} The database password is generated and stored in the container app's secrets; it is also in the terraform state, so keep the state private.{{end}}
+This takes a while. The app runs a placeholder image until your first deploy.
 
-## 3. GitHub environment
+Your app's address:
+
+```sh
+terraform output url
+```
+
+**Do not lose `terraform.tfstate`.** Terraform needs it to change or delete what it made. It also holds your passwords, so keep it private. Git ignores it. Before anyone else runs Terraform, move it to a storage account: see the `backend "azurerm"` block at the top of `main.tf`.
+
+## 3. Connect GitHub
+
+Still in `deployments/{{.Environment}}/terraform`. Replace `OWNER/REPO`, then run:
 
 ```sh
 gh api -X PUT repos/OWNER/REPO/environments/{{.Environment}}
@@ -87,27 +154,101 @@ for v in azure_client_id azure_tenant_id azure_subscription_id azure_acr_name; d
 done
 ```
 
-These are variables, not secrets: the workflow logs in with GitHub OIDC, and the cloud only trusts runs from the `{{.Environment}}` environment of this repo.
+This makes a GitHub environment called `{{.Environment}}` and saves the Terraform outputs in it. They are not secret. Azure only accepts deploys from this environment of this repo.
 
-## 4. App secrets
+## 4. Deploy
 
-Anything the app reads that terraform doesn't know about (e.g. the JWT secret from `ngo auth`) goes into the container app's secrets.
+GitHub → Actions → Deploy {{.Environment}} → Run workflow.
 
-## 5. Deploy
+The workflow runs `deployments/{{.Environment}}/deploy.sh`. It builds the image, {{if .HasPostgres}}runs the database migration, {{end}}then starts the new version. If the new version does not become ready, the old one keeps serving and the workflow fails.
 
-Actions → Deploy {{.Environment}} → Run workflow. It builds and pushes the images, {{if .HasPostgres}}runs the migration job, {{end}}then rolls out the app.
+To deploy from your computer instead, install Docker. **Commit your changes first**: the image is named after your last commit. Then:
+
+```sh
+cd deployments/{{.Environment}}/terraform
+az account set --subscription "$(terraform output -raw azure_subscription_id)"
+export AZURE_ACR_NAME=$(terraform output -raw azure_acr_name)
+cd -
+bash deployments/{{.Environment}}/deploy.sh
+```
+
+## Add your own environment variables
+
+All changes go in `deployments/{{.Environment}}/terraform/main.tf`, inside `resource "azurerm_container_app" "app"`.
+
+### Normal values
+
+Add an `env` block next to the other `env` blocks in `container`:
+
+```hcl
+      env {
+        name  = "LOG_LEVEL"
+        value = "info"
+      }
+```
+
+### Secret values (passwords, API keys)
+
+**Never write a secret value in `main.tf`.** Git tracks that file. Put the value in `terraform.tfvars`. Git ignores that file.
+
+The example adds `JWT_SECRET`. Change `jwt` and `JWT_SECRET` to your own names.
+
+1. Add the value to `terraform.tfvars`:
+
+   ```hcl
+   jwt_secret = "the-real-value"
+   ```
+
+2. Add this to `main.tf`, outside the container app:
+
+   ```hcl
+   variable "jwt_secret" {
+     type      = string
+     sensitive = true
+   }
+   ```
+
+3. Add a `secret` block inside the container app, next to `ingress`. The name may only use small letters, numbers and `-`.
+
+   ```hcl
+     secret {
+       name  = "jwt-secret"
+       value = var.jwt_secret
+     }
+   ```
+
+4. Add an `env` block next to the other `env` blocks in `container`:
+
+   ```hcl
+         env {
+           name        = "JWT_SECRET"
+           secret_name = "jwt-secret"
+         }
+   ```
+
+### Make the change live
+
+```sh
+cd deployments/{{.Environment}}/terraform
+terraform apply
+```
+
+Then restart the app. **A changed secret value does not reach the running app until it restarts.**
+
+```sh
+az containerapp revision restart --name {{.Name}}-{{.Environment}} --resource-group rg-{{.Name}}-{{.Environment}} \
+  --revision "$(az containerapp show --name {{.Name}}-{{.Environment}} --resource-group rg-{{.Name}}-{{.Environment}} --query properties.latestRevisionName --output tsv)"
+```
 {{- end}}
 {{- if .HasPostgres}}
 
-## Migrations
+## Database migrations
 
-`build/migrate.sh` runs `goose up`. If it fails, it rolls back to the version it started from and exits non-zero, and the new app is not deployed. That means:
+Each deploy runs `build/migrate.sh` (`goose up`) before it starts the new app. If a migration fails, it is undone, and the old app keeps running.
 
-- every migration needs a working `-- +goose Down`
-- migrations must be additive, so the running app keeps working on the new schema
-- `-- +goose NO TRANSACTION` files (e.g. `CREATE INDEX CONCURRENTLY`) can fail halfway and leave state behind; a failed concurrent index stays as an invalid index you have to drop
+Rules for every migration:
+
+- Write a working `-- +goose Down`.
+- Only add things. Do not drop or rename columns the running app still uses.
+- Be careful with `-- +goose NO TRANSACTION` (for example `CREATE INDEX CONCURRENTLY`). It can fail halfway. A failed concurrent index stays behind as an invalid index, and you must drop it by hand.
 {{- end}}
-
-## Notes
-
-- Terraform state is local. Move it to the commented-out backend in `main.tf` before anyone else applies.

@@ -37,32 +37,11 @@ variable "ssh_allowed_cidr" {
 locals {
   name = "{{.Name}}-{{.Environment}}"
 
-  # runs on every boot on GCP, hence the guard
-  cloud_init = <<-EOT
-    #!/bin/bash
-    set -euo pipefail
-    [ -f /opt/actions-runner/.runner ] && exit 0
-
-    curl -fsSL https://get.docker.com | sh
-
-    mkdir -p /opt/actions-runner
-    cd /opt/actions-runner
-    version=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | grep -o '"tag_name": *"v[^"]*"' | grep -o '[0-9][0-9.]*')
-    arch=$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
-    curl -fsSL -o runner.tar.gz "https://github.com/actions/runner/releases/download/v$version/actions-runner-linux-$arch-$version.tar.gz"
-    tar xzf runner.tar.gz
-    ./bin/installdependencies.sh
-
-    # ponytail: root runner, so repo write access means root on this box. Tailscale doesn't gate it, the runner polls GitHub outbound.
-    # Fine for a private repo; switch to a non-root runner with a sudo-only deploy script if outside contributors get in.
-    RUNNER_ALLOW_RUNASROOT=1 ./config.sh --unattended \
-      --url "https://github.com/${var.github_repo}" \
-      --token "${var.github_runner_token}" \
-      --name "${local.name}" \
-      --labels "{{.Environment}}"
-    ./svc.sh install root
-    ./svc.sh start
-  EOT
+  runner_init = templatefile("${path.module}/runner-init.sh", {
+    github_repo  = var.github_repo
+    runner_token = var.github_runner_token
+    name         = local.name
+  })
 }
 
 variable "project_id" {
@@ -155,7 +134,7 @@ resource "google_compute_instance" "main" {
     ssh-keys = "ubuntu:${var.ssh_public_key}"
   }
 
-  metadata_startup_script = local.cloud_init
+  metadata_startup_script = local.runner_init
 
   # a fresh runner token must not replace the box
   lifecycle {

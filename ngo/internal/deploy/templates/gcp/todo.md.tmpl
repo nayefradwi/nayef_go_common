@@ -1,28 +1,66 @@
-# Deploy {{.Environment}}: what's left
+# Deploy {{.Environment}}
+
+Do the steps in order. Run commands from the repo root.
+
+Before you start: install `terraform`, `gh` and `gcloud`. Log in to both (`gh auth login`, `gcloud auth login`). Terraform also needs `gcloud auth application-default login`.
 {{- if .IsSmall}}
 
-## 1. Provision the box
+## 1. Fill in the settings
 
-Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`. The runner token is valid for one hour, so get it right before applying:
+Open `deployments/{{.Environment}}/terraform/terraform.tfvars`. Replace `PROJECT_ID`, every `CHANGE_ME` and `OWNER/REPO`.
+
+- `ssh_allowed_cidr`: your IP with `/32` at the end. Get your IP with `curl -4 ifconfig.me`. Only this IP can SSH in.
+- `github_runner_token`: get it with the command below. **It stops working after 1 hour.** Get it right before step 2.
 
 ```sh
 gh api -X POST repos/OWNER/REPO/actions/runners/registration-token --jq .token
+```
+
+Git ignores this file. Do not commit it.
+
+## 2. Create the server
+
+```sh
 cd deployments/{{.Environment}}/terraform
 terraform init
 terraform apply
 ```
 
-Cloud-init installs Docker and registers a runner labelled `{{.Environment}}`. Check it shows up under the repo's Settings → Actions → Runners.
+On first start, the server runs `terraform/runner-init.sh`. It installs Docker and a GitHub runner. Wait a few minutes. Then check the runner is there: repo → Settings → Actions → Runners.
 
-## 2. Set up the box
+Runner not there? The token probably expired. Get a new token, put it in `terraform.tfvars`, and rebuild the server:
 
-SSH in as `ubuntu` (`terraform output public_ip`), then as root:
+```sh
+terraform apply -replace=google_compute_instance.main
+```
+
+Editing `runner-init.sh` later does not change the server.
+
+**Do not lose `terraform.tfstate`.** Terraform needs it to change or delete what it made. Git ignores it. Back it up, or move it to a bucket: see the `backend "gcs"` block at the top of `main.tf`.
+
+## 3. Set up the server
+
+SSH in and become root:
+
+```sh
+ssh ubuntu@$(terraform output -raw public_ip)
+sudo -i
+```
+
+The server needs a key to read your repo. Make one and print it:
+
+```sh
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub
+```
+
+Add it on GitHub: repo → Settings → Deploy keys → Add. Leave "write access" off. Then clone:
 
 ```sh
 git clone git@github.com:OWNER/REPO.git /root/{{.Name}}
 ```
 
-and write `/root/{{.Name}}/deployments/{{.Environment}}/.env`:
+Create `/root/{{.Name}}/deployments/{{.Environment}}/.env` with this, and replace every `CHANGE_ME`:
 
 ```sh
 ENVIRONMENT={{.Environment}}
@@ -42,32 +80,56 @@ DOMAIN=api.example.com
 TUNNEL_TOKEN=CHANGE_ME
 {{- end}}
 ```
+{{- if .HasPostgres}}
+
+Use the same password in `POSTGRES_PASSWORD` and `GOOSE_DBSTRING`.
+{{- end}}
 {{- if .IsGrpc}}
 
-## 3. Domain
+## 4. Domain
 
-Cloudflare tunnels can't serve gRPC on a public hostname, so Caddy serves it from the box on ports 80 and 443.
+Add an A record for your `DOMAIN` that points to the server IP (`terraform output public_ip`). If your DNS is on Cloudflare, turn the proxy off (grey cloud).
 
-Point an A record for `DOMAIN` at the box's public IP (`terraform output public_ip`). If the domain is on Cloudflare, set the record to DNS only (grey cloud). On first start Caddy gets a Let's Encrypt certificate, which needs ports 80 and 443 reachable, and keeps it in the `caddydata` volume. Clients connect to `DOMAIN:443` over TLS.
+On first start, Caddy gets an HTTPS certificate by itself. Clients connect to `DOMAIN:443`.
 {{- else}}
 
-## 3. Cloudflare tunnel
+## 4. Domain
 
-The domain's DNS must be on Cloudflare. In Zero Trust → Networks → Tunnels, create a tunnel and put its token in `TUNNEL_TOKEN`. Add a public hostname (e.g. `api.example.com`) with service `http://{{.Name}}:4000`. Cloudflare creates a proxied CNAME to the tunnel and serves HTTPS for it. `cloudflared` connects out from the box, so no inbound ports are open.
+Your domain's DNS must be on Cloudflare.
+
+1. Cloudflare → Zero Trust → Networks → Tunnels → create a tunnel.
+2. Copy the tunnel token into `TUNNEL_TOKEN` in `.env`.
+3. Add a public hostname, for example `api.example.com`, with service `http://{{.Name}}:4000`.
+
+Cloudflare serves HTTPS for you. No ports are open on the server.
 {{- end}}
 
-## 4. Deploy
+## 5. Deploy
 
-Actions → Deploy {{.Environment}} → Run workflow.
+GitHub → Actions → Deploy {{.Environment}} → Run workflow.
+
+The workflow runs on your server. It pulls the code, builds it, {{if .HasPostgres}}runs the database migration, {{end}}and restarts the app.
+
+**It always deploys the `main` branch**, even if you pick another branch in GitHub.
+
+## Add your own environment variables
+
+Add them to `/root/{{.Name}}/deployments/{{.Environment}}/.env` on the server. Then run the Deploy workflow again.
+
+Put secrets (passwords, API keys) there too. Git ignores `.env`, so they stay on the server.
 {{- else}}
 
 ## 1. Once per GCP project
 
-Create the project and link a billing account. Terraform enables the APIs it needs.
+Create the GCP project and link a billing account. Terraform turns on the APIs it needs.
 
-## 2. Apply
+## 2. Fill in the settings
 
-Fill in `deployments/{{.Environment}}/terraform/terraform.tfvars`. It's gitignored, like `.env`.
+Open `deployments/{{.Environment}}/terraform/terraform.tfvars`. Replace `PROJECT_ID` and `OWNER/REPO`. Change `region` if you want.
+
+Git ignores this file. Do not commit it. Later it will hold your secrets.
+
+## 3. Create the cloud resources
 
 ```sh
 cd deployments/{{.Environment}}/terraform
@@ -75,10 +137,19 @@ terraform init
 terraform apply
 ```
 
-The services start on a placeholder image until the first deploy.
-{{- if .HasPostgres}} The database password is generated and stored in Secret Manager; it is also in the terraform state, so keep the state private.{{end}}
+This takes a while. The app runs a placeholder image until your first deploy.
 
-## 3. GitHub environment
+Your app's address:
+
+```sh
+terraform output url
+```
+
+**Do not lose `terraform.tfstate`.** Terraform needs it to change or delete what it made. It also holds your passwords, so keep it private. Git ignores it. Before anyone else runs Terraform, move it to a bucket: see the `backend "gcs"` block at the top of `main.tf`.
+
+## 4. Connect GitHub
+
+Still in `deployments/{{.Environment}}/terraform`. Replace `OWNER/REPO`, then run:
 
 ```sh
 gh api -X PUT repos/OWNER/REPO/environments/{{.Environment}}
@@ -87,30 +158,138 @@ for v in gcp_project_id gcp_region gcp_workload_identity_provider gcp_service_ac
 done
 ```
 
-These are variables, not secrets: the workflow logs in with GitHub OIDC, and the cloud only trusts runs from the `{{.Environment}}` environment of this repo.
-
-## 4. App secrets
-
-Anything the app reads that terraform doesn't know about (e.g. the JWT secret from `ngo auth`) goes into the Cloud Run service env, backed by Secret Manager.
+This makes a GitHub environment called `{{.Environment}}` and saves the Terraform outputs in it. They are not secret. GCP only accepts deploys from this environment of this repo.
 
 ## 5. Deploy
 
-Actions → Deploy {{.Environment}} → Run workflow. It builds and pushes the images, {{if .HasPostgres}}runs the migration job, {{end}}then rolls out the app.
+GitHub → Actions → Deploy {{.Environment}} → Run workflow.
+
+The workflow runs `deployments/{{.Environment}}/deploy.sh`. It builds the image, {{if .HasPostgres}}runs the database migration, {{end}}then starts the new version. If the new version does not start, the old one keeps serving.
+
+To deploy from your computer instead, log in with `gcloud auth login` and install Docker. **Commit your changes first**: the image is named after your last commit. Then:
+
+```sh
+cd deployments/{{.Environment}}/terraform
+export GCP_REGION=$(terraform output -raw gcp_region)
+export GCP_PROJECT_ID=$(terraform output -raw gcp_project_id)
+cd -
+bash deployments/{{.Environment}}/deploy.sh
+```
+
+## Add your own environment variables
+
+All changes go in `deployments/{{.Environment}}/terraform/main.tf`, inside `resource "google_cloud_run_v2_service" "app"`.
+
+### Normal values
+
+Add an `env` block next to the other `env` blocks in `containers`:
+
+```hcl
+      env {
+        name  = "LOG_LEVEL"
+        value = "info"
+      }
+```
+
+### Secret values (passwords, API keys)
+
+**Never write a secret value in `main.tf`.** Git tracks that file. Put the value in `terraform.tfvars`. Git ignores that file.
+
+The example adds `JWT_SECRET`. Change `jwt` and `JWT_SECRET` to your own names.
+
+1. Add the value to `terraform.tfvars`:
+
+   ```hcl
+   jwt_secret = "the-real-value"
+   ```
+
+2. Add this to `main.tf`. The last part lets the app read the secret. **If you skip it, the app will not start.**
+
+   ```hcl
+   variable "jwt_secret" {
+     type      = string
+     sensitive = true
+   }
+
+   resource "google_secret_manager_secret" "jwt" {
+     secret_id = "${local.name}-jwt"
+
+     replication {
+       auto {}
+     }
+
+     depends_on = [google_project_service.main]
+   }
+
+   resource "google_secret_manager_secret_version" "jwt" {
+     secret      = google_secret_manager_secret.jwt.id
+     secret_data = var.jwt_secret
+   }
+
+   resource "google_secret_manager_secret_iam_member" "jwt" {
+     secret_id = google_secret_manager_secret.jwt.id
+     role      = "roles/secretmanager.secretAccessor"
+     member    = "serviceAccount:${google_service_account.run.email}"
+   }
+   ```
+
+3. Add an `env` block next to the other `env` blocks in `containers`:
+
+   ```hcl
+         env {
+           name = "JWT_SECRET"
+           value_source {
+             secret_key_ref {
+               secret  = google_secret_manager_secret.jwt.secret_id
+               version = "latest"
+             }
+           }
+         }
+   ```
+
+4. Make the app wait for the secret. At the end of the service resource,
+{{- if .HasPostgres}} add the two `jwt` items to the `depends_on` list:
+
+   ```hcl
+     depends_on = [
+       google_secret_manager_secret_version.database_url,
+       google_secret_manager_secret_iam_member.database_url,
+       google_secret_manager_secret_version.jwt,
+       google_secret_manager_secret_iam_member.jwt,
+     ]
+   ```
+{{- else}} add:
+
+   ```hcl
+     depends_on = [
+       google_secret_manager_secret_version.jwt,
+       google_secret_manager_secret_iam_member.jwt,
+     ]
+   ```
+{{- end}}
+
+### Make the change live
+
+```sh
+cd deployments/{{.Environment}}/terraform
+terraform apply
+```
+
+Then run the Deploy workflow again. **A changed secret value does not reach the running app until the next deploy.**
+
+## If you delete this environment
+
+After `terraform destroy`, wait about 30 days before you create `{{.Environment}}` again in the same project. GCP keeps its GitHub login pool (`github-{{.Environment}}`) that long and will not reuse the name.
 {{- end}}
 {{- if .HasPostgres}}
 
-## Migrations
+## Database migrations
 
-`build/migrate.sh` runs `goose up`. If it fails, it rolls back to the version it started from and exits non-zero, and the new app is not deployed. That means:
+Each deploy runs `build/migrate.sh` (`goose up`) before it starts the new app. If a migration fails, it is undone, and the old app keeps running.
 
-- every migration needs a working `-- +goose Down`
-- migrations must be additive, so the running app keeps working on the new schema
-- `-- +goose NO TRANSACTION` files (e.g. `CREATE INDEX CONCURRENTLY`) can fail halfway and leave state behind; a failed concurrent index stays as an invalid index you have to drop
-{{- end}}
+Rules for every migration:
 
-## Notes
-
-- Terraform state is local. Move it to the commented-out backend in `main.tf` before anyone else applies.
-{{- if not .IsSmall}}
-- The workload identity pool `github-{{.Environment}}` is soft-deleted for ~30 days after a destroy, and its id can't be reused until then.
+- Write a working `-- +goose Down`.
+- Only add things. Do not drop or rename columns the running app still uses.
+- Be careful with `-- +goose NO TRANSACTION` (for example `CREATE INDEX CONCURRENTLY`). It can fail halfway. A failed concurrent index stays behind as an invalid index, and you must drop it by hand.
 {{- end}}
