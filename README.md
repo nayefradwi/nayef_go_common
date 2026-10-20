@@ -34,6 +34,15 @@ go install github.com/nayefradwi/nayef_go_common/ngo@latest
 - `ngo add`: add a feature folder (service + handler, proto for gRPC) and print the router wiring.
 - `ngo auth`: add an auth module to a service made by `ngo new`. Asks for the main identifier (email/phone), login (password/otp), MFA (TOTP) endpoints, access token (jwt/opaque), and auth stores (postgres/redis, when the project has Redis). Generates `internal/auth` with the endpoints written, a sqlc users query file, one goose migration (users + auth tables), and env secrets. Prints the `di.go`, config and router wiring to paste; every limit and TTL lives in that wiring. Needs `goose` (and `buf` for gRPC). Runs once per project.
 
+Every answer can be passed as a flag; the form only asks for what is missing. Pass them all to run without a terminal (lists are comma separated, see `ngo <command> --help`):
+
+```bash
+ngo new --name testservice --service-type grpc --infra-types postgresql,redis --features locking
+ngo add --name orders --infra-types redis --features locking
+ngo auth --identifier email --login otp --mfa --access-token jwt --store redis
+ngo deploy --environment prod --size small --provider vps
+```
+
 ## Modules
 
 Each module targets a specific area of boilerplate that I am trying to avoid re-writing. Overview of the modules:

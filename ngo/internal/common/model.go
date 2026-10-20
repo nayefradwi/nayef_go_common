@@ -11,6 +11,8 @@ const (
 	ServiceTypeGrpc ServiceType = "gRPC"
 )
 
+var AllServiceTypes = []ServiceType{ServiceTypeRest, ServiceTypeGrpc}
+
 type InfraType string
 
 const (

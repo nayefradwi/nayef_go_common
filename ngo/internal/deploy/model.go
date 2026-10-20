@@ -11,6 +11,8 @@ var (
 	Vps   CloudProvider = "Vps"
 )
 
+var AllProviders = []CloudProvider{Aws, Gcp, Azure, Vps}
+
 type DeploymentSize string
 
 var (
@@ -18,6 +20,8 @@ var (
 	Medium DeploymentSize = "medium"
 	Large  DeploymentSize = "large"
 )
+
+var AllSizes = []DeploymentSize{Small, Medium, Large}
 
 type CreateDeploymentRequest struct {
 	common.TakesInfraTypes

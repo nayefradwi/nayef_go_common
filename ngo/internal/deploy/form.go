@@ -1,15 +1,17 @@
 package deploy
 
 import (
+	"fmt"
 	"os"
 	"path"
 
 	"github.com/charmbracelet/huh"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/common"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
+	"github.com/spf13/pflag"
 )
 
-func RunForm() (*CreateDeploymentRequest, error) {
+func RunForm(flags *pflag.FlagSet) (*CreateDeploymentRequest, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		printer.Error(err.Error())
@@ -34,18 +36,60 @@ func RunForm() (*CreateDeploymentRequest, error) {
 		ServiceType: project.ServiceType,
 		RootDirPath: wd,
 	}
-	form := huh.NewForm(
-		huh.NewGroup(common.NameInput(&req.Environment)),
-		huh.NewGroup(DeploymentSizeInput(&req.Size)),
-		huh.NewGroup(CloudProviderInput(&req.Provider, &req.Size)),
-	)
+	groups, err := fillFromFlags(req, flags)
+	if err != nil {
+		printer.Error(err.Error())
+		return nil, err
+	}
 
-	if err := form.Run(); err != nil {
+	if err := huh.NewForm(groups...).Run(); err != nil {
+		printer.Error(err.Error())
+		return nil, err
+	}
+
+	// provider can come from a flag while size comes from the form
+	if req.Provider == Vps && !req.IsSmall() {
+		err := fmt.Errorf("--%s %s only works with --%s %s", FLAG_PROVIDER, PROVIDER_VPS, FLAG_SIZE, Small)
 		printer.Error(err.Error())
 		return nil, err
 	}
 
 	return req, nil
+}
+
+func fillFromFlags(req *CreateDeploymentRequest, flags *pflag.FlagSet) ([]*huh.Group, error) {
+	return common.FillFromFlags(flags, []common.FlagField{
+		{
+			Name: FLAG_ENVIRONMENT,
+			Set: func() (err error) {
+				req.Environment, err = common.ParseRegexFlag(flags, FLAG_ENVIRONMENT, common.NameRegex)
+				return
+			},
+			Group: func() *huh.Group {
+				return huh.NewGroup(common.NameInput(&req.Environment))
+			},
+		},
+		{
+			Name: FLAG_SIZE,
+			Set: func() (err error) {
+				req.Size, err = common.ParseFlag(flags, FLAG_SIZE, AllSizes)
+				return
+			},
+			Group: func() *huh.Group {
+				return huh.NewGroup(DeploymentSizeInput(&req.Size))
+			},
+		},
+		{
+			Name: FLAG_PROVIDER,
+			Set: func() (err error) {
+				req.Provider, err = common.ParseFlag(flags, FLAG_PROVIDER, AllProviders)
+				return
+			},
+			Group: func() *huh.Group {
+				return huh.NewGroup(CloudProviderInput(&req.Provider, &req.Size))
+			},
+		},
+	})
 }
 
 func DeploymentSizeInput(value *DeploymentSize) *huh.Select[DeploymentSize] {
