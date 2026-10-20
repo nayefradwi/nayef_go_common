@@ -1,8 +1,6 @@
 package common
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/huh"
 )
 
@@ -11,12 +9,7 @@ func NameInput(value *string) *huh.Input {
 		Title("Name").
 		Placeholder("myservice").
 		Description("Name: lowercase letters and digits only, no separators").
-		Validate(func(s string) error {
-			if !NameRegex.MatchString(s) {
-				return fmt.Errorf("name must be lowercase letters and digits only (Go package naming convention)")
-			}
-			return nil
-		}).
+		Validate(ValidateName).
 		Value(value)
 }
 

@@ -3,10 +3,11 @@ package new
 import (
 	"github.com/nayefradwi/nayef_go_common/errors"
 	"github.com/nayefradwi/nayef_go_common/ngo/internal/printer"
+	"github.com/spf13/pflag"
 )
 
-func Run() error {
-	req, err := RunForm()
+func Run(flags *pflag.FlagSet) error {
+	req, err := RunForm(flags)
 
 	if err != nil {
 		return err

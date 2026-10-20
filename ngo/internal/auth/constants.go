@@ -1,5 +1,21 @@
 package auth
 
+import "github.com/nayefradwi/nayef_go_common/ngo/internal/common"
+
+const (
+	FLAG_IDENTIFIER   = "identifier"
+	FLAG_LOGIN        = "login"
+	FLAG_MFA          = "mfa"
+	FLAG_ACCESS_TOKEN = "access-token"
+	FLAG_STORE        = "store"
+)
+
+var (
+	AllIdentifiers  = []common.Identifier{common.IdentifierEmail, common.IdentifierPhone}
+	AllLoginMethods = []common.LoginMethod{common.LoginPassword, common.LoginOtp}
+	AllAccessTokens = []common.AccessToken{common.AccessTokenJwt, common.AccessTokenOpaque}
+)
+
 const (
 	INTERNAL    = "internal"
 	AUTH        = "auth"

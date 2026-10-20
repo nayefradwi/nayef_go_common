@@ -1,6 +1,12 @@
 package deploy
 
 const (
+	FLAG_ENVIRONMENT = "environment"
+	FLAG_SIZE        = "size"
+	FLAG_PROVIDER    = "provider"
+)
+
+const (
 	DEPLOYMENTS = "deployments"
 	TERRAFORM   = "terraform"
 	GITHUB      = ".github"
