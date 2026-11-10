@@ -8,13 +8,14 @@ on:
         required: true
         type: string
       bump_type:
-        description: "Version segment to bump: patch, minor, or major"
+        description: "Version segment to bump: patch, minor, or major. Empty resolves it from the merged PR's labels (release:major / release:minor), defaulting to patch"
         required: false
         type: string
-        default: patch
+        default: ""
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   release:
@@ -39,11 +40,19 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve bump type
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_BUMP: ${{ inputs.bump_type }}
+        run: .github/scripts/resolve-bump-type.sh
+
       - name: Compute next version
         id: versioning
+        env:
+          BUMP_TYPE: ${{ steps.bump.outputs.bump_type }}
         run: |
           MODULE_PATH="${{ inputs.module_path }}"
-          BUMP_TYPE="${{ inputs.bump_type }}"
 
           # Find the latest existing tag for this module using version-aware sort
           LATEST_TAG=$(git tag --list "${MODULE_PATH}/v*" --sort=-v:refname | head -n 1)
