@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -44,8 +44,8 @@ func TestParseJsonBody_InvalidJson(t *testing.T) {
 	})
 
 	require.False(t, called, "expected onSuccess NOT to be called on invalid JSON")
-	require.NotEqual(t, http.StatusOK, rec.Code)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
 
 	var errBody map[string]any
-	require.NoError(t, json.NewDecoder(rec.Body).Decode(&errBody))
+	require.NoError(t, json.UnmarshalRead(rec.Body, &errBody))
 }

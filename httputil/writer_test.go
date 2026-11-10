@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	goerrors "errors"
 	"fmt"
 	"net/http"
@@ -26,7 +26,7 @@ func newWriter(w *httptest.ResponseRecorder) JsonResponseWriter {
 func decodeBody[T any](t *testing.T, rec *httptest.ResponseRecorder) T {
 	t.Helper()
 	var out T
-	require.NoError(t, json.NewDecoder(rec.Body).Decode(&out))
+	require.NoError(t, json.UnmarshalRead(rec.Body, &out))
 	return out
 }
 
