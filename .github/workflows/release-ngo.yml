@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   release:
@@ -44,12 +45,20 @@ jobs:
           go-version-file: ngo/go.mod
           cache: true
 
+      - name: Resolve bump type
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # empty on push runs, so the merged PR's labels decide
+          INPUT_BUMP: ${{ inputs.bump_type }}
+        run: .github/scripts/resolve-bump-type.sh
+
       - name: Compute next version
         id: versioning
+        env:
+          BUMP_TYPE: ${{ steps.bump.outputs.bump_type }}
         run: |
           MODULE_PATH="ngo"
-          # empty on push runs
-          BUMP_TYPE="${{ inputs.bump_type || 'patch' }}"
 
           LATEST_TAG=$(git tag --list "${MODULE_PATH}/v*" --sort=-v:refname | head -n 1)
 

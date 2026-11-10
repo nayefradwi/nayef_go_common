@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   release:
@@ -27,6 +28,6 @@ jobs:
     uses: ./.github/workflows/deploy-go-module.yml
     with:
       module_path: pagination
-      # empty on push runs
-      bump_type: ${{ inputs.bump_type || 'patch' }}
+      # empty on push runs, so the merged PR's labels decide
+      bump_type: ${{ inputs.bump_type }}
     secrets: inherit
