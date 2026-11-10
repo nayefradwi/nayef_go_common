@@ -2,7 +2,7 @@ package shared
 
 import (
 	"cmp"
-	"encoding/json"
+	"encoding/json/v2"
 	"log/slog"
 	"net/http"
 	"os"
@@ -23,7 +23,7 @@ func Must[T any](v T, err error) T {
 
 func Decode[T any](r *http.Request) (T, error) {
 	var body T
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(r.Body, &body); err != nil {
 		return body, errors.BadRequestError("invalid json body")
 	}
 

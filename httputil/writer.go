@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -69,7 +69,7 @@ func (jw JsonResponseWriter) WriteSuccessMessage(data string, err error) {
 
 func (jw JsonResponseWriter) WriteData(data any) {
 	jw.SetHttpStatusCode(jw.SuccessStatus)
-	json.NewEncoder(jw.Writer).Encode(data)
+	json.MarshalWrite(jw.Writer, data)
 }
 
 func (jw JsonResponseWriter) WriteError(err error) {
@@ -85,7 +85,7 @@ func (jw JsonResponseWriter) WriteError(err error) {
 	}
 
 	jw.SetHttpStatusCode(statusCode)
-	json.NewEncoder(jw.Writer).Encode(resultError)
+	json.MarshalWrite(jw.Writer, resultError)
 }
 
 func getStatusCodeFromResultError(err *ResultError) int {
